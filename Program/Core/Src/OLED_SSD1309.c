@@ -1,0 +1,362 @@
+/**
+ * @file OLED_SSD1309.c
+ * @brief SSD1309 I2C driver — framebuffer + Adafruit-style drawing API.
+ */
+#include "OLED_SSD1309.h"
+#include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
+
+extern I2C_HandleTypeDef hi2c2;
+
+#define SSD1309_I2C_TIMEOUT_MS  100u
+
+#if (SSD1309_HEIGHT == 32u)
+#define SSD1309_MUX_RATIO  0x1Fu
+#define SSD1309_COM_PINS   0x02u
+#elif (SSD1309_HEIGHT == 64u)
+#define SSD1309_MUX_RATIO  0x3Fu
+#define SSD1309_COM_PINS   0x12u
+#endif
+
+static uint8_t s_buffer[SSD1309_WIDTH * SSD1309_PAGES];
+static int16_t s_cursor_x;
+static int16_t s_cursor_y;
+static uint8_t s_text_size = 1u;
+static uint16_t s_text_color = SSD1309_WHITE;
+
+/* Adafruit glcdfont ASCII 0x20..0x7E, 5 bytes per glyph */
+static const uint8_t s_font5x7[] = {
+  0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x5Fu, 0x00u, 0x00u, 0x00u, 0x07u, 0x00u, 0x07u, 0x00u,
+  0x14u, 0x7Fu, 0x14u, 0x7Fu, 0x14u, 0x24u, 0x2Au, 0x7Fu, 0x2Au, 0x12u, 0x23u, 0x13u, 0x08u, 0x64u, 0x62u,
+  0x36u, 0x49u, 0x56u, 0x20u, 0x50u, 0x00u, 0x08u, 0x07u, 0x03u, 0x00u, 0x00u, 0x1Cu, 0x22u, 0x41u, 0x00u,
+  0x00u, 0x41u, 0x22u, 0x1Cu, 0x00u, 0x2Au, 0x1Cu, 0x7Fu, 0x1Cu, 0x2Au, 0x08u, 0x08u, 0x3Eu, 0x08u, 0x08u,
+  0x00u, 0x80u, 0x70u, 0x30u, 0x00u, 0x08u, 0x08u, 0x08u, 0x08u, 0x08u, 0x00u, 0x00u, 0x60u, 0x60u, 0x00u,
+  0x20u, 0x10u, 0x08u, 0x04u, 0x02u, 0x3Eu, 0x51u, 0x49u, 0x45u, 0x3Eu, 0x00u, 0x42u, 0x7Fu, 0x40u, 0x00u,
+  0x72u, 0x49u, 0x49u, 0x49u, 0x46u, 0x21u, 0x41u, 0x49u, 0x4Du, 0x33u, 0x18u, 0x14u, 0x12u, 0x7Fu, 0x10u,
+  0x27u, 0x45u, 0x45u, 0x45u, 0x39u, 0x3Cu, 0x4Au, 0x49u, 0x49u, 0x31u, 0x41u, 0x21u, 0x11u, 0x09u, 0x07u,
+  0x36u, 0x49u, 0x49u, 0x49u, 0x36u, 0x46u, 0x49u, 0x49u, 0x29u, 0x1Eu, 0x00u, 0x00u, 0x14u, 0x00u, 0x00u,
+  0x00u, 0x40u, 0x34u, 0x00u, 0x00u, 0x00u, 0x08u, 0x14u, 0x22u, 0x41u, 0x14u, 0x14u, 0x14u, 0x14u, 0x14u,
+  0x00u, 0x41u, 0x22u, 0x14u, 0x08u, 0x02u, 0x01u, 0x59u, 0x09u, 0x06u, 0x3Eu, 0x41u, 0x5Du, 0x59u, 0x4Eu,
+  0x7Cu, 0x12u, 0x11u, 0x12u, 0x7Cu, 0x7Fu, 0x49u, 0x49u, 0x49u, 0x36u, 0x3Eu, 0x41u, 0x41u, 0x41u, 0x22u,
+  0x7Fu, 0x41u, 0x41u, 0x41u, 0x3Eu, 0x7Fu, 0x49u, 0x49u, 0x49u, 0x41u, 0x7Fu, 0x09u, 0x09u, 0x09u, 0x01u,
+  0x3Eu, 0x41u, 0x41u, 0x51u, 0x73u, 0x7Fu, 0x08u, 0x08u, 0x08u, 0x7Fu, 0x00u, 0x41u, 0x7Fu, 0x41u, 0x00u,
+  0x20u, 0x40u, 0x41u, 0x3Fu, 0x01u, 0x7Fu, 0x08u, 0x14u, 0x22u, 0x41u, 0x7Fu, 0x40u, 0x40u, 0x40u, 0x40u,
+  0x7Fu, 0x02u, 0x1Cu, 0x02u, 0x7Fu, 0x7Fu, 0x04u, 0x08u, 0x10u, 0x7Fu, 0x3Eu, 0x41u, 0x41u, 0x41u, 0x3Eu,
+  0x7Fu, 0x09u, 0x09u, 0x09u, 0x06u, 0x3Eu, 0x41u, 0x51u, 0x21u, 0x5Eu, 0x7Fu, 0x09u, 0x19u, 0x29u, 0x46u,
+  0x26u, 0x49u, 0x49u, 0x49u, 0x32u, 0x03u, 0x01u, 0x7Fu, 0x01u, 0x03u, 0x3Fu, 0x40u, 0x40u, 0x40u, 0x3Fu,
+  0x1Fu, 0x20u, 0x40u, 0x20u, 0x1Fu, 0x3Fu, 0x40u, 0x38u, 0x40u, 0x3Fu, 0x63u, 0x14u, 0x08u, 0x14u, 0x63u,
+  0x03u, 0x04u, 0x78u, 0x04u, 0x03u, 0x61u, 0x59u, 0x49u, 0x4Du, 0x43u, 0x00u, 0x7Fu, 0x41u, 0x41u, 0x41u,
+  0x02u, 0x04u, 0x08u, 0x10u, 0x20u, 0x00u, 0x41u, 0x41u, 0x41u, 0x7Fu, 0x04u, 0x02u, 0x01u, 0x02u, 0x04u,
+  0x40u, 0x40u, 0x40u, 0x40u, 0x40u, 0x00u, 0x03u, 0x07u, 0x08u, 0x00u, 0x20u, 0x54u, 0x54u, 0x78u, 0x40u,
+  0x7Fu, 0x28u, 0x44u, 0x44u, 0x38u, 0x38u, 0x44u, 0x44u, 0x44u, 0x28u, 0x38u, 0x44u, 0x44u, 0x28u, 0x7Fu,
+  0x38u, 0x54u, 0x54u, 0x54u, 0x18u, 0x00u, 0x08u, 0x7Eu, 0x09u, 0x02u, 0x18u, 0xA4u, 0xA4u, 0x9Cu, 0x78u,
+  0x7Fu, 0x08u, 0x04u, 0x04u, 0x78u, 0x00u, 0x44u, 0x7Du, 0x40u, 0x00u, 0x20u, 0x40u, 0x40u, 0x3Du, 0x00u,
+  0x7Fu, 0x10u, 0x28u, 0x44u, 0x00u, 0x00u, 0x41u, 0x7Fu, 0x40u, 0x00u, 0x7Cu, 0x04u, 0x78u, 0x04u, 0x78u,
+  0x7Cu, 0x08u, 0x04u, 0x04u, 0x78u, 0x38u, 0x44u, 0x44u, 0x44u, 0x38u, 0xFCu, 0x18u, 0x24u, 0x24u, 0x18u,
+  0x18u, 0x24u, 0x24u, 0x18u, 0xFCu, 0x7Cu, 0x08u, 0x04u, 0x04u, 0x08u, 0x48u, 0x54u, 0x54u, 0x54u, 0x24u,
+  0x04u, 0x04u, 0x3Fu, 0x44u, 0x24u, 0x3Cu, 0x40u, 0x40u, 0x20u, 0x7Cu, 0x1Cu, 0x20u, 0x40u, 0x20u, 0x1Cu,
+  0x3Cu, 0x40u, 0x30u, 0x40u, 0x3Cu, 0x44u, 0x28u, 0x10u, 0x28u, 0x44u, 0x4Cu, 0x90u, 0x90u, 0x90u, 0x7Cu,
+  0x44u, 0x64u, 0x54u, 0x4Cu, 0x44u, 0x00u, 0x08u, 0x36u, 0x41u, 0x00u, 0x00u, 0x00u, 0x77u, 0x00u, 0x00u,
+  0x00u, 0x41u, 0x36u, 0x08u, 0x00u, 0x02u, 0x01u, 0x02u, 0x04u, 0x02u
+};
+
+static uint8_t i2c_addr8(void)
+{
+  return (uint8_t)(SSD1309_I2C_ADDR << 1);
+}
+
+static uint8_t write_cmd(uint8_t cmd)
+{
+  uint8_t buf[2] = {0x00u, cmd};
+  return (HAL_I2C_Master_Transmit(&hi2c2, i2c_addr8(), buf, 2u, SSD1309_I2C_TIMEOUT_MS) == HAL_OK) ? 1u : 0u;
+}
+
+static uint8_t write_data(const uint8_t *data, uint16_t len)
+{
+  static uint8_t tx[SSD1309_WIDTH + 1u];
+
+  if (len > SSD1309_WIDTH)
+  {
+    return 0u;
+  }
+
+  tx[0] = 0x40u;
+  memcpy(&tx[1], data, len);
+  return (HAL_I2C_Master_Transmit(&hi2c2, i2c_addr8(), tx, (uint16_t)(len + 1u), SSD1309_I2C_TIMEOUT_MS) == HAL_OK) ? 1u : 0u;
+}
+
+static uint8_t send_init_sequence(void)
+{
+  static const uint8_t init_common[] = {
+    0xAE,       /* display off */
+    0xD5, 0x80, /* clock div */
+    0xA8, SSD1309_MUX_RATIO,
+    0xD3, 0x00, /* display offset */
+    0x40,       /* start line */
+    0x8D, 0x14, /* charge pump on */
+    0x20, 0x02, /* page addressing (与 ssd1309_display 一致) */
+    0xA1,       /* segment remap */
+    0xC8,       /* com scan dec */
+    0xDA, SSD1309_COM_PINS,
+    0x81, 0xCF, /* contrast */
+    0xD9, 0xF1, /* pre-charge */
+    0xDB, 0x40, /* vcomh */
+    0xA4,       /* display from RAM */
+    0xA6,       /* normal display */
+    0xAF        /* display on */
+  };
+  uint8_t i;
+
+  for (i = 0u; i < sizeof(init_common); i++)
+  {
+    if (write_cmd(init_common[i]) == 0u)
+    {
+      return 0u;
+    }
+  }
+  return 1u;
+}
+
+uint8_t ssd1309_begin(void)
+{
+  if (HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr8(), 3u, SSD1309_I2C_TIMEOUT_MS) != HAL_OK)
+  {
+    return 0u;
+  }
+
+  if (send_init_sequence() == 0u)
+  {
+    return 0u;
+  }
+
+  ssd1309_clearDisplay();
+  ssd1309_setCursor(0, 0);
+  ssd1309_setTextSize(1u);
+  ssd1309_setTextColor(SSD1309_WHITE);
+  ssd1309_display();
+  return 1u;
+}
+
+void ssd1309_clearDisplay(void)
+{
+  memset(s_buffer, 0, sizeof(s_buffer));
+}
+
+void ssd1309_display(void)
+{
+  uint8_t page;
+
+  for (page = 0u; page < SSD1309_PAGES; page++)
+  {
+    if (write_cmd((uint8_t)(0xB0u + page)) == 0u)
+    {
+      return;
+    }
+    if (write_cmd(0x00u) == 0u)
+    {
+      return;
+    }
+    if (write_cmd(0x10u) == 0u)
+    {
+      return;
+    }
+    (void)write_data(&s_buffer[(uint16_t)page * SSD1309_WIDTH], SSD1309_WIDTH);
+  }
+}
+
+void ssd1309_invertDisplay(uint8_t inv)
+{
+  (void)write_cmd(inv ? 0xA7u : 0xA6u);
+}
+
+void ssd1309_setCursor(int16_t x, int16_t y)
+{
+  s_cursor_x = x;
+  s_cursor_y = y;
+}
+
+void ssd1309_setTextSize(uint8_t size)
+{
+  if (size < 1u)
+  {
+    size = 1u;
+  }
+  s_text_size = size;
+}
+
+void ssd1309_setTextColor(uint16_t color)
+{
+  s_text_color = color;
+}
+
+void ssd1309_drawPixel(int16_t x, int16_t y, uint16_t color)
+{
+  uint16_t idx;
+  uint8_t mask;
+
+  if (x < 0 || y < 0 || x >= (int16_t)SSD1309_WIDTH || y >= (int16_t)SSD1309_HEIGHT)
+  {
+    return;
+  }
+
+  idx = (uint16_t)x + ((uint16_t)(y / 8) * SSD1309_WIDTH);
+  mask = (uint8_t)(1u << (y & 7));
+
+  switch (color)
+  {
+    case SSD1309_WHITE:
+      s_buffer[idx] |= mask;
+      break;
+    case SSD1309_BLACK:
+      s_buffer[idx] &= (uint8_t)(~mask);
+      break;
+    case SSD1309_INVERSE:
+    default:
+      s_buffer[idx] ^= mask;
+      break;
+  }
+}
+
+static void draw_char(int16_t x, int16_t y, char c, uint16_t color, uint8_t size)
+{
+  uint8_t i;
+  uint8_t j;
+  int16_t px;
+  int16_t py;
+  uint8_t line;
+  const uint8_t *glyph;
+
+  if (c < ' ' || c > '~')
+  {
+    c = '?';
+  }
+
+  glyph = &s_font5x7[(uint8_t)(c - ' ') * 5u];
+
+  for (i = 0u; i < 5u; i++)
+  {
+    line = glyph[i];
+    for (j = 0u; j < 8u; j++)
+    {
+      if ((line & (1u << j)) != 0u)
+      {
+        for (py = 0; py < (int16_t)size; py++)
+        {
+          for (px = 0; px < (int16_t)size; px++)
+          {
+            ssd1309_drawPixel((int16_t)(x + (int16_t)i * (int16_t)size + px),
+                              (int16_t)(y + (int16_t)j * (int16_t)size + py),
+                              color);
+          }
+        }
+      }
+    }
+  }
+}
+
+void ssd1309_drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color)
+{
+  int16_t dx = (x1 >= x0) ? (x1 - x0) : (x0 - x1);
+  int16_t sx = (x0 < x1) ? 1 : -1;
+  int16_t dy = (y1 >= y0) ? (y0 - y1) : (y1 - y0);
+  int16_t sy = (y0 < y1) ? 1 : -1;
+  int16_t err = dx + dy;
+
+  for (;;)
+  {
+    ssd1309_drawPixel(x0, y0, color);
+    if (x0 == x1 && y0 == y1)
+    {
+      break;
+    }
+    {
+      int16_t e2 = err * 2;
+      if (e2 >= dy)
+      {
+        err += dy;
+        x0 += sx;
+      }
+      if (e2 <= dx)
+      {
+        err += dx;
+        y0 += sy;
+      }
+    }
+  }
+}
+
+void ssd1309_drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
+{
+  ssd1309_drawLine(x, y, (int16_t)(x + w - 1), y, color);
+  ssd1309_drawLine(x, (int16_t)(y + h - 1), (int16_t)(x + w - 1), (int16_t)(y + h - 1), color);
+  ssd1309_drawLine(x, y, x, (int16_t)(y + h - 1), color);
+  ssd1309_drawLine((int16_t)(x + w - 1), y, (int16_t)(x + w - 1), (int16_t)(y + h - 1), color);
+}
+
+void ssd1309_fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
+{
+  int16_t i;
+  int16_t j;
+
+  for (j = 0; j < h; j++)
+  {
+    for (i = 0; i < w; i++)
+    {
+      ssd1309_drawPixel((int16_t)(x + i), (int16_t)(y + j), color);
+    }
+  }
+}
+
+void ssd1309_print(const char *s)
+{
+  uint8_t char_w = (uint8_t)(6u * s_text_size);
+
+  while (s != NULL && *s != '\0')
+  {
+    if (*s == '\n')
+    {
+      s_cursor_y = (int16_t)(s_cursor_y + (int16_t)(8 * s_text_size));
+      s_cursor_x = 0;
+    }
+    else
+    {
+      if ((s_cursor_x + (int16_t)(5 * s_text_size)) > (int16_t)SSD1309_WIDTH)
+      {
+        s_cursor_x = 0;
+        s_cursor_y = (int16_t)(s_cursor_y + (int16_t)(8 * s_text_size));
+      }
+      if ((s_cursor_y + (int16_t)(8 * s_text_size)) > (int16_t)SSD1309_HEIGHT)
+      {
+        break;
+      }
+      draw_char(s_cursor_x, s_cursor_y, *s, s_text_color, s_text_size);
+      s_cursor_x = (int16_t)(s_cursor_x + char_w);
+    }
+    s++;
+  }
+}
+
+void ssd1309_println(const char *s)
+{
+  ssd1309_print(s);
+  s_cursor_y = (int16_t)(s_cursor_y + (int16_t)(8 * s_text_size));
+  s_cursor_x = 0;
+}
+
+int ssd1309_printf(const char *fmt, ...)
+{
+  char buf[64];
+  va_list args;
+  int n;
+
+  va_start(args, fmt);
+  n = vsnprintf(buf, sizeof(buf), fmt, args);
+  va_end(args);
+
+  if (n > 0)
+  {
+    ssd1309_print(buf);
+  }
+  return n;
+}
