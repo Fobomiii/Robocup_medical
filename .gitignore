@@ -1,0 +1,27 @@
+# Keil MDK 编译产物
+*.axf
+*.hex
+*.lnp
+*.map
+*.lst
+*.o
+*.d
+*.dep
+*.crf
+*.iex
+*.tra
+*.sct
+*.htm
+
+# Keil 用户专属 GUI 布局（每人不同，不需要共享）
+*.uvguix.*
+*.uvprojx
+# Keil 调试/选项缓存（由 IDE 自动重建）
+*.uvoptx
+
+# 编译输出目录
+Program/MDK-ARM/Program/
+
+# Python
+__pycache__/
+*.pyc
