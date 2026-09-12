@@ -27,10 +27,10 @@
 #include "Servo.h"
 #include "HWT101CT.h"
 #include "GM65.h"
-#include "MAX30102.h"
-#include "GY614.h"
 #include "OLED_SSD1309.h"
 #include "Navigation.h"
+#include "NUC_Obstacle.h"
+#include "Board.h"
 
 /* USER CODE END Includes */
 
@@ -139,15 +139,15 @@ void StartOPSUartTask(void *argument);
 void StartOledTask(void *argument);
 
 
-int bpmRaw = 0;//全局原始心率
-int bpmSmooth = 0;//全局平滑心率
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+volatile int16_t g_nuc_x = 0;
+volatile int16_t g_nuc_y = 0;
+volatile uint8_t g_nuc_valid = 0;
 /* USER CODE END 0 */
 
 /**
@@ -204,8 +204,13 @@ int main(void)
   HWT101_CaliYaw();
 
   GM65_Init();
-  MAX30102_Init();
-  GY614_Init();
+  NUC_Obstacle_Init();
+  while (!NUC_IsOnline())
+  {
+    (void)NUC_Obstacle_SendPing();
+    BUZZ_Beep(100U);
+    HAL_Delay(100U);
+  }
   MapPos_Init();
   /* USER CODE END 2 */
 
@@ -688,7 +693,7 @@ static void MX_UART8_Init(void)
 
   /* USER CODE END UART8_Init 1 */
   huart8.Instance = UART8;
-  huart8.Init.BaudRate = 9600;
+  huart8.Init.BaudRate = 115200;
   huart8.Init.WordLength = UART_WORDLENGTH_8B;
   huart8.Init.Parity = UART_PARITY_NONE;
   huart8.Init.Mode = UART_MODE_TX_RX;
@@ -1000,18 +1005,16 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   (void)argument;
-  /* MAX30102：任务内 1Hz 查询心率 */
   for (;;)
   {
-    MAX30102_Update();
-    bpmRaw = getBPMRaw();
-    bpmSmooth = getBPM();
-    /*SERVO1_ANGLE(0.f); 
-    SERVO2_ANGLE(0.f); 
-    osDelay(1000);
-    SERVO1_ANGLE(180.f); 
-    SERVO2_ANGLE(180.f); */
-    osDelay(1000);
+    g_nuc_valid = NUC_IsObstacleValid();
+    /* Keep the last valid frame on screen when the stream pauses. */
+    if (g_nuc_valid)
+    {
+      g_nuc_x = NUC_GetObstacleX();
+      g_nuc_y = NUC_GetObstacleY();
+    }
+    osDelay(50);
   }
   /* USER CODE END 5 */
 }
@@ -1102,14 +1105,13 @@ void StartOledTask(void *argument)
     ssd1309_clearDisplay();
     ssd1309_setTextSize(1U);
     ssd1309_setTextColor(SSD1309_WHITE);
-    ssd1309_setCursor(0, 0);
-    ssd1309_printf("Bpm:%d", bpmRaw);
+
+    ssd1309_setTextSize(2U);
     ssd1309_setCursor(0, 8);
-    ssd1309_printf("BpmS:%d", bpmSmooth);
-    ssd1309_setCursor(0, 16);
-    ssd1309_printf("Temp:%.2f", getTemp());
-    ssd1309_setCursor(0, 24);
-    ssd1309_printf("TempLPF:%.2f", getTempLPF());
+    ssd1309_printf("X:%d", (int)g_nuc_x);
+    ssd1309_setCursor(0, 36);
+    ssd1309_printf("Y:%d", (int)g_nuc_y);
+
     ssd1309_display();
     osDelay(100);
   }

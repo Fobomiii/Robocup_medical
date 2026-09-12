@@ -7,8 +7,7 @@
  */
 #include "OPS.h"
 #include "cmsis_os.h"
-#include "MAX30102.h"
-#include "GY614.h"
+#include "NUC_Obstacle.h"
 #include <string.h>
 
 Union_OPS OPS;
@@ -113,13 +112,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     OPS_FeedByte(s_rx_byte);
     (void)HAL_UART_Receive_IT(&huart3, &s_rx_byte, 1);
   }
-  else if (huart->Instance == UART4)
-  {
-    MAX30102_OnUartRxCplt();
-  }
   else if (huart->Instance == UART8)
   {
-    GY614_OnUartRxCplt();
+    NUC_Obstacle_OnUartRxCplt();
+  }
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == UART8)
+  {
+    NUC_Obstacle_OnUartError();
   }
 }
 
