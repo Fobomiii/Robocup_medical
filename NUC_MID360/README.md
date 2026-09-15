@@ -93,12 +93,16 @@ journalctl -fu obstacle-detector.service
 sudo systemctl restart obstacle-detector.service
 ```
 
+可视化调试工具左侧滑块现在会自动保存参数；也可以点击“保存参数”确认写入。
+工具会同时更新源码和 colcon 安装目录下的 `params.yaml`，因此重启
+`obstacle-detector.service` 后仍会使用新参数。启动可视化工具时也会读取上次保存的值。
+
 | 参数 | 含义 | 推荐值 |
 |------|------|--------|
 | `dist_min` / `dist_max` | 前向检测距离范围 | 0.40 / 0.50 m |
 | `y_span_max` | 横向点云宽度上限，超过认为是大物体 | 0.20–0.25 m |
 | `min_points` | 最少有效点数 | 5–10 |
-| `max_points` | 最多有效点数，超过认为是大物体 | 60–100 |
+| `max_points` | 最多有效点数，超过认为是大物体 | 60–100（界面上限 1000） |
 
 ---
 

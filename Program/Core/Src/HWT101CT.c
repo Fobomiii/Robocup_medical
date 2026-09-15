@@ -58,7 +58,7 @@ static void parse_frame(const uint8_t *f)
     /* ???: Roll Pitch Yaw Ver ???? Yaw ?? offset 6 */
     s_yaw = (float)rd_i16(&f[6]) / 32768.f * 180.f;
     hwt_zangle = s_yaw;
-    pos_z = s_yaw;
+    pos_z = -s_yaw;
     s_ver = (uint16_t)rd_i16(&f[8]);
     s_last_ms = HAL_GetTick();
     hwt_online = 1U;

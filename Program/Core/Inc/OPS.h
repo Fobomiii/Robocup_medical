@@ -5,8 +5,9 @@
  * 硬件: USART3  PC10=TX  PC11=RX  115200 8N1
  *
  * 调用:
- *   StartOPSUartTask 内: OPS_Task() —— 初始化 + 周期维护
- *   其它任务读位姿: pos_x / pos_y / zangle 或 OPS_GetX/Y/Yaw()
+ *   main（osKernelStart 前）: OPS_Init() —— 死等首帧 + ACT0 + 稳定性检查
+ *   StartOPSUartTask: OPS_Task() —— 周期维护
+ *   其它任务读位姿: 使用 OPS_GetX/Y/Yaw() 或 OPS_GetPose()
  *   清零: OPS_Cali()
  *   写坐标: OPS_UpdateX/Y/Z()
  */
@@ -25,21 +26,17 @@ typedef union {
   float ActVal[8];
 } Union_OPS;
 
-extern Union_OPS OPS;
+/* 由 USART3 接收中断更新；业务代码请通过 OPS_Get* 接口读取。 */
+extern volatile Union_OPS OPS;
 extern UART_HandleTypeDef huart3;
 
-/** 与 RC_Old Location.h 一致（注意负号） */
-#define pos_x   (-OPS.ActVal[4])
-#define pos_y   (-OPS.ActVal[5])
-#define zangle  (-OPS.ActVal[1])
-#define xangle  (-OPS.ActVal[2])
-#define yangle  (-OPS.ActVal[3])
-#define w_z     (-OPS.ActVal[6])
-
-/** 初始化 UART 中断收帧 + ACT0 清零（在 OPSUartTask 里由 OPS_Task 调用） */
+/**
+ * 初始化：死等首帧 → ACT0 → 1s 航向稳定性检查（稳则短鸣，不稳则蜂鸣卡死）。
+ * 在 main、创建 RTOS 任务之前调用（内部用 HAL_Delay）。
+ */
 void OPS_Init(void);
 
-/** OPSUartTask 入口：Init 后循环读取/维护（永不返回） */
+/** OPSUartTask 入口：周期读取/维护（永不返回；假定 OPS_Init 已完成） */
 void OPS_Task(void);
 
 /** 是否在线（近期收到完整帧） */
@@ -54,10 +51,16 @@ float OPS_GetY(void);
 float OPS_GetYaw(void);
 float OPS_GetWz(void);
 
+/**
+ * 一次性读取同一帧中的 X/Y/OPS 航向。
+ * 返回 1 表示 OPS 在线且输出有效，返回 0 表示尚未收到有效帧或已超时。
+ */
+uint8_t OPS_GetPose(float *pos_x, float *pos_y, float *yaw);
+
 void OPS_Cali(void);
-void OPS_UpdateX(float posx);
-void OPS_UpdateY(float posy);
-void OPS_UpdateZ(float posz);
+void OPS_UpdateX(float pos_x);
+void OPS_UpdateY(float pos_y);
+void OPS_UpdateZ(float pos_z);
 
 #ifdef __cplusplus
 }

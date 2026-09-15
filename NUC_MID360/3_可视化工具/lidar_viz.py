@@ -3,7 +3,7 @@
 Livox Mid360 障碍物可视化调试工具 v3
 运行: source ~/livox_ws/install/setup.bash && python3 ~/lidar_viz.py
 """
-import os, sys, threading, time, subprocess
+import os, re, sys, threading, time, subprocess
 # 确保与 systemd 服务使用同一个 RMW，避免重启后找不到话题
 os.environ.setdefault('RMW_IMPLEMENTATION', 'rmw_fastrtps_cpp')
 os.environ.setdefault('ROS_DOMAIN_ID', '0')
@@ -46,6 +46,103 @@ ERR_C = "#ff5555"
 TEXT  = "#ccddee"
 DIM   = "#5577aa"
 VAL_C = "#ffcc66"
+
+
+# ═══════════════════════════════════════════════════════════════
+#  参数持久化
+# ═══════════════════════════════════════════════════════════════
+# 可视化工具与障碍物检测节点分别读取参数。保存时同时更新源码和
+# colcon 安装目录中的 params.yaml，这样服务重启和后续重新构建都能保留调参结果。
+PARAM_FILES = [
+    os.path.expanduser("~/livox_ws/src/obstacle_detector/config/params.yaml"),
+    os.path.expanduser(
+        "~/livox_ws/install/obstacle_detector/share/obstacle_detector/config/params.yaml"),
+]
+
+PARAM_DEFAULTS = {
+    "dist_min": 0.40,
+    "dist_max": 0.50,
+    "y_limit": 0.30,
+    "z_min": -0.10,
+    "z_max": 0.50,
+    "min_points": 5,
+    "max_points": 80,
+    "y_span_max": 0.25,
+}
+PARAM_INT_KEYS = {"min_points", "max_points"}
+
+
+def _read_saved_params():
+    """从已有 YAML 读取可视化参数；读取失败时使用界面默认值。"""
+    number = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)"
+    for path in PARAM_FILES:
+        if not os.path.isfile(path):
+            continue
+        try:
+            text = open(path, "r", encoding="utf-8").read()
+            values = {}
+            for key in PARAM_DEFAULTS:
+                match = re.search(
+                    rf"(?m)^\s*{re.escape(key)}\s*:\s*({number})\s*(?:#.*)?$",
+                    text,
+                )
+                if match:
+                    value = float(match.group(1))
+                    values[key] = int(value) if key in PARAM_INT_KEYS else value
+            if values:
+                return values
+        except (OSError, UnicodeError, ValueError):
+            continue
+    return {}
+
+
+def _format_param_value(key, value):
+    if key in PARAM_INT_KEYS:
+        return str(int(round(value)))
+    return f"{float(value):.2f}"
+
+
+def _write_saved_params(values):
+    """只替换已存在的参数行，保留 YAML 注释及串口等其他配置。"""
+    written = []
+    for path in PARAM_FILES:
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, "r", encoding="utf-8", newline="") as fh:
+                lines = fh.readlines()
+
+            changed = False
+            updated = []
+            for line in lines:
+                newline = "\n" if line.endswith("\n") else ""
+                body = line[:-1] if newline else line
+                comment = ""
+                if "#" in body:
+                    body, comment_text = body.split("#", 1)
+                    comment = "  #" + comment_text.lstrip()
+
+                replaced = False
+                for key in PARAM_DEFAULTS:
+                    match = re.match(rf"^(\s*{re.escape(key)}\s*:\s*)", body)
+                    if match:
+                        body = match.group(1) + _format_param_value(key, values[key])
+                        line = body + comment + newline
+                        changed = True
+                        replaced = True
+                        break
+                if not replaced:
+                    line = (body + comment + newline) if comment else line
+                updated.append(line)
+
+            if changed:
+                with open(path, "w", encoding="utf-8", newline="") as fh:
+                    fh.writelines(updated)
+            # 即使本次值与文件中相同，也视为保存成功，避免界面误报“未找到”。
+            written.append(path)
+        except (OSError, UnicodeError, KeyError, ValueError):
+            continue
+    return written
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -563,7 +660,7 @@ PARAM_DESCS = [
     ("⬆ 高度 下限/上限",
      "Z 轴过滤，排除地面和过高的点。\n下限-0.10m 忽略地面，上限0.50m。"),
     ("🔢 最少/最多点数",
-     "区域内点数范围。\n太少误检噪声，太多认为大物体。建议 5-80。"),
+     "区域内点数范围。\n太少误检噪声，太多认为大物体。最多点数可调到 1000。"),
     ("🎨 显示模式",
      "原始点云=所有雷达点(蓝)\n过滤点云=通过条件的点(橙)\n两者叠加最直观"),
     ("⭐ 质心标记",
@@ -579,29 +676,31 @@ class LeftPanel(QWidget):
         super().__init__()
         self.setFixedWidth(185)
         self.setStyleSheet(f"background:{PANEL};border-radius:8px;")
+        saved = _read_saved_params()
+
         pl = QVBoxLayout(self)
         pl.setContentsMargins(6, 6, 6, 6); pl.setSpacing(5)
 
-        t = QLabel("参数调整")
+        t = QLabel("参数调整（自动保存）")
         t.setStyleSheet(f"color:{ACCENT};font-size:13px;font-weight:bold;")
         t.setAlignment(Qt.AlignCenter); pl.addWidget(t)
         pl.addWidget(self._hline())
 
         pl.addWidget(self._sec("检测距离 (m)"))
-        self.s_dmin  = PSlider("近端",    0.10, 1.50,  0.40, 100, "m"); pl.addWidget(self.s_dmin)
-        self.s_dmax  = PSlider("远端",    0.10, 2.00,  0.50, 100, "m"); pl.addWidget(self.s_dmax)
+        self.s_dmin  = PSlider("近端",    0.10, 1.50, saved.get("dist_min", 0.40), 100, "m"); pl.addWidget(self.s_dmin)
+        self.s_dmax  = PSlider("远端",    0.10, 2.00, saved.get("dist_max", 0.50), 100, "m"); pl.addWidget(self.s_dmax)
         pl.addWidget(self._hline())
 
         pl.addWidget(self._sec("尺寸过滤"))
-        self.s_yspan = PSlider("横宽上限",0.05, 1.00,  0.25, 100, "m"); pl.addWidget(self.s_yspan)
-        self.s_ylim  = PSlider("横向范围",0.10, 1.00,  0.30, 100, "m"); pl.addWidget(self.s_ylim)
-        self.s_zmin  = PSlider("高度下限",-0.50,0.20, -0.10, 100, "m"); pl.addWidget(self.s_zmin)
-        self.s_zmax  = PSlider("高度上限",0.10, 1.50,  0.50, 100, "m"); pl.addWidget(self.s_zmax)
+        self.s_yspan = PSlider("横宽上限",0.05, 1.00, saved.get("y_span_max", 0.25), 100, "m"); pl.addWidget(self.s_yspan)
+        self.s_ylim  = PSlider("横向范围",0.10, 1.00, saved.get("y_limit", 0.30), 100, "m"); pl.addWidget(self.s_ylim)
+        self.s_zmin  = PSlider("高度下限",-0.50,0.20, saved.get("z_min", -0.10), 100, "m"); pl.addWidget(self.s_zmin)
+        self.s_zmax  = PSlider("高度上限",0.10, 1.50, saved.get("z_max", 0.50), 100, "m"); pl.addWidget(self.s_zmax)
         pl.addWidget(self._hline())
 
         pl.addWidget(self._sec("有效点数范围"))
-        self.s_nmin  = PSlider("最少点数", 1,  50,   5, 1, ""); pl.addWidget(self.s_nmin)
-        self.s_nmax  = PSlider("最多点数",10, 300,  80, 1, ""); pl.addWidget(self.s_nmax)
+        self.s_nmin  = PSlider("最少点数", 1,  50,   saved.get("min_points", 5), 1, ""); pl.addWidget(self.s_nmin)
+        self.s_nmax  = PSlider("最多点数",10, 1000, saved.get("max_points", 80), 1, ""); pl.addWidget(self.s_nmax)
         pl.addWidget(self._hline())
 
         pl.addWidget(self._sec("显示模式"))
@@ -615,11 +714,25 @@ class LeftPanel(QWidget):
             grp.addButton(rb); pl.addWidget(rb)
         pl.addWidget(self._hline())
 
+        self.btn_save = QPushButton("💾  保存参数")
+        self.btn_save.setMaximumHeight(30)
+        self.btn_save.setStyleSheet(
+            f"background:#1a3a5a;color:{ACCENT};border-radius:5px;padding:4px;font-size:12px;")
+        self.btn_save.clicked.connect(self._save)
+        pl.addWidget(self.btn_save)
+
         btn = QPushButton("↺  重置默认参数")
         btn.setMaximumHeight(30)
         btn.setStyleSheet(
             f"background:#252540;color:{TEXT};border-radius:5px;padding:4px;font-size:12px;")
         btn.clicked.connect(self._reset); pl.addWidget(btn)
+
+        # 滑块修改后延迟保存，避免拖动时频繁写文件。
+        self._save_timer = QTimer(self)
+        self._save_timer.setSingleShot(True)
+        self._save_timer.timeout.connect(self._save)
+        for slider in self._sliders():
+            slider.sl.valueChanged.connect(lambda _value: self._save_timer.start(500))
 
     def _hline(self):
         f = QFrame(); f.setFrameShape(QFrame.HLine)
@@ -628,6 +741,31 @@ class LeftPanel(QWidget):
     def _sec(self, t):
         l = QLabel(f"▸ {t}")
         l.setStyleSheet(f"color:{DIM};font-size:11px;padding-top:4px;"); return l
+
+    def _sliders(self):
+        return (self.s_dmin, self.s_dmax, self.s_yspan, self.s_ylim,
+                self.s_zmin, self.s_zmax, self.s_nmin, self.s_nmax)
+
+    def _values(self):
+        return {
+            "dist_min": self.s_dmin.value(),
+            "dist_max": self.s_dmax.value(),
+            "y_limit": self.s_ylim.value(),
+            "z_min": self.s_zmin.value(),
+            "z_max": self.s_zmax.value(),
+            "min_points": self.s_nmin.value(),
+            "max_points": self.s_nmax.value(),
+            "y_span_max": self.s_yspan.value(),
+        }
+
+    def _save(self, _checked=False):
+        paths = _write_saved_params(self._values())
+        if paths:
+            self.btn_save.setText("✓  已保存（重启检测生效）")
+            QTimer.singleShot(1800, lambda: self.btn_save.setText("💾  保存参数"))
+        else:
+            self.btn_save.setText("⚠  未找到参数文件")
+            QTimer.singleShot(1800, lambda: self.btn_save.setText("💾  保存参数"))
 
     def _reset(self):
         self.s_dmin.set_value(0.40); self.s_dmax.set_value(0.50)
@@ -647,7 +785,7 @@ class MainWindow(QMainWindow):
         self.ros_node = ros_node
         self.setWindowTitle("Livox Mid360  障碍物可视化调试  v5")
         self.setStyleSheet(f"background:{BG};color:{TEXT};")
-        self.showFullScreen()
+        self.setMinimumSize(900, 540)
 
         central = QWidget(); self.setCentralWidget(central)
         root = QHBoxLayout(central)
@@ -655,6 +793,7 @@ class MainWindow(QMainWindow):
 
         self.left   = LeftPanel()
         self.canvas = PolarCanvas()
+        self.canvas.setMinimumWidth(480)
         self.right  = RightPanel()
 
         root.addWidget(self.left)
@@ -674,6 +813,11 @@ class MainWindow(QMainWindow):
 
         # 启动 3s 后自动检查，若服务未运行则自动拉起
         QTimer.singleShot(3000, self._auto_start_check)
+
+    def closeEvent(self, event):
+        # 即使用户没有单独点击“保存参数”，退出可视化工具时也保存一次。
+        self.left._save()
+        super().closeEvent(event)
 
     def _auto_start_check(self):
         if self.ros_node.data_age() == float('inf'):
@@ -753,7 +897,9 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
     win = MainWindow(node)
-    win.show()
+    # 必须在窗口构建完成后进入全屏；再调用 show() 会恢复成窄窗口，
+    # 导致两侧面板将中间点云画布压到 0 像素。
+    win.showFullScreen()
     ret = app.exec_()
     rclpy.shutdown()
     sys.exit(ret)

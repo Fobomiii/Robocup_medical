@@ -361,10 +361,10 @@ void CHASSIS::Update(float Vx, float Vy, float W)
   }
 
   float out_rpm[4];
-  out_rpm[0] = Vx + W;
-  out_rpm[1] = Vy + W;
-  out_rpm[2] = -Vx + W;
-  out_rpm[3] = -Vy + W;
+  out_rpm[0] = Vx+Vy + W;
+  out_rpm[1] = -Vx+Vy + W;
+  out_rpm[2] = -Vx-Vy + W;
+  out_rpm[3] = Vx-Vy + W;
 
   static uint32_t last_us = 0;
   uint32_t now = micros_u32();

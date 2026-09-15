@@ -4,6 +4,7 @@
 #include "Servo.h"
 #include "OPS.h"
 #include "HWT101CT.h"
+#include "NUC_Obstacle.h"
 #include <stdlib.h>
 #include <math.h>
 
@@ -16,9 +17,9 @@
 #endif
 
 /* ---- 避障参数（与 OPS 单位一致，当前工程常用 mm） ---- */
-#define OA_DIST_MM       300.0f   /* 侧向让开距离 */
-#define OA_MAX_ALONG_MM  600.0f   /* 进入绕障：障碍在前方此距离内 */
-#define OA_MIN_ALONG_MM  80.0f    /* 越过障碍：前方距离小于此则回中 */
+#define OA_DIST_MM       800.0f   /* 侧向让开距离 */
+#define OA_MAX_ALONG_MM  500.0f   /* 进入绕障：障碍在前方此距离内 */
+#define OA_MIN_ALONG_MM  -100.0f    /* 越过障碍：前方距离小于此则回中 */
 #define OA_DETECT_EPS    1e-3f
 
 static uint8_t  s_oa_enable = 1U;
@@ -193,59 +194,59 @@ MapPosFunction_Typedef mapPosFunction[30];
 void MapPos_Init(void){
     /**护士台**/
     mapPosFunction[GO_TO_NURSE].pos_x = 0.0f;
-    mapPosFunction[GO_TO_NURSE].pos_y = 0.0f;
+    mapPosFunction[GO_TO_NURSE].pos_y = 1500.0f;
     mapPosFunction[GO_TO_NURSE].heading = 0.0f;
 
     /***去一号床*/
-    mapPosFunction[GO_TO_BED_ONE].pos_x = 0.0f;
-    mapPosFunction[GO_TO_BED_ONE].pos_y = 0.0f;
+    mapPosFunction[GO_TO_BED_ONE].pos_x = -2100.0f;
+    mapPosFunction[GO_TO_BED_ONE].pos_y = 5800.0f;
     mapPosFunction[GO_TO_BED_ONE].heading = 0.0f;
 
-    mapPosFunction[PREPARE_TO_BED_THREE].pos_x = 0.0f;
-    mapPosFunction[PREPARE_TO_BED_THREE].pos_y = 0.0f;
+    mapPosFunction[PREPARE_TO_BED_THREE].pos_x = -2100.0f;
+    mapPosFunction[PREPARE_TO_BED_THREE].pos_y = 5800.0f;
     mapPosFunction[PREPARE_TO_BED_THREE].heading = -180.0f;
 
     /***去三号床*/
-    mapPosFunction[GO_TO_BED_THREE].pos_x = 0.0f;
-    mapPosFunction[GO_TO_BED_THREE].pos_y = 0.0f;
+    mapPosFunction[GO_TO_BED_THREE].pos_x = 2100.0f;
+    mapPosFunction[GO_TO_BED_THREE].pos_y = 5800.0f;
     mapPosFunction[GO_TO_BED_THREE].heading = 0.0f;
 
-    mapPosFunction[PREPARE_TO_BED_ONE].pos_x = 0.0f;
-    mapPosFunction[PREPARE_TO_BED_ONE].pos_y = 0.0f;
+    mapPosFunction[PREPARE_TO_BED_ONE].pos_x = 2100.0f;
+    mapPosFunction[PREPARE_TO_BED_ONE].pos_y = 5800.0f;
     mapPosFunction[PREPARE_TO_BED_ONE].heading = -180.0f;
 
     /****从一号床到三号床*/
-    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_ONE].pos_x = 0.0f;
-    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_ONE].pos_y = 0.0f;
+    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_ONE].pos_x = -2100.0f;
+    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_ONE].pos_y = 3800.0f;
     mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_ONE].heading = -180.0f;
 
-    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_TWO].pos_x = 0.0f;
-    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_TWO].pos_y = 0.0f;
+    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_TWO].pos_x = -2100.0f;
+    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_TWO].pos_y = 3800.0f;
     mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_TWO].heading = 90.0f;
 
-    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_THREE].pos_x = 0.0f;
-    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_THREE].pos_y = 0.0f;
+    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_THREE].pos_x = 2100.0f;
+    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_THREE].pos_y = 3800.0f;
     mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_THREE].heading = 90.0f;
 
-    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_FOUR].pos_x = 0.0f;
-    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_FOUR].pos_y = 0.0f;
+    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_FOUR].pos_x = 2100.0f;
+    mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_FOUR].pos_y = 3800.0f;
     mapPosFunction[TRANSIT_BED_ONE_TO_THREE_STEP_FOUR].heading = 0.0f;
 
     /****从三号床到一号床*/
-    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_ONE].pos_x = 0.0f;
-    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_ONE].pos_y = 0.0f;
+    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_ONE].pos_x = 2100.0f;
+    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_ONE].pos_y = 5800.0f;
     mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_ONE].heading = -180.0f;
 
-    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_TWO].pos_x = 0.0f;
-    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_TWO].pos_y = 0.0f;
+    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_TWO].pos_x = 2100.0f;
+    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_TWO].pos_y = 3800.0f;
     mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_TWO].heading = -90.0f;
 
-    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_THREE].pos_x = 0.0f;
-    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_THREE].pos_y = 0.0f;
+    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_THREE].pos_x = -2100.0f;
+    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_THREE].pos_y = 3800.0f;
     mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_THREE].heading = -90.0f;
 
-    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_FOUR].pos_x = 0.0f;
-    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_FOUR].pos_y = 0.0f;
+    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_FOUR].pos_x = -2100.0f;
+    mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_FOUR].pos_y = 3800.0f;
     mapPosFunction[TRANSIT_BED_THREE_TO_ONE_STEP_FOUR].heading = 0.0f;
 
     /****回家 */
@@ -299,6 +300,7 @@ void FSM_Update(void){/* 纯 FSM，不含避障 */
             break;
         }
         case SCAN_QR_CODE:{
+            currentSystemState = GO_TO_BED_ONE;//先去1号床测试
             static uint32_t lastTimeStamp = 0;
             static uint32_t timeOut = 100000;//100s没扫到码
             static int codeIndex = 0;
@@ -395,6 +397,7 @@ void FSM_Update(void){/* 纯 FSM，不含避障 */
             break;
         }
         case SCAN_BED_ONE_BAR_CODE:{
+            currentSystemState = OPERATE_BED_ONE;
             static uint32_t lastTimeStamp = 0;
             static uint32_t timeOut = 100000;//100s没扫到码
             static int codeIndex = 0;
@@ -440,11 +443,12 @@ void FSM_Update(void){/* 纯 FSM，不含避障 */
                                    mapPosFunction[PREPARE_TO_BED_THREE].heading,
                                    OPS_GetX(),OPS_GetY(),pos_z);
             if(ChassisCtrl_ReachFlag()){
-                if(mapPosFunction[GO_TO_BED_ONE].order){//一号床先行
+                currentSystemState = TRANSIT_BED_ONE_TO_THREE_STEP_ONE;
+                /*if(mapPosFunction[GO_TO_BED_ONE].order){//一号床先行
                     currentSystemState = TRANSIT_BED_ONE_TO_THREE_STEP_ONE;//那么准备去三号床
                 }else{//一号床是最后的
                     currentSystemState = PREPARE_TO_BACK_HOME;//那么准备回家
-                }
+                }*/
             }
             break;
         }
@@ -465,6 +469,7 @@ void FSM_Update(void){/* 纯 FSM，不含避障 */
             break;
         }
         case SCAN_BED_THREE_BAR_CODE:{
+            currentSystemState = OPERATE_BED_THREE;
             static uint32_t lastTimeStamp = 0;
             static uint32_t timeOut = 100000;//100s没扫到码
             static int codeIndex = 0;
@@ -505,16 +510,18 @@ void FSM_Update(void){/* 纯 FSM，不含避障 */
             break;
         }
         case PREPARE_TO_BED_ONE:{
+            //currentSystemState = PREPARE_TO_BACK_HOME;
             ChassisCtrl_MoveTarget(mapPosFunction[PREPARE_TO_BED_ONE].pos_x,
                                    mapPosFunction[PREPARE_TO_BED_ONE].pos_y,
                                    mapPosFunction[PREPARE_TO_BED_ONE].heading,
                                    OPS_GetX(),OPS_GetY(),pos_z);
             if(ChassisCtrl_ReachFlag()){
-                if(mapPosFunction[GO_TO_BED_THREE].order){//三号床先行
+                currentSystemState = PREPARE_TO_BACK_HOME;//那么准备回家
+                /*if(mapPosFunction[GO_TO_BED_THREE].order){//三号床先行
                     currentSystemState = TRANSIT_BED_THREE_TO_ONE_STEP_ONE;//那么准备去一号床
                 }else{//三号床是最后的
                     currentSystemState = PREPARE_TO_BACK_HOME;//那么准备回家
-                }
+                }*/
             }
             break;
         }
@@ -627,7 +634,85 @@ void FSM_Update(void){/* 纯 FSM，不含避障 */
 
 void Nav_Update(void)
 {
+    //FSM_Update();
+    static uint8_t state = 0;
+    static float pos_x = 0.f;
+    static float pos_y = 0.f;
+    static float yaw = 0.f;
+    OPS_GetPose(&pos_x, &pos_y, &yaw);
+    static bool firstEnter = 1;
+
+    /* 当前测试用四状态机保持不变：
+       0 前进 → 1 原地转 180° → 2 回原点 → 3 原地转回 0° */
+    /*switch(state){
+      case 0:{
+        if(firstEnter){
+            ChassisCtrl_MoveTarget(0.f,4500.f,0.f,
+                                pos_x, pos_y, pos_z);
+            firstEnter = 0;
+        }
+        if(ChassisCtrl_ReachFlag()){
+          state = 1;
+          firstEnter = 1;
+        }
+        break;
+      }
+      case 1:{
+        if(firstEnter){
+            ChassisCtrl_MoveTarget(pos_x, pos_y,180.f,
+                                pos_x, pos_y, pos_z);
+            firstEnter = 0;
+        }
+        if(ChassisCtrl_ReachFlag()){
+          state = 2;
+          firstEnter = 1;
+        }
+        break;
+      }
+      case 2:{
+        if(firstEnter){
+            ChassisCtrl_MoveTarget(0.f,0.f,180.f,
+                                pos_x, pos_y, pos_z);
+            firstEnter = 0;
+        }
+        if(ChassisCtrl_ReachFlag()){
+          state = 3;
+          firstEnter = 1;
+        }
+        break;
+      }
+      case 3:{
+        if(firstEnter){
+            ChassisCtrl_MoveTarget(pos_x, pos_y,0.f,
+                                pos_x, pos_y, pos_z);
+            firstEnter = 0;
+        }
+        if(ChassisCtrl_ReachFlag()){
+          state = 0;
+          firstEnter = 1;
+        }
+        break;
+      }
+    }*/
     FSM_Update();
-    OA_Update();
-    ChassisCtrl_Update(OPS_GetX(), OPS_GetY(), pos_z);
+    /* 测试状态 0/2 为平移，状态 1/3 为原地旋转。
+       旋转阶段不使用上一段的侧移偏置，但不改变四状态机本身。 */
+    //OA_Enable(1U);
+
+    /* NUC: x前+, y左+
+       OA : bx右+, by前+
+       先执行 MoveTarget，再更新 OA，避免 MoveTarget 清掉 OA 偏置。 */
+    {
+        uint8_t valid = NUC_IsObstacleValid();
+        int16_t nuc_x = valid ? NUC_GetObstacleX() : 0;
+        int16_t nuc_y = valid ? NUC_GetObstacleY() : 0;
+        uint8_t obstacle_present = valid && (nuc_x > 0);
+
+        OA_SetObstacleBody(-(float)nuc_y,
+                           (float)nuc_x,
+                           obstacle_present);
+        OA_Update();
+    }
+
+    ChassisCtrl_Update(pos_x, pos_y, pos_z);
 }

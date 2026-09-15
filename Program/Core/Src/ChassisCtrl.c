@@ -3,9 +3,9 @@
 #include "DJIMotorCtrlSTM32.h"
 #include <math.h>
 
-static float long_distance_thd = 350.0f;/* 最小长距离变量 */
-static float get_target_thd_x = 2.0f;   /* 到达判断 */
-static float get_target_thd_y = 2.0f;
+static float long_distance_thd = 400000.0f;/* 长短距离分界阈值 */
+static float get_target_thd_x = 5.0f;   /* 到达判断 */
+static float get_target_thd_y = 5.0f;
 static float get_target_thd_z = 0.5f;
 static float target_distance = 0.0f;    /* 初始距离 */
 static float max_vel = 200.0f;         /* 最大合速度 */
@@ -79,7 +79,7 @@ bool ChassisCtrl_Update(float pos_x, float pos_y, float pos_z)
     static float newVx, newVy, newW;
     float cos_f32 = cosf(pos_z * 3.14159265f / 180.f);
     float sin_f32 = sinf(pos_z * 3.14159265f / 180.f);
-    static float result_vel_step = 10.0f;
+    static float result_vel_step = 1.0f;
     static float angle_step = 0.01f;
 
     float track_x = target_x + oa_dx;

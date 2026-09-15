@@ -6,14 +6,17 @@
  * Stored into OPS like Master DMA layout (floats at ActVal[1..6])
  */
 #include "OPS.h"
+#include "Board.h"
 #include "cmsis_os.h"
 #include "NUC_Obstacle.h"
+#include <math.h>
 #include <string.h>
 
-Union_OPS OPS;
+volatile Union_OPS OPS;
 
 static uint8_t s_rx_byte;
 static volatile uint8_t s_frame_ready;
+static volatile uint8_t s_have_frame;
 static volatile uint32_t s_last_frame_ms;
 
 /* RX state machine */
@@ -43,7 +46,7 @@ static void OPS_ApplyPayload(void)
   /* Align with Master Location.h / DMA layout */
   OPS.data[2] = 0x0D;
   OPS.data[3] = 0x0A;
-  memcpy(&OPS.data[4], s_payload.data, 24);
+  memcpy((void *)&OPS.data[4], s_payload.data, 24);
   OPS.data[28] = 0x0A;
   OPS.data[29] = 0x0D;
 
@@ -56,6 +59,7 @@ static void OPS_ApplyPayload(void)
   OPS.ActVal[6] = s_payload.ActVal[5];
 
   s_last_frame_ms = HAL_GetTick();
+  s_have_frame = 1U;
   s_frame_ready = 1;
 }
 
@@ -128,45 +132,58 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 
 void OPS_Init(void)
 {
-  memset(&OPS, 0, sizeof(OPS));
+  float zangle_last;
+
+  memset((void *)&OPS, 0, sizeof(OPS));
   s_count = 0;
   s_i = 0;
   s_frame_ready = 0;
+  s_have_frame = 0U;
   s_last_frame_ms = 0;
 
   /* USART3 已由 main 中 MX_USART3_UART_Init() 初始化 */
   (void)HAL_UART_AbortReceive_IT(&huart3);
   (void)HAL_UART_Receive_IT(&huart3, &s_rx_byte, 1);
 
-  /* Wait first frame (max ~2s) then cali like RC_Old */
+  /* 对齐 RC_Old：死等首帧（调度器启动前用 HAL_Delay，实机约十余秒） */
+  while (s_frame_ready == 0U)
   {
-    uint32_t t0 = HAL_GetTick();
-    while ((HAL_GetTick() - t0) < 2000U)
-    {
-      if (s_frame_ready)
-        break;
-      osDelay(10);
-    }
+    HAL_Delay(10);
   }
 
   OPS_Cali();
-  osDelay(50);
+  HAL_Delay(50);
   s_frame_ready = 0;
+
+  /* 清零后再看航向 1s 内是否稳定（|Δz| < 0.1°） */
+  zangle_last = OPS_GetYaw();
+  HAL_Delay(1000);
+  if (fabsf(OPS_GetYaw() - zangle_last) < 0.1f)
+  {
+    BUZZ_On();
+    HAL_Delay(200);
+    BUZZ_Off();
+  }
+  else
+  {
+    for (;;)
+    {
+      BUZZ_On();
+      HAL_Delay(200);
+      BUZZ_Off();
+      HAL_Delay(1000);
+    }
+  }
 }
 
 void OPS_Task(void)
 {
-  OPS_Init();
-
+  /* OPS_Init 已在 main、osKernelStart 前完成 */
   for (;;)
   {
     /* 位姿由 USART3 RX 中断解帧写入 OPS；本任务负责周期读取/维护 */
     if (OPS_FrameReady())
     {
-      /* 此处可读 pos_x/pos_y/zangle，供本任务逻辑或通知其它任务 */
-      (void)OPS_GetX();
-      (void)OPS_GetY();
-      (void)OPS_GetYaw();
       OPS_ClearFrameReady();
     }
     (void)OPS_IsOnline();
@@ -176,7 +193,7 @@ void OPS_Task(void)
 
 uint8_t OPS_IsOnline(void)
 {
-  if (s_last_frame_ms == 0)
+  if (s_have_frame == 0U)
     return 0;
   return (HAL_GetTick() - s_last_frame_ms) < 200U ? 1U : 0U;
 }
@@ -191,10 +208,67 @@ void OPS_ClearFrameReady(void)
   s_frame_ready = 0;
 }
 
-float OPS_GetX(void) { return pos_x; }
-float OPS_GetY(void) { return pos_y; }
-float OPS_GetYaw(void) { return zangle; }
-float OPS_GetWz(void) { return w_z; }
+float OPS_GetX(void)
+{
+  float value;
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  value = -OPS.ActVal[4];
+  if (primask == 0U)
+    __enable_irq();
+  return -value;
+}
+
+float OPS_GetY(void)
+{
+  float value;
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  value = -OPS.ActVal[5];
+  if (primask == 0U)
+    __enable_irq();
+  return -value;
+}
+
+float OPS_GetYaw(void)
+{
+  float value;
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  value = -OPS.ActVal[1];
+  if (primask == 0U)
+    __enable_irq();
+  return value;
+}
+
+float OPS_GetWz(void)
+{
+  float value;
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  value = -OPS.ActVal[6];
+  if (primask == 0U)
+    __enable_irq();
+  return value;
+}
+
+uint8_t OPS_GetPose(float *pos_x, float *pos_y, float *yaw)
+{
+  uint32_t primask;
+
+  if (pos_x == NULL || pos_y == NULL || yaw == NULL || OPS_IsOnline() == 0U)
+    return 0U;
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  *pos_x = OPS.ActVal[4];
+  *pos_y = OPS.ActVal[5];
+  *yaw   = OPS.ActVal[1];
+  if (primask == 0U)
+    __enable_irq();
+
+  return 1U;
+}
 
 void OPS_Cali(void)
 {

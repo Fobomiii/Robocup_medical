@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "DJIMotorCtrlSTM32.h"
+#include "ChassisCtrl.h"
 #include "OPS.h"
 #include "Servo.h"
 #include "HWT101CT.h"
@@ -31,6 +32,7 @@
 #include "Navigation.h"
 #include "NUC_Obstacle.h"
 #include "Board.h"
+#include "PID.h"
 
 /* USER CODE END Includes */
 
@@ -196,20 +198,32 @@ int main(void)
   MX_UART8_Init();
   MX_LPUART1_UART_Init();
   /* USER CODE BEGIN 2 */
+
+
+
   SERVO_Init();
   HWT101_Init();
-  /*while (!HWT101_IsOnline())
+  while (!HWT101_IsOnline())
   {
-  }*/
+	BUZZ_On();
+    HAL_Delay(10);
+  }
+  BUZZ_Off();
+  HAL_Delay(2000);
   HWT101_CaliYaw();
-
-  GM65_Init();
+  OPS_Init();
+  
+  PID_SetX(0.5f, 0.f, 0.08f, -40.f, 40.f, 0.f);//0.857f, 0.f, 0.12f, -300.f, 300.f, 0.f
+  PID_SetY(0.5f, 0.f, 0.08f, -40.f, 40.f, 0.f);
+  PID_SetZ(1.2f, 0.f, 0.f, -120.f,120.f, 0.f);
+  
+  //GM65_Init();
   NUC_Obstacle_Init();
   while (!NUC_IsOnline())
   {
     (void)NUC_Obstacle_SendPing();
     BUZZ_Beep(100U);
-    HAL_Delay(100U);
+    HAL_Delay(300U);
   }
   MapPos_Init();
   /* USER CODE END 2 */
@@ -1061,7 +1075,11 @@ void StartCanHostTask(void *argument)
   /* USER CODE BEGIN StartCanHostTask */
   for (;;)
   {
-    Nav_Update(); /* FSM → OA → ChassisCtrl @ 100Hz */
+
+    Nav_Update(); /* OA → ChassisCtrl @ 100Hz */
+
+    //ChassisCtrl_Update(pos_x, pos_y, pos_z);
+    //DJI_Chassis_SetCommand(0.f,50.f,0.f);
     osDelay(10);
   }
   /* USER CODE END StartCanHostTask */
@@ -1106,11 +1124,13 @@ void StartOledTask(void *argument)
     ssd1309_setTextSize(1U);
     ssd1309_setTextColor(SSD1309_WHITE);
 
-    ssd1309_setTextSize(2U);
+    ssd1309_setTextSize(1U);
     ssd1309_setCursor(0, 8);
-    ssd1309_printf("X:%d", (int)g_nuc_x);
-    ssd1309_setCursor(0, 36);
-    ssd1309_printf("Y:%d", (int)g_nuc_y);
+    ssd1309_printf("X:%.2f", OPS_GetX());
+    ssd1309_setCursor(0, 16);
+    ssd1309_printf("Y:%.2f", OPS_GetY());
+    ssd1309_setCursor(0, 24);
+    ssd1309_printf("Z:%.2f", pos_z);
 
     ssd1309_display();
     osDelay(100);
