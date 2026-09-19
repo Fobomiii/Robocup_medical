@@ -1,0 +1,17 @@
+[Unit]
+Description=Livox Mid360 LiDAR Driver
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gp-pcie
+Environment=HOME=/home/gp-pcie
+ExecStart=/bin/bash /home/gp-pcie/start_mid360.sh
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

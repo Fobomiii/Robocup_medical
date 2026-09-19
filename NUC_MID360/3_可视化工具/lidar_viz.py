@@ -54,9 +54,9 @@ VAL_C = "#ffcc66"
 # 可视化工具与障碍物检测节点分别读取参数。保存时同时更新源码和
 # colcon 安装目录中的 params.yaml，这样服务重启和后续重新构建都能保留调参结果。
 PARAM_FILES = [
-    os.path.expanduser("~/livox_ws/src/obstacle_detector/config/params.yaml"),
+    os.path.expanduser("~/livox_ws/src/obstacle_detector/config/navigation_params.yaml"),
     os.path.expanduser(
-        "~/livox_ws/install/obstacle_detector/share/obstacle_detector/config/params.yaml"),
+        "~/livox_ws/install/obstacle_detector/share/obstacle_detector/config/navigation_params.yaml"),
 ]
 
 PARAM_DEFAULTS = {
@@ -432,7 +432,7 @@ QSlider::handle:horizontal {
 #  服务控制器（systemctl）
 # ═══════════════════════════════════════════════════════════════
 class ServiceCtrl:
-    MID360   = 'livox-mid360.service'
+    MID360   = 'mid360.service'
     OBSTACLE = 'obstacle-detector.service'
 
     @staticmethod

@@ -1,0 +1,11 @@
+<library path="clearance_planner">
+  <class
+    name="medical_clearance_planner/ClearancePlanner"
+    type="medical_clearance_planner::ClearancePlanner"
+    base_class_type="nav2_core::GlobalPlanner">
+    <description>
+      A costmap planner that explicitly penalizes low clearance and local
+      obstacle density while fading those preferences near the start and goal.
+    </description>
+  </class>
+</library>

@@ -23,16 +23,14 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "DJIMotorCtrlSTM32.h"
-#include "ChassisCtrl.h"
 #include "OPS.h"
 #include "Servo.h"
 #include "HWT101CT.h"
 #include "GM65.h"
 #include "OLED_SSD1309.h"
-#include "Navigation.h"
 #include "NUC_Obstacle.h"
 #include "Board.h"
-#include "PID.h"
+#include "MedicalTask.h"
 
 /* USER CODE END Includes */
 
@@ -213,11 +211,7 @@ int main(void)
   HWT101_CaliYaw();
   OPS_Init();
   
-  PID_SetX(0.5f, 0.f, 0.08f, -40.f, 40.f, 0.f);//0.857f, 0.f, 0.12f, -300.f, 300.f, 0.f
-  PID_SetY(0.5f, 0.f, 0.08f, -40.f, 40.f, 0.f);
-  PID_SetZ(1.2f, 0.f, 0.f, -120.f,120.f, 0.f);
-  
-  //GM65_Init();
+  GM65_Init();
   NUC_Obstacle_Init();
   while (!NUC_IsOnline())
   {
@@ -225,7 +219,7 @@ int main(void)
     BUZZ_Beep(100U);
     HAL_Delay(300U);
   }
-  MapPos_Init();
+  MedicalTask_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -566,7 +560,7 @@ static void MX_UART4_Init(void)
 
   /* USER CODE END UART4_Init 1 */
   huart4.Instance = UART4;
-  huart4.Init.BaudRate = 57600;
+  huart4.Init.BaudRate = 9600;
   huart4.Init.WordLength = UART_WORDLENGTH_8B;
   huart4.Init.Parity = UART_PARITY_NONE;
   huart4.Init.Mode = UART_MODE_TX_RX;
@@ -1073,13 +1067,47 @@ void StartArmTask(void *argument)
 void StartCanHostTask(void *argument)
 {
   /* USER CODE BEGIN StartCanHostTask */
+  float pos_x = 0.0f;
+  float pos_y = 0.0f;
+  float ops_yaw_unused = 0.0f;
+  int16_t forward_mm_s;
+  int16_t left_mm_s;
+  int16_t yaw_ccw_cdeg_s;
+
+  (void)argument;
+  NUC_Nav_ClearVelocity();
   for (;;)
   {
+    uint8_t ops_ok = OPS_GetPose(&pos_x, &pos_y, &ops_yaw_unused);
+    uint8_t hwt_ok = HWT101_IsOnline();
+    uint8_t task_state;
+    NUC_NavStatus nav_status;
+    /*pos_z convention: positive clockwise in the existing field frame. */
+    float yaw_deg = -HWT101_GetYaw();
 
-    Nav_Update(); /* OA → ChassisCtrl @ 100Hz */
+    MedicalTask_Update();
+    task_state = MedicalTask_GetState();
+    nav_status = NUC_Nav_GetStatus();
 
-    //ChassisCtrl_Update(pos_x, pos_y, pos_z);
-    //DJI_Chassis_SetCommand(0.f,50.f,0.f);
+    if (ops_ok && hwt_ok)
+    {
+      NUC_Nav_Service((int32_t)pos_x, (int32_t)pos_y,
+                      (int16_t)(yaw_deg * 100.0f),
+                      task_state, nav_status, 0U, 0U);
+    }
+
+    if (ops_ok && hwt_ok && NUC_Nav_IsOnline() &&
+        MedicalTask_AllowsMotion() && nav_status == NUC_NAV_FOLLOWING &&
+        NUC_Nav_GetVelocityCommand(&forward_mm_s, &left_mm_s,
+                                   &yaw_ccw_cdeg_s))
+    {
+      DJI_Chassis_SetVelocityCommand((float)forward_mm_s, (float)left_mm_s,
+                                     (float)yaw_ccw_cdeg_s);
+    }
+    else
+    {
+      DJI_Chassis_SetVelocityCommand(0.0f, 0.0f, 0.0f);
+    }
     osDelay(10);
   }
   /* USER CODE END StartCanHostTask */

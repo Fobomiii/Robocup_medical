@@ -628,6 +628,27 @@ extern "C" void DJI_Chassis_SetCommand(float vx, float vy, float w)
   s_cmd_w = w;
 }
 
+extern "C" void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
+                                                float left_mm_s,
+                                                float yaw_ccw_cdeg_s)
+{
+  /* 6-inch omni wheel: measured diameter is approximately 150 mm. */
+  static const float kPi = 3.14159265358979323846f;
+  static const float kWheelDiameterMm = 150.0f;
+  /* Measured chassis centre-to-wheel contact radius: 25 cm. */
+  static const float kTurnRadiusMm = 250.0f;
+  const float mm_s_to_wheel_rpm = 60.0f / (kPi * kWheelDiameterMm);
+
+  /* CHASSIS uses +Vx right, +Vy forward and +W clockwise. */
+  const float right_rpm = -left_mm_s * mm_s_to_wheel_rpm;
+  const float forward_rpm = forward_mm_s * mm_s_to_wheel_rpm;
+  const float yaw_ccw_rad_s = yaw_ccw_cdeg_s * kPi / 18000.0f;
+  const float clockwise_turn_rpm =
+      (-yaw_ccw_rad_s * kTurnRadiusMm) * mm_s_to_wheel_rpm;
+
+  DJI_Chassis_SetCommand(right_rpm, forward_rpm, clockwise_turn_rpm);
+}
+
 extern "C" void DJI_Arm_CtrlAngle(float deg)
 {
   arm.ctrlAngle(deg);

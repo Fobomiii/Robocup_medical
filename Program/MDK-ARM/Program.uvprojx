@@ -416,6 +416,16 @@
               <FilePath>../Core/Src/NUC_Obstacle.c</FilePath>
             </File>
             <File>
+              <FileName>MedicalTask.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/MedicalTask.c</FilePath>
+            </File>
+            <File>
+              <FileName>ASR_Pro.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/ASR_Pro.c</FilePath>
+            </File>
+            <File>
               <FileName>Board.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/Board.c</FilePath>
@@ -514,6 +524,11 @@
               <FileName>Navigation.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Core\Src\Navigation.c</FilePath>
+            </File>
+            <File>
+              <FileName>PathFollower.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\PathFollower.c</FilePath>
             </File>
             <File>
               <FileName>OLED_SSD1309.c</FileName>

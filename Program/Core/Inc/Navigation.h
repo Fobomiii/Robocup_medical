@@ -18,6 +18,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+/** 1: use NUC-provided waypoint paths; 0: retain direct-target test mode. */
+#define NAV_USE_NUC_WAYPOINTS 1U
+
 void MapPos_Init(void);
 void FSM_Update(void);
 

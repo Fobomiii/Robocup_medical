@@ -3,13 +3,37 @@
 <package format="3">
   <name>obstacle_detector</name>
   <version>0.1.0</version>
-  <description>Livox Mid360 前方障碍物检测，通过串口输出质心坐标给 STM32H7</description>
+  <description>OPS9/HWT101CT localisation, Livox Mid360 obstacles and Nav2 STM32 bridge.</description>
   <maintainer email="user@fzu.edu.cn">FZU Robocup Team</maintainer>
   <license>MIT</license>
 
   <depend>rclpy</depend>
+  <depend>ament_index_python</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav2_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>visualization_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>sensor_msgs_py</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2_ros</depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_collision_monitor</exec_depend>
+  <exec_depend>nav2_common</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>medical_clearance_planner</exec_depend>
+  <exec_depend>nav2_mppi_controller</exec_depend>
+  <exec_depend>nav2_navfn_planner</exec_depend>
+  <exec_depend>nav2_smac_planner</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-serial</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
 
   <buildtool_depend>ament_python</buildtool_depend>
 

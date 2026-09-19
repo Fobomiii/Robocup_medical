@@ -15,13 +15,15 @@ setup(
         (os.path.join("share", package_name, "launch"),
             glob("launch/*.py")),
         (os.path.join("share", package_name, "config"),
-            glob("config/*.yaml")),
+            glob("config/*")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
     entry_points={
         "console_scripts": [
-            "obstacle_node = obstacle_detector.obstacle_node:main",
+            "stm32_bridge = obstacle_detector.stm32_bridge:main",
+            "medical_navigator = obstacle_detector.medical_navigator:main",
+            "lidar_self_filter = obstacle_detector.lidar_transform:main",
         ],
     },
 )

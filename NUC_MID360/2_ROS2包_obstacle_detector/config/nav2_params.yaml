@@ -1,0 +1,457 @@
+# Nav2 tuning for the medical robot.
+#
+# Frames: the STM32 reports field coordinates, so field_map.yaml (metres) is
+# the map frame, odom->base_link is the chassis dead reckoning, and the Livox
+# cloud arrives in base_link through a static transform. There is no AMCL:
+# the chassis is the only localisation source.
+#
+# All X/Y below are ROS metres: +X forward, +Y left, +yaw counter-clockwise.
+# Field millimetres convert as (x_m = field_y_mm/1000, y_m = -field_x_mm/1000).
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: false
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odom
+    transform_tolerance: 0.5
+    # obstacle.launch.py rewrites this to the installed absolute path. The
+    # custom tree retains Nav2's recovery flow and replans the live route at
+    # 1 Hz without starving the lidar safety pipeline.
+    default_bt_xml_filename: "navigate_to_pose_1hz.xml"
+    plugin_lib_names:
+      - nav2_compute_path_to_pose_action_bt_node
+      - nav2_compute_path_through_poses_action_bt_node
+      - nav2_follow_path_action_bt_node
+      - nav2_back_up_action_bt_node
+      - nav2_spin_action_bt_node
+      - nav2_wait_action_bt_node
+      - nav2_clear_costmap_service_bt_node
+      - nav2_is_stuck_condition_bt_node
+      - nav2_goal_reached_condition_bt_node
+      - nav2_goal_updated_condition_bt_node
+      - nav2_initial_pose_received_condition_bt_node
+      - nav2_reinitialize_global_localization_service_bt_node
+      - nav2_rate_controller_bt_node
+      - nav2_distance_controller_bt_node
+      - nav2_recovery_node_bt_node
+      - nav2_pipeline_sequence_bt_node
+      - nav2_round_robin_node_bt_node
+      - nav2_transform_available_condition_bt_node
+      - nav2_time_expired_condition_bt_node
+      - nav2_distance_traveled_condition_bt_node
+      - nav2_single_trigger_bt_node
+      - nav2_goal_updated_controller_bt_node
+      - nav2_is_battery_low_condition_bt_node
+      - nav2_navigate_through_poses_action_bt_node
+      - nav2_navigate_to_pose_action_bt_node
+      - nav2_remove_passed_goals_action_bt_node
+      - nav2_planner_selector_bt_node
+      - nav2_controller_selector_bt_node
+      - nav2_goal_checker_selector_bt_node
+      - nav2_controller_cancel_bt_node
+      - nav2_path_longer_on_approach_bt_node
+      - nav2_wait_cancel_bt_node
+      - nav2_spin_cancel_bt_node
+      - nav2_back_up_cancel_bt_node
+
+controller_server:
+  ros__parameters:
+    use_sim_time: false
+    controller_frequency: 20.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.001
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.3
+    progress_checker_plugin: "progress_checker"
+    goal_checker_plugins: ["general_goal_checker"]
+    controller_plugins: ["FollowPath"]
+    odom_topic: /odom
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.25
+      movement_time_allowance: 15.0
+
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.10
+      yaw_goal_tolerance: 0.10
+
+    FollowPath:
+      plugin: "nav2_mppi_controller::MPPIController"
+
+      # MPPI is a sampling controller: it rolls out thousands of trajectories
+      # every cycle and keeps the collision-free one closest to the plan, so
+      # avoidance falls out of the cost function instead of a separate rule.
+      # A 2.0 s horizon retains early avoidance while leaving enough CPU for
+      # the filtered lidar and Collision Monitor to remain below timeout.
+      time_steps: 40
+      model_dt: 0.05
+      # 1600 samples with a 2.5 s horizon saturated the NUC during navigation
+      # and made safety point clouds 0.3-0.6 s stale.
+      batch_size: 1200
+      vx_std: 0.15
+      # The chassis is a 4-wheel omni base. Allow bounded lateral samples so
+      # it can sidestep around the fixed beds/cabinets instead of first making
+      # a full heading correction. The bridge limits each linear component to
+      # 1.00 m/s; the STM32 keeps an independent 2.00 m/s hard cap.
+      vy_std: 0.12
+      wz_std: 0.30
+
+      # Linear limits for the NUC side. Keep vx_min at zero: this navigation
+      # profile does not intentionally command reverse motion.
+      vx_max: 1.00
+      vx_min: 0.0
+      vy_max: 1.00
+      wz_max: 0.80
+
+      iteration_count: 1
+      prune_distance: 1.5
+      transform_tolerance: 0.3
+      temperature: 0.35
+      gamma: 0.015
+      # Use the actual holonomic model. GoalAngleCritic still encourages the
+      # requested final heading, while the bounded vy range permits sideways
+      # correction during transit.
+      motion_model: "Omni"
+      # Trajectory markers are diagnostic-only and add avoidable CPU/network
+      # load even when RViz is not open.
+      visualize: false
+      regenerate_noises: false
+      TrajectoryVisualizer:
+        trajectory_step: 5
+        time_step: 3
+
+      # Ackermann constraints are zeroed: this is a holonomic base.
+      AckermannConstraints:
+        min_turning_r: 0.0
+
+      critics: [
+        "ConstraintCritic", "CostCritic", "GoalCritic", "GoalAngleCritic",
+        "PathAlignCritic", "PathFollowCritic", "PathAngleCritic"
+      ]
+
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+
+      # The only critic that actually repels obstacles. Its weight is high
+      # relative to the path critics so the sampler would rather leave the
+      # planned line than shave a leg against a bed.
+      CostCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 10.0
+        critical_cost: 60.0
+        # The costmaps use a circular robot_radius, not a polygon footprint.
+        consider_footprint: false
+        collision_cost: 1000000.0
+        # Match the clearance planner's goal exemption. A larger value lets
+        # MPPI ignore obstacle preference too early and cut inside the safe
+        # global route during the final metre.
+        near_goal_distance: 0.75
+
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+        threshold_to_consider: 1.4
+
+      GoalAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.0
+        threshold_to_consider: 0.5
+
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 10.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 3
+        threshold_to_consider: 0.5
+        offset_from_furthest: 20
+        use_path_orientations: false
+
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        offset_from_furthest: 5
+        threshold_to_consider: 1.4
+
+      PathAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 2.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+        max_angle_to_furthest: 1.0
+        mode: 0
+
+planner_server:
+  ros__parameters:
+    use_sim_time: false
+    expected_planner_frequency: 1.0
+    planner_plugins: ["GridBased"]
+    GridBased:
+      # This planner builds a private long-range preference field from the
+      # live global costmap. It can therefore avoid narrow, obstacle-dense
+      # shortcuts without enlarging the red/cyan inflation shown in RViz.
+      plugin: "medical_clearance_planner/ClearancePlanner"
+      tolerance: 0.10
+      allow_unknown: false
+      max_planning_time: 1.5
+
+      # Existing Nav2 cell costs remain a secondary input. Clearance and
+      # density are explicit terms, so zero-cost gaps are no longer treated
+      # as equally attractive open space.
+      costmap_weight: 3.0
+      preferred_clearance: 0.65
+      clearance_weight: 12.0
+      clearance_power: 2.0
+      density_radius: 0.75
+      density_weight: 8.0
+      density_normalization: 0.18
+
+      # Fade only the private preference cost near start/goal. Lethal and
+      # footprint-collision cells are never exempted. This preserves exact
+      # access to the nurse station and bed targets with the real 0.225 m
+      # footprint and the existing 0.25 m visible inflation radius.
+      goal_exemption_radius: 0.75
+      start_exemption_radius: 0.45
+      simplification_cost_tolerance: 1.03
+
+smoother_server:
+  ros__parameters:
+    use_sim_time: false
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: true
+
+behavior_server:
+  ros__parameters:
+    use_sim_time: false
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "wait"]
+    spin:
+      plugin: "nav2_behaviors/Spin"
+    backup:
+      plugin: "nav2_behaviors/BackUp"
+    wait:
+      plugin: "nav2_behaviors/Wait"
+    global_frame: odom
+    robot_base_frame: base_link
+    transform_tolerance: 0.5
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 0.6
+    min_rotational_vel: 0.2
+    rotational_acc_lim: 1.0
+
+robot_state_publisher:
+  ros__parameters:
+    use_sim_time: false
+
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: false
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: "OPEN_LOOP"
+    # Keep these at the NUC linear limit. The STM32 has a separate 2.00 m/s
+    # hard cap, so any other command source still has a lower-level guard.
+    max_velocity: [1.00, 1.00, 0.80]
+    min_velocity: [-1.00, -1.00, -0.80]
+    max_accel: [0.5, 0.5, 1.2]
+    max_decel: [-0.6, -0.6, -1.5]
+    odom_topic: /odom
+    odom_duration: 0.1
+
+collision_monitor:
+  ros__parameters:
+    use_sim_time: false
+    base_frame_id: base_link
+    odom_frame_id: odom
+    # navigation_launch.py publishes the smoothed command on /cmd_vel.
+    # The STM32 bridge listens only to this monitor's safe output.
+    cmd_vel_in_topic: /cmd_vel
+    cmd_vel_out_topic: /cmd_vel_safe
+    transform_tolerance: 0.2
+    source_timeout: 0.3
+    base_shift_correction: True
+    stop_pub_timeout: 0.5
+    # Use predictive, speed-dependent limiting for normal obstacle approach.
+    # The smaller stop polygon is only the final independent emergency guard.
+    polygons: ["ApproachPolygon", "StopPolygon"]
+    observation_sources: ["livox"]
+
+    ApproachPolygon:
+      type: "polygon"
+      # 0.28 m octagon: chassis radius 0.225 m plus 55 mm allowance. Unlike
+      # a large fixed stop box, approach projects this shape along cmd_vel and
+      # continuously scales the command only when that motion would collide.
+      points: [0.28, 0.0, 0.20, -0.20, 0.0, -0.28, -0.20, -0.20, -0.28, 0.0, -0.20, 0.20, 0.0, 0.28, 0.20, 0.20]
+      action_type: "approach"
+      time_before_collision: 1.2
+      simulation_time_step: 0.1
+      max_points: 3
+      visualize: True
+      enabled: True
+
+    StopPolygon:
+      type: "polygon"
+      # Installed Humble collision_monitor expects a flat double array.
+      # Keep only 40 mm beyond the measured 0.225 m body radius. This catches
+      # imminent contact without stopping normal 0.30 m bed approaches.
+      points: [0.265, 0.0, 0.187, -0.187, 0.0, -0.265, -0.187, -0.187, -0.265, 0.0, -0.187, 0.187, 0.0, 0.265, 0.187, 0.187]
+      action_type: "stop"
+      max_points: 3
+      visualize: True
+      enabled: True
+
+    livox:
+      type: "pointcloud"
+      topic: /livox/lidar_filtered
+      # Upright Mid360 optical centre is at z=0.37 m. Keep the band above
+      # that height so horizontal returns remain available to safety checks.
+      max_height: 0.60
+      min_height: 0.08
+      enabled: True
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 10.0
+      publish_frequency: 5.0
+      global_frame: odom
+      robot_base_frame: base_link
+      use_sim_time: false
+      rolling_window: true
+      # Keep a clearing-only band before returns leave the rolling window.
+      # This prevents a fast-moving person from leaving a marked cell at the
+      # edge: mark through 2.4 m, clear through 2.9 m, map edge at 3.0 m.
+      width: 6
+      height: 6
+      resolution: 0.05
+      # Measured chassis radius: 22.5 cm. The inflation layer below adds the
+      # navigation clearance; do not fold that clearance into robot_radius.
+      robot_radius: 0.225
+      # The rolling local map must also contain fixed field furniture.
+      # Without StaticLayer, MPPI only sees the live Livox cloud and can
+      # cut into a nurse station/bed when the chassis or lidar occludes it.
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      # The field has no idea where the robot is, so unexplored space is
+      # treated as drivable rather than blocking the whole plan.
+      track_unknown_space: false
+
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        enabled: true
+        map_subscribe_transient_local: true
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.25
+
+      # A 2-D PointCloud2 obstacle layer matches the planar chassis and clears
+      # moving people as reliably as the proven global layer. VoxelLayer left
+      # stale height cells behind after a person or box moved away.
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        combination_method: 1
+        footprint_clearing_enabled: True
+        observation_sources: livox
+        livox:
+          topic: /livox/lidar_filtered
+          min_obstacle_height: 0.08
+          max_obstacle_height: 0.60
+          clearing: True
+          marking: True
+          data_type: "PointCloud2"
+          observation_persistence: 0.0
+          raytrace_max_range: 2.9
+          raytrace_min_range: 0.10
+          obstacle_max_range: 2.4
+          obstacle_min_range: 0.10
+
+      always_send_full_costmap: True
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      # Two updates per second match publication and avoid repeatedly
+      # raytracing several retained full Mid360 clouds between replans.
+      update_frequency: 2.0
+      publish_frequency: 2.0
+      global_frame: map
+      robot_base_frame: base_link
+      use_sim_time: false
+      # Same physical footprint as the local costmap.
+      robot_radius: 0.225
+      resolution: 0.05
+      # Exactly the surveyed field after conversion:
+      # ROS x = field +Y (-0.5..6.5), ROS y = field -X (-3.5..3.5).
+      # Humble declares these parameters as integers (metres).
+      width: 7
+      height: 7
+      origin_x: -0.5
+      origin_y: -3.5
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      # The field boundary and fixtures are hand surveyed, so they are baked
+      # into static_map.pgm and the live lidar only adds what is new.
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        # Keep fixed beds, bedside cabinets, nurse station and boundary in the
+        # static map. Random competition obstacles are supplied by Livox via
+        # obstacle_layer and must not be baked into this map.
+        enabled: true
+        map_subscribe_transient_local: True
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: livox
+        livox:
+          topic: /livox/lidar_filtered
+          min_obstacle_height: 0.08
+          max_obstacle_height: 0.60
+          clearing: True
+          marking: True
+          data_type: "PointCloud2"
+          # Retain about three 10 Hz clouds so the non-repetitive Mid360 scan
+          # cannot make a stationary obstacle flicker between map updates.
+          # Keep this global-only: the local layer must clear people quickly.
+          observation_persistence: 0.3
+          raytrace_max_range: 5.0
+          raytrace_min_range: 0.10
+          # Field testing showed intermittent marking near the old 4.0 m
+          # boundary. Leave a 0.5 m clearing-only band beyond marking range.
+          obstacle_max_range: 4.5
+          obstacle_min_range: 0.10
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 2.5
+        inflation_radius: 0.25
+      track_unknown_space: false
+      always_send_full_costmap: True
+
+map_server:
+  ros__parameters:
+    use_sim_time: false
+    yaml_filename: "static_map.yaml"
+
+map_saver:
+  ros__parameters:
+    use_sim_time: false
+    save_map_timeout: 5.0
+    free_thresh_default: 0.25
+    occupied_thresh_default: 0.65

@@ -216,7 +216,7 @@ float OPS_GetX(void)
   value = -OPS.ActVal[4];
   if (primask == 0U)
     __enable_irq();
-  return -value;
+  return value;
 }
 
 float OPS_GetY(void)
@@ -227,7 +227,7 @@ float OPS_GetY(void)
   value = -OPS.ActVal[5];
   if (primask == 0U)
     __enable_irq();
-  return -value;
+  return value;
 }
 
 float OPS_GetYaw(void)
@@ -261,9 +261,9 @@ uint8_t OPS_GetPose(float *pos_x, float *pos_y, float *yaw)
 
   primask = __get_PRIMASK();
   __disable_irq();
-  *pos_x = OPS.ActVal[4];
-  *pos_y = OPS.ActVal[5];
-  *yaw   = OPS.ActVal[1];
+  *pos_x = -OPS.ActVal[4];
+  *pos_y = -OPS.ActVal[5];
+  *yaw   = -OPS.ActVal[1];
   if (primask == 0U)
     __enable_irq();
 

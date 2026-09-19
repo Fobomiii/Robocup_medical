@@ -1,6 +1,6 @@
 /**
  * @file NUC_Obstacle.h
- * @brief NUC obstacle detection UART communication @ UART8 PE1=TX PE0=RX 115200 8N1
+ * @brief NUC navigation UART communication @ UART8 PE1=TX PE0=RX 115200 8N1
  *
  * Frame format (8 bytes):
  * AA BB XH XL YH YL CHK 55
@@ -32,6 +32,31 @@ extern "C" {
 
 #include "main.h"
 #include <stdint.h>
+
+#define NUC_NAV_MAX_WAYPOINTS 16U
+
+typedef enum {
+  NUC_NAV_GOAL_NONE  = 0,
+  NUC_NAV_GOAL_HOME  = 1,
+  NUC_NAV_GOAL_NURSE = 2,
+  NUC_NAV_GOAL_BED1  = 3,
+  NUC_NAV_GOAL_BED3  = 4
+} NUC_NavGoal;
+
+typedef enum {
+  NUC_NAV_IDLE = 0,
+  NUC_NAV_WAIT_PATH = 1,
+  NUC_NAV_FOLLOWING = 2,
+  NUC_NAV_REACHED = 3,
+  NUC_NAV_ERROR = 4
+} NUC_NavStatus;
+
+typedef struct {
+  int32_t x_mm;
+  int32_t y_mm;
+  int16_t yaw_cdeg;
+  uint16_t speed_mm_s;
+} NUC_NavWaypoint;
 
 extern UART_HandleTypeDef huart8;
 
@@ -65,6 +90,39 @@ int16_t NUC_GetObstacleY(void);
 
 /** Check if obstacle data is valid (received within last 200ms) */
 uint8_t NUC_IsObstacleValid(void);
+
+/** Start or maintain a navigation request. A new goal increments request_id. */
+void NUC_Nav_RequestGoal(NUC_NavGoal goal);
+
+/** Periodic bidirectional telemetry service; call from the 100 Hz nav task. */
+void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
+                     uint8_t task_state, NUC_NavStatus nav_status,
+                     uint16_t path_id, uint8_t waypoint_index);
+
+/** Access the most recently committed path for the active request. */
+uint8_t NUC_Nav_HasRequestedPath(void);
+uint16_t NUC_Nav_GetPathGeneration(void);
+uint16_t NUC_Nav_GetPathId(void);
+uint8_t NUC_Nav_GetPathCount(void);
+uint8_t NUC_Nav_GetWaypoint(uint8_t index, NUC_NavWaypoint *waypoint);
+
+/**
+ * Read the latest fresh Nav2 body velocity command.
+ * Units/signs follow ROS: forward mm/s, left mm/s, counter-clockwise cdeg/s.
+ * Returns 0 and writes zeros when no valid command arrived in the last 250 ms.
+ */
+uint8_t NUC_Nav_GetVelocityCommand(int16_t *forward_mm_s,
+                                   int16_t *left_mm_s,
+                                   int16_t *yaw_ccw_cdeg_s);
+
+/** Invalidate the current Nav2 velocity command immediately. */
+void NUC_Nav_ClearVelocity(void);
+
+/** Last navigation action status reported by the NUC. */
+NUC_NavStatus NUC_Nav_GetStatus(void);
+
+/** New-protocol activity within the last 500 ms. */
+uint8_t NUC_Nav_IsOnline(void);
 
 /** Internal: UART8 RX interrupt complete, called by HAL_UART_RxCpltCallback */
 void NUC_Obstacle_OnUartRxCplt(void);

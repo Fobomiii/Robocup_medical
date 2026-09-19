@@ -106,6 +106,14 @@ void DJI_Motor_ArmStart(void);
 
 void DJI_Chassis_SetCommand(float vx, float vy, float w);
 
+/**
+ * Convert a ROS body velocity command to the wheel-RPM command used internally.
+ * +forward is robot forward, +left is robot left, +yaw is counter-clockwise.
+ */
+void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
+                                    float left_mm_s,
+                                    float yaw_ccw_cdeg_s);
+
 /** Immediate angle (deg). */
 void DJI_Arm_CtrlAngle(float deg);
 

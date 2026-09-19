@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<!-- Minimal kinematic description for Nav2.
+
+     base_link is the chassis rotation centre. The Mid360 centre is 0.10 m in
+     front and 0.37 m above it. The unit is mounted upright with its forward
+     axis aligned with the physical front of the robot. The
+     driver keeps the original PointCloud2 timestamp and livox_frame; TF is
+     the only place where this mounting transform is applied.
+-->
+<robot name="medical_robot">
+  <link name="base_link"/>
+
+  <link name="chassis">
+    <visual>
+      <geometry>
+        <cylinder radius="0.225" length="0.30"/>
+      </geometry>
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
+      <material name="steel">
+        <color rgba="0.75 0.75 0.78 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="chassis_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Red block marks base_link +X, i.e. the physical front of the robot. -->
+  <link name="front_marker">
+    <visual>
+      <geometry>
+        <box size="0.08 0.04 0.04"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <material name="front_red">
+        <color rgba="0.95 0.05 0.05 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="front_marker_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="front_marker"/>
+    <origin xyz="0.205 0 0.32" rpy="0 0 0"/>
+  </joint>
+
+  <link name="livox_frame"/>
+
+  <joint name="livox_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="livox_frame"/>
+    <origin xyz="0.10 0 0.37" rpy="0 0 0"/>
+  </joint>
+</robot>

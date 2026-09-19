@@ -8,7 +8,9 @@ static float get_target_thd_x = 5.0f;   /* 到达判断 */
 static float get_target_thd_y = 5.0f;
 static float get_target_thd_z = 0.5f;
 static float target_distance = 0.0f;    /* 初始距离 */
-static float max_vel = 200.0f;         /* 最大合速度 */
+/* Legacy STM32 position-controller cap, in mm/s. The active NUC/Nav2 path
+ * is clamped separately in the bridge, but keep this fallback at 2.00 m/s. */
+static float max_vel = 2000.0f;
 static float result_vel = 0.0f;        /* 合速度 */
 static uint8_t velPIDCtrlFlag = 0;     /* 是否将 PID 直接输出到分速度 */
 static float cosf_Vx = 0.0f;

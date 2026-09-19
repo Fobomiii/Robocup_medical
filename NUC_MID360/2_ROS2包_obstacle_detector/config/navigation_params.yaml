@@ -1,0 +1,53 @@
+medical_navigation:
+  ros__parameters:
+    topic: /livox/lidar
+    serial_port: /dev/ttyUSB0
+    baud_rate: 115200
+
+    # Keep false while calibrating the field map. Detection and visualization
+    # continue to run; true enables A* paths and automatic replanning.
+    planner_enabled: true
+    auto_replan: true
+    pose_timeout_s: 0.50
+
+    # Mid360 point filtering and mounting offset. Sensor frame is x=forward,
+    # y=left, z=up. Offsets are measured from the robot rotation centre.
+    # lidar_inverted=true when mounted upside-down (FOV toward ground).
+    point_stride: 2
+    range_min: 0.15
+    range_max: 6.50
+    z_min: -0.55
+    z_max: 0.10
+    lidar_forward_mm: 170.0
+    lidar_right_mm: 0.0
+    lidar_inverted: true
+
+    # Multi-obstacle clustering and persistent tracking.
+    fixture_reject_margin_mm: 120.0
+    field_reject_margin_mm: 80.0
+    cluster_cell_mm: 80.0
+    cluster_tolerance_mm: 180.0
+    cluster_min_points: 5
+    cluster_max_span_mm: 750.0
+    obstacle_radius_min_mm: 120.0
+    obstacle_radius_max_mm: 350.0
+    track_match_mm: 280.0
+    confirm_hits: 5
+    candidate_ttl_s: 0.6
+    confirmed_ttl_s: 12.0
+    max_obstacles: 8
+    map_change_mm: 200.0
+
+    # Planner clearance includes robot radius plus a safety margin.
+    grid_resolution_mm: 100.0
+    inflation_mm: 360.0
+    cruise_speed_mm_s: 120.0
+    corner_speed_mm_s: 90.0
+    replan_cooldown_s: 3.0
+
+    # Legacy raw-lidar tuning window compatibility; navigation no longer uses
+    # these single-obstacle thresholds.
+    send_interval: 0.05
+    min_points: 5
+    max_points: 100
+    y_span_max: 0.25

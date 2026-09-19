@@ -25,3 +25,9 @@ Program/MDK-ARM/Program/
 # Python
 __pycache__/
 *.pyc
+
+# Local agent permissions may contain machine-specific credentials.
+.claude/settings.local.json
+
+# Field tuning executable workspace is versioned separately later.
+MedicalNavigationTuner/

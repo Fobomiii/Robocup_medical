@@ -1,0 +1,97 @@
+调整膨胀区
+set +u
+source /opt/ros/humble/setup.bash
+source ~/livox_ws/install/setup.bash
+
+# 查看当前值
+ros2 param get /local_costmap/local_costmap inflation_layer.inflation_radius
+ros2 param get /global_costmap/global_costmap inflation_layer.inflation_radius
+
+# 设置局部、全局膨胀半径 决定膨胀区域延伸多远
+ros2 param set /local_costmap/local_costmap inflation_layer.inflation_radius 0.30
+ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0.30
+
+# 确保膨胀层开启
+ros2 param set /local_costmap/local_costmap inflation_layer.enabled true
+ros2 param set /global_costmap/global_costmap inflation_layer.enabled true
+
+# 清空并立即重建代价图
+ros2 service call /local_costmap/clear_entirely_local_costmap \
+nav2_msgs/srv/ClearEntireCostmap "{}"
+
+ros2 service call /global_costmap/clear_entirely_global_costmap \
+nav2_msgs/srv/ClearEntireCostmap "{}"
+
+验证
+ros2 param get /local_costmap/local_costmap inflation_layer.inflation_radius
+ros2 param get /global_costmap/global_costmap inflation_layer.inflation_radius
+
+代价区衰减
+
+# 数值越大，代价下降越快；数值越小，高代价区域越宽  决定膨胀区域内颜色/代价衰减多快
+ros2 param set /local_costmap/local_costmap inflation_layer.cost_scaling_factor 25.0
+ros2 param set /global_costmap/global_costmap inflation_layer.cost_scaling_factor 25.0
+
+
+在shh中开启RVIZ
+
+set +u
+source /opt/ros/humble/setup.bash
+source ~/livox_ws/install/setup.bash
+
+export QT_X11_NO_MITSHM=1
+rviz2 -d ~/medical_nav.rviz
+
+路径规划
+
+ros2 action send_goal /compute_path_to_pose \
+nav2_msgs/action/ComputePathToPose \
+"{start: {header: {frame_id: map}, pose: {position: {x: 5.4, y: 2.1, z: 0.0}, orientation: {w: 1.0}}}, goal: {header: {frame_id: map}, pose: {position: {x: 5.4, y: -2.1, z: 0.0}, orientation: {w: 1.0}}}, planner_id: GridBased, use_start: true}"
+
+参数设置在 保存更改 C:\Users\ASUS\Desktop\Robocup医疗\NUC_MID360\2_ROS2包_obstacle_detector\config\nav2_params.yaml
+nav2_params.yaml修改后需要
+set +u
+source /opt/ros/humble/setup.bash
+
+cd ~/livox_ws
+colcon build --symlink-install --packages-select obstacle_detector
+
+sudo systemctl restart obstacle-detector.service
+重新编译 重启生效
+
+如果是在windows里面 该工作区根录目下
+
+$env:MEDICAL_NUC_PASSWORD='<YOUR_NUC_PASSWORD>'
+python ".\NUC_MID360\4_启动脚本\deploy_nuc.py"
+
+（可能需要更改NUC IP地址 目前连接的是FZU_ROG IP 192.168.50.63
+确保windows和NUC在同一网段
+
+推送后重启
+set +u
+source /opt/ros/humble/setup.bash
+source ~/livox_ws/install/setup.bash
+
+sudo systemctl stop obstacle-detector.service
+
+mkdir -p ~/.config
+printf 'MEDICAL_NAV_DRY_RUN=true\n' > ~/.config/medical-navigation.env
+
+sudo systemctl daemon-reload
+sudo systemctl start obstacle-detector.service
+
+地图修改
+以后遇到比赛场地变化时，按这个流程处理：
+1. 以起点为原点，沿用当前坐标约定：+X 向右，+Y 向场地前方。
+2. 测量场地边界、三张床、三个床头柜、护士台中心位置。
+3. 只修改 field_map.yaml 中的 x_mm、y_mm 和尺寸。
+4. 重新生成地图：python ".\NUC_MID360\2_ROS2包_obstacle_detector\scripts\make_static_map.py"
+
+配置文件在2_ROS2包  config
+
+
+全局规划器的避障代价权重  越大则越会避开高代价区
+ros2 param set /planner_server GridBased.cost_travel_multiplier 24.0
+
+ros2 service call /global_costmap/clear_entirely_global_costmap \
+nav2_msgs/srv/ClearEntireCostmap "{}"

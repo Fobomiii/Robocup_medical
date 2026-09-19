@@ -1,0 +1,97 @@
+# Calibrated field model. All coordinates are millimetres in the
+# existing OPS frame: +X right, +Y forward, yaw positive clockwise.
+frame_id: field
+field:
+  x_min_mm: -3500
+  x_max_mm: 3500
+  y_min_mm: -500
+  y_max_mm: 6500
+
+# Fixture positions are in the OPS field frame. The start reference is
+# field y=0; the map boundary is 500 mm behind it at field y=-500.
+fixtures:
+  # OPS measured the lower edge of all three beds at y=4450 mm. With a
+  # 2000 mm bed length, the rectangle centre is y=5450 mm.
+  - {name: bed1, label: "1号床", type: rectangle, x_mm: -3000, y_mm: 5450, width_mm: 1000, height_mm: 2000}
+  - {name: bed2, label: "2号床", type: rectangle, x_mm: 0, y_mm: 5450, width_mm: 1000, height_mm: 2000}
+  - {name: bed3, label: "3号床", type: rectangle, x_mm: 3000, y_mm: 5450, width_mm: 1000, height_mm: 2000}
+  # Rule-book bedside cabinets: 600 x 600 x 600 mm.  These are schematic
+  # positions based on Figure 1; measure the real field before competition.
+  # Cabinet 1/3 are on the inner side of beds 1/3; cabinet 2 is on bed 2's
+  # right side, matching the rule drawing.  The y=6200 centres place their
+  # 600 mm footprint against the head end of the 2000 mm beds.
+  - {name: bedside_cabinet1, label: "床头柜1", type: rectangle, x_mm: -2100, y_mm: 6200, width_mm: 600, height_mm: 600}
+  - {name: bedside_cabinet2, label: "床头柜2", type: rectangle, x_mm: 900, y_mm: 6200, width_mm: 600, height_mm: 600}
+  - {name: bedside_cabinet3, label: "床头柜3", type: rectangle, x_mm: 2100, y_mm: 6200, width_mm: 600, height_mm: 600}
+  # OPS survey: lower edge y=2150 mm, upper edge y=2950 mm.
+  - {name: nurse_station, label: "护士台", type: rectangle, x_mm: 0, y_mm: 2550, width_mm: 1000, height_mm: 800}
+
+goals:
+  home:  {id: 1, label: "起点/终点", x_mm: 0, y_mm: 0, yaw_deg: 0}
+  # OPS-measured parking point in front of the nurse station; this is not the
+  # nurse-station fixture centre.
+  nurse: {id: 2, label: "护士台停车点", x_mm: 0, y_mm: 1700, yaw_deg: 0}
+  # OPS-measured bed parking points: 300 mm outside the bed side. With the
+  # schematic cabinet positions above, their nearest-edge clearance is 600 mm.
+  # Re-survey the fixed fixtures before competition if their positions change.
+  bed1:  {id: 3, label: "Bed 1 goal", x_mm: -2200, y_mm: 5300, yaw_deg: 0}
+  bed3:  {id: 4, label: "Bed 3 goal", x_mm: 2200, y_mm: 5300, yaw_deg: 0}
+
+# Hand-authored fallback paths used when planner_enabled is false.
+routes:
+  - from: home
+    to: nurse
+    waypoints:
+      - {x_mm: 0, y_mm: 1700, yaw_deg: 0, speed_mm_s: 120}
+
+  - from: nurse
+    to: bed1
+    waypoints:
+      - {x_mm: -1100, y_mm: 1700, yaw_deg: 0, speed_mm_s: 100}
+      - {x_mm: -1100, y_mm: 3200, yaw_deg: 0, speed_mm_s: 120}
+      - {x_mm: -2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 150}
+      - {x_mm: -2200, y_mm: 5300, yaw_deg: 0, speed_mm_s: 100}
+
+  - from: nurse
+    to: bed3
+    waypoints:
+      - {x_mm: 1100, y_mm: 1700, yaw_deg: 0, speed_mm_s: 100}
+      - {x_mm: 1100, y_mm: 3200, yaw_deg: 0, speed_mm_s: 120}
+      - {x_mm: 2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 150}
+      - {x_mm: 2200, y_mm: 5300, yaw_deg: 0, speed_mm_s: 100}
+
+  - from: bed1
+    to: bed3
+    waypoints:
+      - {x_mm: -2200, y_mm: 5300, yaw_deg: -180, speed_mm_s: 80}
+      - {x_mm: -2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 120}
+      - {x_mm: -2100, y_mm: 3800, yaw_deg: 90, speed_mm_s: 80}
+      - {x_mm: 2100, y_mm: 3800, yaw_deg: 90, speed_mm_s: 150}
+      - {x_mm: 2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 80}
+      - {x_mm: 2200, y_mm: 5300, yaw_deg: 0, speed_mm_s: 100}
+
+  - from: bed3
+    to: bed1
+    waypoints:
+      - {x_mm: 2200, y_mm: 5300, yaw_deg: -180, speed_mm_s: 80}
+      - {x_mm: 2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 120}
+      - {x_mm: 2100, y_mm: 3800, yaw_deg: -90, speed_mm_s: 80}
+      - {x_mm: -2100, y_mm: 3800, yaw_deg: -90, speed_mm_s: 150}
+      - {x_mm: -2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 80}
+      - {x_mm: -2200, y_mm: 5300, yaw_deg: 0, speed_mm_s: 100}
+
+  - from: bed3
+    to: home
+    waypoints:
+      - {x_mm: 2200, y_mm: 5300, yaw_deg: -180, speed_mm_s: 80}
+      - {x_mm: 2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 150}
+      - {x_mm: 1500, y_mm: 1000, yaw_deg: -180, speed_mm_s: 150}
+      - {x_mm: 0, y_mm: 0, yaw_deg: 0, speed_mm_s: 100}
+
+  - from: bed1
+    to: home
+    waypoints:
+      - {x_mm: -2200, y_mm: 5300, yaw_deg: -180, speed_mm_s: 80}
+      - {x_mm: -2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 150}
+      - {x_mm: -1500, y_mm: 1000, yaw_deg: -180, speed_mm_s: 150}
+      - {x_mm: 0, y_mm: 0, yaw_deg: 0, speed_mm_s: 100}
