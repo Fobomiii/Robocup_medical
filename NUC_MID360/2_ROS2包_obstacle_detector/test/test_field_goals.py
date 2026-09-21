@@ -20,6 +20,14 @@ class FieldGoalsTest(unittest.TestCase):
             {"home": 1, "nurse": 2, "bed1": 3, "bed3": 4},
         )
         self.assertEqual(set(by_id), {1, 2, 3, 4})
+        self.assertEqual(
+            (by_name["bed1"].x_mm, by_name["bed1"].y_mm),
+            (-2200.0, 5400.0),
+        )
+        self.assertEqual(
+            (by_name["bed3"].x_mm, by_name["bed3"].y_mm),
+            (2200.0, 5400.0),
+        )
 
 
 if __name__ == "__main__":

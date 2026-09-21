@@ -99,6 +99,9 @@ void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
                      uint8_t task_state, NUC_NavStatus nav_status,
                      uint16_t path_id, uint8_t waypoint_index);
 
+/** Send the three STP23L ranges at 10 Hz on the navigation UART. */
+void NUC_Nav_ServiceSTP23L(void);
+
 /** Access the most recently committed path for the active request. */
 uint8_t NUC_Nav_HasRequestedPath(void);
 uint16_t NUC_Nav_GetPathGeneration(void);

@@ -396,6 +396,11 @@
               <FilePath>../Core/Src/OPS.c</FilePath>
             </File>
             <File>
+              <FileName>STP23L.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/STP23L.c</FilePath>
+            </File>
+            <File>
               <FileName>Servo.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/Servo.c</FilePath>
@@ -434,11 +439,6 @@
               <FileName>DJIMotorCtrlSTM32.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>../Core/Src/DJIMotorCtrlSTM32.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>PID.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>../Core/Src/PID.cpp</FilePath>
             </File>
             <File>
               <FileName>main.c</FileName>
@@ -514,21 +514,6 @@
               <FileName>stm32h7xx_hal_timebase_tim.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/stm32h7xx_hal_timebase_tim.c</FilePath>
-            </File>
-            <File>
-              <FileName>ChassisCtrl.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Core\Src\ChassisCtrl.c</FilePath>
-            </File>
-            <File>
-              <FileName>Navigation.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Core\Src\Navigation.c</FilePath>
-            </File>
-            <File>
-              <FileName>PathFollower.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Core\Src\PathFollower.c</FilePath>
             </File>
             <File>
               <FileName>OLED_SSD1309.c</FileName>

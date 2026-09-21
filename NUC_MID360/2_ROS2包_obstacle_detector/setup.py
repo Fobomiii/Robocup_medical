@@ -24,6 +24,7 @@ setup(
             "stm32_bridge = obstacle_detector.stm32_bridge:main",
             "medical_navigator = obstacle_detector.medical_navigator:main",
             "lidar_self_filter = obstacle_detector.lidar_transform:main",
+            "lidar_odometry_guard = obstacle_detector.lidar_odometry_guard:main",
         ],
     },
 )

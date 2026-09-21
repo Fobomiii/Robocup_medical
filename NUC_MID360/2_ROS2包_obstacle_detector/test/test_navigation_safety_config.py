@@ -27,6 +27,12 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             follow_path["time_steps"] * follow_path["model_dt"], 2.0
         )
         self.assertEqual(follow_path["batch_size"], 1200)
+        self.assertEqual(follow_path["vx_std"], 0.30)
+        self.assertEqual(follow_path["vy_std"], 0.25)
+        self.assertEqual(follow_path["temperature"], 0.30)
+        self.assertEqual(
+            follow_path["PathFollowCritic"]["offset_from_furthest"], 10
+        )
         self.assertFalse(follow_path["visualize"])
 
     def test_collision_monitor_has_predictive_and_emergency_guards(self):
@@ -37,7 +43,7 @@ class NavigationSafetyConfigTest(unittest.TestCase):
 
         approach = monitor["ApproachPolygon"]
         self.assertEqual(approach["action_type"], "approach")
-        self.assertEqual(approach["time_before_collision"], 1.2)
+        self.assertEqual(approach["time_before_collision"], 0.8)
         self.assertEqual(approach["simulation_time_step"], 0.1)
         self.assertEqual(approach["max_points"], 3)
 
@@ -89,6 +95,20 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         )
         self.assertIn("RewrittenYaml", launch_source)
         self.assertIn('"default_bt_xml_filename": bt_xml_file', launch_source)
+
+    def test_lidar_odometry_starts_in_monitor_only_mode(self):
+        guard = self.config["lidar_odometry_guard"]["ros__parameters"]
+        self.assertTrue(guard["enabled"])
+        self.assertTrue(guard["monitor_only"])
+        self.assertFalse(guard["use_static_map_filter"])
+        self.assertEqual(guard["process_period_s"], 0.5)
+        self.assertLessEqual(guard["max_points"], 600)
+        self.assertGreaterEqual(guard["required_bad_windows"], 3)
+
+        launch_source = (PACKAGE / "launch" / "obstacle.launch.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('executable="lidar_odometry_guard"', launch_source)
 
 
 if __name__ == "__main__":

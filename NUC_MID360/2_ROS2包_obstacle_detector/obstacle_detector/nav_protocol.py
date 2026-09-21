@@ -21,6 +21,7 @@ MAX_PAYLOAD = 48
 MSG_POSE = 0x10
 MSG_GOAL_REQUEST = 0x11
 MSG_NAV_STATUS = 0x12
+MSG_STP23L = 0x13
 MSG_PATH_BEGIN = 0x20
 MSG_WAYPOINT = 0x21
 MSG_PATH_COMMIT = 0x22
@@ -63,6 +64,20 @@ class PoseTelemetry:
 class GoalRequest:
     request_id: int
     goal_id: int
+
+
+@dataclass(frozen=True)
+class Stp23lTelemetry:
+    """Three sensor-face distances in millimetres.
+
+    Installation: A=right, B=front and C=left. ``valid_mask`` uses bits
+    0, 1 and 2 respectively; a zero distance must never be treated as a wall.
+    """
+
+    a_mm: int
+    b_mm: int
+    c_mm: int
+    valid_mask: int
 
 
 def crc16_ccitt(data: bytes) -> int:
@@ -153,6 +168,12 @@ def decode_goal_request(payload: bytes) -> GoalRequest:
     if len(payload) != 3:
         raise ValueError(f"GOAL_REQUEST payload length is {len(payload)}, expected 3")
     return GoalRequest(*struct.unpack(">HB", payload))
+
+
+def decode_stp23l(payload: bytes) -> Stp23lTelemetry:
+    if len(payload) != 7:
+        raise ValueError(f"STP23L payload length is {len(payload)}, expected 7")
+    return Stp23lTelemetry(*struct.unpack(">HHHB", payload))
 
 
 def encode_path_begin(path_id: int, request_id: int, goal_id: int, count: int) -> bytes:

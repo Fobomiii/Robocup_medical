@@ -5,9 +5,12 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=gp-pcie
-Environment=HOME=/home/gp-pcie
-ExecStart=/bin/bash /home/gp-pcie/start_mid360.sh
+User=fzurobot
+Environment=HOME=/home/fzurobot
+Environment=ROS_DOMAIN_ID=77
+Environment=ROS_LOCALHOST_ONLY=1
+EnvironmentFile=-/home/fzurobot/.config/medical-navigation.env
+ExecStart=/bin/bash /home/fzurobot/start_mid360.sh
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

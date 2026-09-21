@@ -53,10 +53,18 @@ class StaticMapTest(unittest.TestCase):
             lower_edge = float(bed["y_mm"]) - float(bed["height_mm"]) / 2.0
             self.assertAlmostEqual(lower_edge, 4450.0, delta=25.0, msg=bed_name)
 
-        for goal_name, cabinet_name, bed_name, side in (
-            ("bed1", "bedside_cabinet1", "bed1", "right"),
-            ("bed3", "bedside_cabinet3", "bed3", "left"),
-        ):
+        parking_checks = (
+            ("bed1", "bedside_cabinet1", "bed1", "right", "left", 3500.0),
+            ("bed3", "bedside_cabinet3", "bed3", "left", "right", 3500.0),
+        )
+        for (
+            goal_name,
+            cabinet_name,
+            bed_name,
+            bed_side_name,
+            field_side_name,
+            field_side_x,
+        ) in parking_checks:
             goal = field["goals"][goal_name]
             cabinet = fixtures[cabinet_name]
             bed = fixtures[bed_name]
@@ -71,14 +79,30 @@ class StaticMapTest(unittest.TestCase):
             cabinet_clearance = math.hypot(cabinet_dx, cabinet_dy)
             bed_side = (
                 float(bed["x_mm"]) + float(bed["width_mm"]) / 2.0
-                if side == "right"
+                if bed_side_name == "right"
                 else float(bed["x_mm"]) - float(bed["width_mm"]) / 2.0
             )
-            side_distance = abs(goal_x - bed_side)
-            # OPS measured the bed parking points at y=5300 mm. With the
-            # cabinet lower edge at y=5900 mm this gives 600 mm clearance.
-            self.assertAlmostEqual(cabinet_clearance, 600.0, delta=25.0, msg=goal_name)
-            self.assertAlmostEqual(side_distance, 300.0, delta=25.0, msg=goal_name)
+            field_side_x = -field_side_x if field_side_name == "left" else field_side_x
+            self.assertAlmostEqual(cabinet_clearance, 500.0, delta=1.0, msg=goal_name)
+            self.assertAlmostEqual(abs(goal_x - bed_side), 300.0, delta=1.0, msg=goal_name)
+            self.assertAlmostEqual(abs(goal_x - field_side_x), 1300.0, delta=1.0, msg=goal_name)
+
+        # The 600 mm cabinets share an edge with their associated beds.
+        touching = (
+            ("bed1", "bedside_cabinet1", "right", "left"),
+            ("bed2", "bedside_cabinet2", "right", "left"),
+            ("bed3", "bedside_cabinet3", "left", "right"),
+        )
+        for bed_name, cabinet_name, bed_edge, cabinet_edge in touching:
+            bed = fixtures[bed_name]
+            cabinet = fixtures[cabinet_name]
+            bed_x = float(bed["x_mm"]) + (
+                float(bed["width_mm"]) / 2.0 if bed_edge == "right" else -float(bed["width_mm"]) / 2.0
+            )
+            cabinet_x = float(cabinet["x_mm"]) + (
+                float(cabinet["width_mm"]) / 2.0 if cabinet_edge == "right" else -float(cabinet["width_mm"]) / 2.0
+            )
+            self.assertAlmostEqual(bed_x, cabinet_x, delta=1.0, msg=cabinet_name)
 
 
 if __name__ == "__main__":

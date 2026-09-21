@@ -9,6 +9,7 @@
 #include "Board.h"
 #include "cmsis_os.h"
 #include "NUC_Obstacle.h"
+#include "STP23L.h"
 #include <math.h>
 #include <string.h>
 
@@ -120,6 +121,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   {
     NUC_Obstacle_OnUartRxCplt();
   }
+  else if ((huart->Instance == USART6) || (huart->Instance == UART5) ||
+           (huart->Instance == LPUART1))
+  {
+    STP23L_OnUartRxCplt(huart);
+  }
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
@@ -127,6 +133,11 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
   if (huart->Instance == UART8)
   {
     NUC_Obstacle_OnUartError();
+  }
+  else if ((huart->Instance == USART6) || (huart->Instance == UART5) ||
+           (huart->Instance == LPUART1))
+  {
+    STP23L_OnUartError(huart);
   }
 }
 

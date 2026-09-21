@@ -8,6 +8,59 @@
 # All X/Y below are ROS metres: +X forward, +Y left, +yaw counter-clockwise.
 # Field millimetres convert as (x_m = field_y_mm/1000, y_m = -field_x_mm/1000).
 
+# Experimental OPS slip monitor. The Nav2 static map contains planning-only
+# fixtures that may not physically exist, so it must not be treated as a
+# localization reference. The default temporal mode instead uses robust
+# frame-to-frame Mid360 matching. Keep monitor_only true until field logs
+# establish safe quality and disagreement thresholds; this node currently
+# never publishes TF.
+lidar_odometry_guard:
+  ros__parameters:
+    use_sim_time: false
+    enabled: true
+    monitor_only: true
+    cloud_topic: /livox/lidar_filtered
+    odom_topic: /odom
+    map_topic: /map
+    # Enable only with a separate map whose occupied cells all correspond to
+    # observable physical structures. Leave false for the current field.
+    use_static_map_filter: false
+
+    # Two comparisons per second are enough to expose wheel slip without
+    # recreating the previous high-CPU point-cloud load.
+    process_period_s: 0.50
+    max_window_s: 1.0
+    max_odom_sync_error_s: 0.15
+    min_range: 0.35
+    max_range: 5.0
+    min_height: 0.08
+    max_height: 0.60
+    voxel_size: 0.08
+    max_points: 600
+
+    # Parameters used only when use_static_map_filter is explicitly enabled.
+    static_map_tolerance: 0.30
+    occupied_threshold: 65
+    min_reference_points: 60
+
+    max_correspondence_distance: 0.20
+    max_iterations: 8
+    trim_fraction: 0.75
+    min_inlier_ratio: 0.45
+    max_rmse: 0.09
+    min_geometry_ratio: 0.02
+    # A person-sized local cluster is not sufficient evidence. Trust a window
+    # only when matched geometry spans at least one metre and contains more
+    # than one observable surface direction.
+    min_spatial_extent: 1.0
+
+    # This only raises /medical_nav/ops_slip_suspected. Three consecutive
+    # trustworthy half-second windows prevent a person or sparse scan from
+    # causing a one-frame alarm.
+    slip_translation_threshold: 0.08
+    required_bad_windows: 3
+    required_good_windows: 3
+
 bt_navigator:
   ros__parameters:
     use_sim_time: false
@@ -92,12 +145,14 @@ controller_server:
       # 1600 samples with a 2.5 s horizon saturated the NUC during navigation
       # and made safety point clouds 0.3-0.6 s stale.
       batch_size: 1200
-      vx_std: 0.15
+      # Explore enough of the 1.0 m/s command range. The previous narrow
+      # distribution converged around 0.2-0.3 m/s even on an open path.
+      vx_std: 0.30
       # The chassis is a 4-wheel omni base. Allow bounded lateral samples so
       # it can sidestep around the fixed beds/cabinets instead of first making
       # a full heading correction. The bridge limits each linear component to
       # 1.00 m/s; the STM32 keeps an independent 2.00 m/s hard cap.
-      vy_std: 0.12
+      vy_std: 0.25
       wz_std: 0.30
 
       # Linear limits for the NUC side. Keep vx_min at zero: this navigation
@@ -110,7 +165,7 @@ controller_server:
       iteration_count: 1
       prune_distance: 1.5
       transform_tolerance: 0.3
-      temperature: 0.35
+      temperature: 0.30
       gamma: 0.015
       # Use the actual holonomic model. GoalAngleCritic still encourages the
       # requested final heading, while the bounded vy range permits sideways
@@ -179,8 +234,11 @@ controller_server:
       PathFollowCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 5.0
-        offset_from_furthest: 5
+        # Reward useful progress over the 2 s prediction horizon. With the
+        # 0.05 m path spacing, an offset of five biased the optimizer toward
+        # the measured 0.2-0.3 m/s command range.
+        cost_weight: 8.0
+        offset_from_furthest: 10
         threshold_to_consider: 1.4
 
       PathAngleCritic:
@@ -270,8 +328,11 @@ velocity_smoother:
     # hard cap, so any other command source still has a lower-level guard.
     max_velocity: [1.00, 1.00, 0.80]
     min_velocity: [-1.00, -1.00, -0.80]
-    max_accel: [0.5, 0.5, 1.2]
-    max_decel: [-0.6, -0.6, -1.5]
+    # Faster launch response: 3x the previous XY and yaw acceleration limits.
+    # Normal braking is slightly stronger than acceleration. Collision
+    # Monitor emergency stops still bypass this ramp and command zero.
+    max_accel: [1.5, 1.5, 3.6]
+    max_decel: [-1.8, -1.8, -4.5]
     odom_topic: /odom
     odom_duration: 0.1
 
@@ -300,7 +361,7 @@ collision_monitor:
       # continuously scales the command only when that motion would collide.
       points: [0.28, 0.0, 0.20, -0.20, 0.0, -0.28, -0.20, -0.20, -0.28, 0.0, -0.20, 0.20, 0.0, 0.28, 0.20, 0.20]
       action_type: "approach"
-      time_before_collision: 1.2
+      time_before_collision: 0.8
       simulation_time_step: 0.1
       max_points: 3
       visualize: True

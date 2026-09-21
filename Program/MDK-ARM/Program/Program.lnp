@@ -1,6 +1,7 @@
 --cpu Cortex-M7.fp.dp
 "program\startup_stm32h743xx.o"
 "program\ops.o"
+"program\stp23l.o"
 "program\servo.o"
 "program\hwt101ct.o"
 "program\gm65.o"

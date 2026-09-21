@@ -6,6 +6,7 @@
  * Coordinate: X forward (mm), Y lateral (mm, positive=left)
  */
 #include "NUC_Obstacle.h"
+#include "STP23L.h"
 #include <string.h>
 
 #define NUC_FRAME_HEADER1  0xAA
@@ -27,10 +28,12 @@
 #define NAV_STM32_MAX_LINEAR_MM_S 2000
 #define NAV_POSE_PERIOD_MS   20U
 #define NAV_GOAL_PERIOD_MS   250U
+#define NAV_STP23L_PERIOD_MS 100U
 
 #define NAV_MSG_POSE         0x10U
 #define NAV_MSG_GOAL_REQUEST 0x11U
 #define NAV_MSG_NAV_STATUS   0x12U
+#define NAV_MSG_STP23L       0x13U
 #define NAV_MSG_PATH_BEGIN   0x20U
 #define NAV_MSG_WAYPOINT     0x21U
 #define NAV_MSG_PATH_COMMIT  0x22U
@@ -86,6 +89,7 @@ static volatile uint32_t s_nav_last_valid_ms;
 static uint8_t s_nav_tx_seq;
 static uint32_t s_nav_last_pose_tx_ms;
 static uint32_t s_nav_last_goal_tx_ms;
+static uint32_t s_nav_last_stp23l_tx_ms;
 static NUC_NavGoal s_nav_requested_goal;
 static uint16_t s_nav_request_id;
 static volatile int16_t s_nav_forward_mm_s;
@@ -486,6 +490,7 @@ void NUC_Obstacle_Init(void)
   s_nav_tx_seq = 0U;
   s_nav_last_pose_tx_ms = 0U;
   s_nav_last_goal_tx_ms = 0U;
+  s_nav_last_stp23l_tx_ms = 0U;
   s_nav_requested_goal = NUC_NAV_GOAL_NONE;
   s_nav_request_id = 0U;
   s_nav_forward_mm_s = 0;
@@ -662,6 +667,39 @@ void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
     (void)nav_send_frame(NAV_MSG_GOAL_REQUEST, payload, sizeof(payload));
     s_nav_last_goal_tx_ms = now;
   }
+}
+
+void NUC_Nav_ServiceSTP23L(void)
+{
+  uint32_t now = HAL_GetTick();
+  uint8_t payload[7];
+  uint8_t valid_mask = 0U;
+
+  if ((now - s_nav_last_stp23l_tx_ms) < NAV_STP23L_PERIOD_MS)
+  {
+    return;
+  }
+
+  if (STP23L_IsOnlineA() != 0U)
+  {
+    valid_mask |= 0x01U;
+  }
+  if (STP23L_IsOnlineB() != 0U)
+  {
+    valid_mask |= 0x02U;
+  }
+  if (STP23L_IsOnlineC() != 0U)
+  {
+    valid_mask |= 0x04U;
+  }
+
+  /* A=right, B=front, C=left. Distances are sensor-face millimetres. */
+  write_u16_be(&payload[0], STP32_getA());
+  write_u16_be(&payload[2], STP32_getB());
+  write_u16_be(&payload[4], STP32_getC());
+  payload[6] = valid_mask;
+  (void)nav_send_frame(NAV_MSG_STP23L, payload, sizeof(payload));
+  s_nav_last_stp23l_tx_ms = now;
 }
 
 uint8_t NUC_Nav_HasRequestedPath(void)

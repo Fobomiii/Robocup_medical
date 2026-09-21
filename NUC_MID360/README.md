@@ -19,7 +19,11 @@ Mid360 /livox/lidar (livox_frame, raw diagnostics)
 Nav2 global/local costmap -> NavFn + MPPI(Omni) -> Collision Monitor
 ```
 
-定位只使用 OPS9 的 X/Y 和 HWT101CT 航向，不使用 Mid360 里程计或旧算法估计位置。
+定位主体使用 OPS9 的 X/Y 和 HWT101CT 航向，不使用 Mid360 里程计或旧算法估计位置。
+1/3 床停车位增加 STP23L 绝对距离校正：A=右、B=前、C=左，三者均安装在距车心
+`155 mm` 处。停车圆边与床边相切；侧向传感器光路不受床遮挡，测外侧场地边界约
+`1145 mm`，前向传感器测紧贴床体的床头柜前缘约 `345 mm`。程序只在匹配床位、
+距离和航向均通过门限时更新 OPS XY 偏置。
 
 ## 医疗任务链
 
@@ -103,6 +107,24 @@ RViz 必须在图形用户登录后启动，因此使用：
 /home/gp-pcie/start_rviz.sh
 ```
 
+所有本车 ROS 2 进程固定使用独立 Domain，并限制为 NUC 本机发现，避免比赛网络中的其他
+ROS 设备发布同名 `/map`、`/tf` 或控制话题：
+
+```text
+ROS_DOMAIN_ID=77
+ROS_LOCALHOST_ONLY=1
+```
+
+通过 SSH 手动执行 `ros2` 命令前，先加载同一环境：
+
+```bash
+set -a
+source ~/.config/medical-navigation.env
+set +a
+source /opt/ros/humble/setup.bash
+source ~/livox_ws/install/setup.bash
+```
+
 默认 RViz Fixed Frame 为 `map`，显示静态地图、全局代价地图、RobotModel、TF 和 Nav2
 路径，并提供 Nav2 Goal 工具与 Orbit 三维视角。`Local Costmap` 和
 `Mid360 Filtered PointCloud` 已保留在 Displays 中但默认不勾选，需要诊断时再手动开启。
@@ -156,6 +178,8 @@ Remove-Item Env:MEDICAL_NUC_PASSWORD
 ```text
 /home/gp-pcie/.config/medical-navigation.env
 MEDICAL_NAV_DRY_RUN=false
+ROS_DOMAIN_ID=77
+ROS_LOCALHOST_ONLY=1
 ```
 
 脚本随后会重启服务，STM32 满足任务门控时车体可能立即运动。首次验证新规划器时必须架空

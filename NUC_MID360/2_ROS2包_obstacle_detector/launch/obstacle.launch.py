@@ -117,8 +117,21 @@ def generate_launch_description():
                         "enforce_task_gate": ParameterValue(
                             enforce_task_gate, value_type=bool
                         ),
+                        "field_config": field_map,
                     }
                 ],
+            ),
+            # First-stage OPS slip experiment. Robust temporal scan matching
+            # is independent of planning-only static-map annotations. It is
+            # monitor-only and never publishes TF or changes chassis commands.
+            Node(
+                package="obstacle_detector",
+                executable="lidar_odometry_guard",
+                name="lidar_odometry_guard",
+                output="screen",
+                parameters=[params_file],
+                respawn=True,
+                respawn_delay=2.0,
             ),
             Node(
                 package="nav2_map_server",

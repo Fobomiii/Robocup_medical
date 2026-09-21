@@ -15,14 +15,12 @@ fixtures:
   - {name: bed1, label: "1号床", type: rectangle, x_mm: -3000, y_mm: 5450, width_mm: 1000, height_mm: 2000}
   - {name: bed2, label: "2号床", type: rectangle, x_mm: 0, y_mm: 5450, width_mm: 1000, height_mm: 2000}
   - {name: bed3, label: "3号床", type: rectangle, x_mm: 3000, y_mm: 5450, width_mm: 1000, height_mm: 2000}
-  # Rule-book bedside cabinets: 600 x 600 x 600 mm.  These are schematic
-  # positions based on Figure 1; measure the real field before competition.
-  # Cabinet 1/3 are on the inner side of beds 1/3; cabinet 2 is on bed 2's
-  # right side, matching the rule drawing.  The y=6200 centres place their
-  # 600 mm footprint against the head end of the 2000 mm beds.
-  - {name: bedside_cabinet1, label: "床头柜1", type: rectangle, x_mm: -2100, y_mm: 6200, width_mm: 600, height_mm: 600}
-  - {name: bedside_cabinet2, label: "床头柜2", type: rectangle, x_mm: 900, y_mm: 6200, width_mm: 600, height_mm: 600}
-  - {name: bedside_cabinet3, label: "床头柜3", type: rectangle, x_mm: 2100, y_mm: 6200, width_mm: 600, height_mm: 600}
+  # Rule-book bedside cabinets: 600 x 600 x 600 mm. Cabinet 1/3 touch the
+  # inner sides of beds 1/3; cabinet 2 touches bed 2's right side. Their near
+  # edge is y=5900, 500 mm in front of the bed parking-circle centres.
+  - {name: bedside_cabinet1, label: "床头柜1", type: rectangle, x_mm: -2200, y_mm: 6200, width_mm: 600, height_mm: 600}
+  - {name: bedside_cabinet2, label: "床头柜2", type: rectangle, x_mm: 800, y_mm: 6200, width_mm: 600, height_mm: 600}
+  - {name: bedside_cabinet3, label: "床头柜3", type: rectangle, x_mm: 2200, y_mm: 6200, width_mm: 600, height_mm: 600}
   # OPS survey: lower edge y=2150 mm, upper edge y=2950 mm.
   - {name: nurse_station, label: "护士台", type: rectangle, x_mm: 0, y_mm: 2550, width_mm: 1000, height_mm: 800}
 
@@ -31,11 +29,39 @@ goals:
   # OPS-measured parking point in front of the nurse station; this is not the
   # nurse-station fixture centre.
   nurse: {id: 2, label: "护士台停车点", x_mm: 0, y_mm: 1700, yaw_deg: 0}
-  # OPS-measured bed parking points: 300 mm outside the bed side. With the
-  # schematic cabinet positions above, their nearest-edge clearance is 600 mm.
-  # Re-survey the fixed fixtures before competition if their positions change.
-  bed1:  {id: 3, label: "Bed 1 goal", x_mm: -2200, y_mm: 5300, yaw_deg: 0}
-  bed3:  {id: 4, label: "Bed 3 goal", x_mm: 2200, y_mm: 5300, yaw_deg: 0}
+  # True field geometry: the 300 mm parking circle is tangent to the inner bed
+  # edge; its centre is 500 mm behind the bedside-cabinet near edge.
+  bed1:  {id: 3, label: "Bed 1 goal", x_mm: -2200, y_mm: 5400, yaw_deg: 0}
+  bed3:  {id: 4, label: "Bed 3 goal", x_mm: 2200, y_mm: 5400, yaw_deg: 0}
+
+# A=right, B=front, C=left. The sensors sit 155 mm from the vehicle centre.
+# The 300 mm parking circle is tangent to the bed's inner side, but the side
+# sensor has an unobstructed line of sight to the outer field boundary. The
+# expected sensor-face ranges are side=1300-155=1145 mm and
+# front=500-155=345 mm.
+stp23l_calibration:
+  enabled: true
+  sensor_radius_mm: 155
+  samples_required: 7
+  max_offset_spread_mm: 40
+  distance_tolerance_mm: 200
+  yaw_tolerance_deg: 8
+  max_offset_mm: 400
+  beds:
+    bed1:
+      task_states: [3, 4, 5]
+      side_sensor: C
+      side_reference_x_mm: -3500
+      front_reference_y_mm: 5900
+      expected_center_side_distance_mm: 1300
+      expected_center_front_distance_mm: 500
+    bed3:
+      task_states: [6, 7, 8]
+      side_sensor: A
+      side_reference_x_mm: 3500
+      front_reference_y_mm: 5900
+      expected_center_side_distance_mm: 1300
+      expected_center_front_distance_mm: 500
 
 # Hand-authored fallback paths used when planner_enabled is false.
 routes:
@@ -50,7 +76,7 @@ routes:
       - {x_mm: -1100, y_mm: 1700, yaw_deg: 0, speed_mm_s: 100}
       - {x_mm: -1100, y_mm: 3200, yaw_deg: 0, speed_mm_s: 120}
       - {x_mm: -2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 150}
-      - {x_mm: -2200, y_mm: 5300, yaw_deg: 0, speed_mm_s: 100}
+      - {x_mm: -2200, y_mm: 5400, yaw_deg: 0, speed_mm_s: 100}
 
   - from: nurse
     to: bed3
@@ -58,32 +84,32 @@ routes:
       - {x_mm: 1100, y_mm: 1700, yaw_deg: 0, speed_mm_s: 100}
       - {x_mm: 1100, y_mm: 3200, yaw_deg: 0, speed_mm_s: 120}
       - {x_mm: 2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 150}
-      - {x_mm: 2200, y_mm: 5300, yaw_deg: 0, speed_mm_s: 100}
+      - {x_mm: 2200, y_mm: 5400, yaw_deg: 0, speed_mm_s: 100}
 
   - from: bed1
     to: bed3
     waypoints:
-      - {x_mm: -2200, y_mm: 5300, yaw_deg: -180, speed_mm_s: 80}
+      - {x_mm: -2200, y_mm: 5400, yaw_deg: -180, speed_mm_s: 80}
       - {x_mm: -2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 120}
       - {x_mm: -2100, y_mm: 3800, yaw_deg: 90, speed_mm_s: 80}
       - {x_mm: 2100, y_mm: 3800, yaw_deg: 90, speed_mm_s: 150}
       - {x_mm: 2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 80}
-      - {x_mm: 2200, y_mm: 5300, yaw_deg: 0, speed_mm_s: 100}
+      - {x_mm: 2200, y_mm: 5400, yaw_deg: 0, speed_mm_s: 100}
 
   - from: bed3
     to: bed1
     waypoints:
-      - {x_mm: 2200, y_mm: 5300, yaw_deg: -180, speed_mm_s: 80}
+      - {x_mm: 2200, y_mm: 5400, yaw_deg: -180, speed_mm_s: 80}
       - {x_mm: 2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 120}
       - {x_mm: 2100, y_mm: 3800, yaw_deg: -90, speed_mm_s: 80}
       - {x_mm: -2100, y_mm: 3800, yaw_deg: -90, speed_mm_s: 150}
       - {x_mm: -2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 80}
-      - {x_mm: -2200, y_mm: 5300, yaw_deg: 0, speed_mm_s: 100}
+      - {x_mm: -2200, y_mm: 5400, yaw_deg: 0, speed_mm_s: 100}
 
   - from: bed3
     to: home
     waypoints:
-      - {x_mm: 2200, y_mm: 5300, yaw_deg: -180, speed_mm_s: 80}
+      - {x_mm: 2200, y_mm: 5400, yaw_deg: -180, speed_mm_s: 80}
       - {x_mm: 2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 150}
       - {x_mm: 1500, y_mm: 1000, yaw_deg: -180, speed_mm_s: 150}
       - {x_mm: 0, y_mm: 0, yaw_deg: 0, speed_mm_s: 100}
@@ -91,7 +117,7 @@ routes:
   - from: bed1
     to: home
     waypoints:
-      - {x_mm: -2200, y_mm: 5300, yaw_deg: -180, speed_mm_s: 80}
+      - {x_mm: -2200, y_mm: 5400, yaw_deg: -180, speed_mm_s: 80}
       - {x_mm: -2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 150}
       - {x_mm: -1500, y_mm: 1000, yaw_deg: -180, speed_mm_s: 150}
       - {x_mm: 0, y_mm: 0, yaw_deg: 0, speed_mm_s: 100}

@@ -18,15 +18,19 @@ Frame conventions. The STM32 reports x right / y forward / yaw clockwise.
 
 import json
 import math
+import os
 import struct
 import time
 from collections import deque
+from dataclasses import asdict
 from typing import Deque
 
 import rclpy
+from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseStamped, TransformStamped, Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from sensor_msgs.msg import Range
 from std_msgs.msg import String
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
@@ -37,16 +41,23 @@ from .nav_protocol import (
     MSG_HEARTBEAT,
     MSG_NAV_STATUS,
     MSG_POSE,
+    MSG_STP23L,
     MSG_VEL_CMD,
     NAV_FOLLOWING,
     decode_goal_request,
     decode_pose,
+    decode_stp23l,
     encode_frame,
     encode_heartbeat,
     encode_nav_status,
     encode_velocity,
 )
 from .serial_transport import SerialTransport
+from .stp23l_calibration import (
+    CalibrationConfig,
+    OpsRangeCalibrator,
+    load_calibration_config,
+)
 
 
 POINT_NAMES = {
@@ -84,6 +95,12 @@ class Stm32Bridge(Node):
         # Competition mode also applies when this node is launched directly.
         self.declare_parameter("dry_run", False)
         self.declare_parameter("enforce_task_gate", True)
+        default_field_config = os.path.join(
+            get_package_share_directory("obstacle_detector"),
+            "config",
+            "field_map.yaml",
+        )
+        self.declare_parameter("field_config", default_field_config)
 
         get = lambda name: self.get_parameter(name).value
         self.map_frame = str(get("map_frame"))
@@ -98,6 +115,18 @@ class Stm32Bridge(Node):
         self.twist_filter_alpha = max(0.0, min(1.0, float(get("twist_filter_alpha"))))
         self.dry_run = bool(get("dry_run"))
         self.enforce_task_gate = bool(get("enforce_task_gate"))
+        field_config = str(get("field_config"))
+        try:
+            calibration_config = load_calibration_config(field_config)
+        except (OSError, KeyError, TypeError, ValueError) as exc:
+            self.get_logger().error(
+                f"STP23L calibration disabled: cannot load {field_config}: {exc}"
+            )
+            calibration_config = CalibrationConfig(
+                False, 155.0, 7, 40.0, 200.0, 8.0, 400.0, ()
+            )
+        self.calibrator = OpsRangeCalibrator(calibration_config)
+        self.sensor_radius_m = calibration_config.sensor_radius_mm / 1000.0
 
         self.pose = None
         self.previous_ros_pose = None
@@ -111,13 +140,27 @@ class Stm32Bridge(Node):
         self.cmd_count = 0
         self.rx_queue: Deque[Frame] = deque()
         self.started_s = time.monotonic()
+        self.stp23l = None
+        self.last_calibration_event = None
 
         self.tf_broadcaster = TransformBroadcaster(self)
         self.static_tf_broadcaster = StaticTransformBroadcaster(self)
         self.odom_pub = self.create_publisher(Odometry, "/odom", 10)
         self.pose_pub = self.create_publisher(PoseStamped, "/medical_nav/robot_pose", 10)
+        self.raw_pose_pub = self.create_publisher(
+            PoseStamped, "/medical_nav/ops_raw_pose", 10
+        )
         self.status_pub = self.create_publisher(String, "/medical_nav/bridge_status", 10)
         self.goal_pub = self.create_publisher(String, "/medical_nav/goal_request", 10)
+        self.stp23l_pub = self.create_publisher(String, "/medical_nav/stp23l", 10)
+        self.calibration_pub = self.create_publisher(
+            String, "/medical_nav/ops_calibration", 10
+        )
+        self.range_pubs = {
+            "a": self.create_publisher(Range, "/medical_nav/stp23l/right", 10),
+            "b": self.create_publisher(Range, "/medical_nav/stp23l/front", 10),
+            "c": self.create_publisher(Range, "/medical_nav/stp23l/left", 10),
+        }
 
         self.create_subscription(Twist, self.cmd_vel_topic, self._cmd_vel, 10)
         self.create_subscription(
@@ -159,6 +202,8 @@ class Stm32Bridge(Node):
                     self._handle_pose(frame)
                 elif frame.msg_type == MSG_GOAL_REQUEST:
                     self._handle_goal_request(frame)
+                elif frame.msg_type == MSG_STP23L:
+                    self._handle_stp23l(frame)
             except (ValueError, struct.error) as exc:
                 self.get_logger().warn(
                     f"Rejected frame 0x{frame.msg_type:02X}: {exc}", throttle_duration_sec=2.0
@@ -210,6 +255,69 @@ class Stm32Bridge(Node):
             f"STM32 goal request #{request.request_id} -> {name}", throttle_duration_sec=1.0
         )
 
+    def _handle_stp23l(self, frame: Frame) -> None:
+        telemetry = decode_stp23l(frame.payload)
+        self.stp23l = telemetry
+        stamp = self.get_clock().now().to_msg()
+        sensor_data = {
+            "a": ("right", "stp23l_right", telemetry.a_mm, 0x01),
+            "b": ("front", "stp23l_front", telemetry.b_mm, 0x02),
+            "c": ("left", "stp23l_left", telemetry.c_mm, 0x04),
+        }
+        aggregate = {"valid_mask": telemetry.valid_mask, "sensors": {}}
+        for sensor, (direction, frame_id, distance_mm, bit) in sensor_data.items():
+            valid = bool(telemetry.valid_mask & bit) and distance_mm > 0
+            message = Range()
+            message.header.stamp = stamp
+            message.header.frame_id = frame_id
+            message.radiation_type = Range.INFRARED
+            message.field_of_view = 0.0
+            message.min_range = 0.1
+            message.max_range = 13.4
+            message.range = distance_mm / 1000.0 if valid else float("nan")
+            self.range_pubs[sensor].publish(message)
+            aggregate["sensors"][sensor] = {
+                "direction": direction,
+                "valid": valid,
+                "sensor_distance_mm": distance_mm if valid else None,
+                "center_distance_mm": (
+                    round(distance_mm + self.sensor_radius_m * 1000.0, 1)
+                    if valid
+                    else None
+                ),
+            }
+        aggregate_message = String()
+        aggregate_message.data = json.dumps(aggregate, ensure_ascii=False)
+        self.stp23l_pub.publish(aggregate_message)
+
+        if self.pose is None:
+            return
+        event = self.calibrator.update(
+            self.pose.task_state,
+            self.pose.nav_status,
+            self.pose.x_mm,
+            self.pose.y_mm,
+            self.pose.yaw_cdeg,
+            telemetry,
+        )
+        self.last_calibration_event = event
+        calibration = asdict(event)
+        calibration["offset_x_mm"] = round(self.calibrator.offset_x_mm, 1)
+        calibration["offset_y_mm"] = round(self.calibrator.offset_y_mm, 1)
+        calibration_message = String()
+        calibration_message.data = json.dumps(calibration, ensure_ascii=False)
+        self.calibration_pub.publish(calibration_message)
+        if event.applied:
+            # Do not differentiate the deliberate pose correction into a
+            # one-cycle velocity spike.
+            self.previous_ros_pose = None
+            self.twist = (0.0, 0.0, 0.0)
+            self.get_logger().info(
+                f"STP23L calibrated at {event.bed}: "
+                f"OPS offset=({event.offset_x_mm:.1f}, {event.offset_y_mm:.1f}) mm, "
+                f"field pose=({event.measured_x_mm:.1f}, {event.measured_y_mm:.1f}) mm"
+            )
+
     # ------------------------------------------------------------------
     # Pose out
     # ------------------------------------------------------------------
@@ -220,8 +328,10 @@ class Stm32Bridge(Node):
             and time.monotonic() - self.last_pose_s <= self.pose_timeout_s
         )
 
-    def _as_ros(self, x_mm: float, y_mm: float, yaw_cdeg: float):
+    def _as_ros(self, x_mm: float, y_mm: float, yaw_cdeg: float, corrected=True):
         """STM32 field pose -> ROS map pose (metres, counter-clockwise yaw)."""
+        if corrected:
+            x_mm, y_mm = self.calibrator.corrected_xy(x_mm, y_mm)
         return (
             y_mm / 1000.0,
             -x_mm / 1000.0,
@@ -234,7 +344,22 @@ class Stm32Bridge(Node):
         transform.header.frame_id = self.map_frame
         transform.child_frame_id = self.odom_frame
         transform.transform.rotation.w = 1.0
-        self.static_tf_broadcaster.sendTransform(transform)
+        transforms = [transform]
+        for frame_id, x, y, yaw in (
+            ("stp23l_front", self.sensor_radius_m, 0.0, 0.0),
+            ("stp23l_right", 0.0, -self.sensor_radius_m, -math.pi / 2.0),
+            ("stp23l_left", 0.0, self.sensor_radius_m, math.pi / 2.0),
+        ):
+            sensor_tf = TransformStamped()
+            sensor_tf.header.stamp = transform.header.stamp
+            sensor_tf.header.frame_id = self.base_frame
+            sensor_tf.child_frame_id = frame_id
+            sensor_tf.transform.translation.x = x
+            sensor_tf.transform.translation.y = y
+            sensor_tf.transform.rotation.z = math.sin(yaw * 0.5)
+            sensor_tf.transform.rotation.w = math.cos(yaw * 0.5)
+            transforms.append(sensor_tf)
+        self.static_tf_broadcaster.sendTransform(transforms)
 
     def _tick(self) -> None:
         self._drain_frames()
@@ -277,6 +402,17 @@ class Stm32Bridge(Node):
         pose_message.header = odometry.header
         pose_message.pose = odometry.pose.pose
         self.pose_pub.publish(pose_message)
+
+        raw_x, raw_y, raw_yaw = self._as_ros(
+            self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg, corrected=False
+        )
+        raw_pose = PoseStamped()
+        raw_pose.header = odometry.header
+        raw_pose.pose.position.x = raw_x
+        raw_pose.pose.position.y = raw_y
+        raw_pose.pose.orientation.z = math.sin(raw_yaw * 0.5)
+        raw_pose.pose.orientation.w = math.cos(raw_yaw * 0.5)
+        self.raw_pose_pub.publish(raw_pose)
 
     # ------------------------------------------------------------------
     # Velocity in
@@ -372,6 +508,10 @@ class Stm32Bridge(Node):
             "dry_run": self.dry_run,
             "task_gate": self.enforce_task_gate,
             "motion_authorized": self._motion_is_authorized(),
+            "ops_offset_mm": {
+                "x": round(self.calibrator.offset_x_mm, 1),
+                "y": round(self.calibrator.offset_y_mm, 1),
+            },
             "last_cmd": {
                 "vx_mm_s": round(self.last_sent[0], 1),
                 "vy_mm_s": round(self.last_sent[1], 1),
@@ -385,6 +525,13 @@ class Stm32Bridge(Node):
                 "yaw_cdeg": self.pose.yaw_cdeg,
                 "task_state": self.pose.task_state,
                 "nav_status": self.pose.nav_status,
+            }
+        if self.stp23l is not None:
+            status["stp23l"] = {
+                "a_right_mm": self.stp23l.a_mm,
+                "b_front_mm": self.stp23l.b_mm,
+                "c_left_mm": self.stp23l.c_mm,
+                "valid_mask": self.stp23l.valid_mask,
             }
         message = String()
         message.data = json.dumps(status, ensure_ascii=False)

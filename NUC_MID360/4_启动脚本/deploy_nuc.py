@@ -9,9 +9,10 @@ import sys
 import paramiko
 
 
-HOST = os.environ.get("MEDICAL_NUC_HOST", "192.168.50.63")
-USER = os.environ.get("MEDICAL_NUC_USER", "gp-pcie")
+HOST = os.environ.get("MEDICAL_NUC_HOST", "192.168.50.22")
+USER = os.environ.get("MEDICAL_NUC_USER", "fzurobot")
 PASSWORD = os.environ.get("MEDICAL_NUC_PASSWORD")
+ROS_DOMAIN_ID = os.environ.get("MEDICAL_ROS_DOMAIN_ID", "77")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
@@ -47,6 +48,9 @@ def iter_package_files():
 def main() -> int:
     if not PASSWORD:
         print("Set MEDICAL_NUC_PASSWORD before running deployment.")
+        return 2
+    if not ROS_DOMAIN_ID.isdigit() or not 0 <= int(ROS_DOMAIN_ID) <= 101:
+        print("MEDICAL_ROS_DOMAIN_ID must be an integer from 0 to 101.")
         return 2
     for package_root in (PKG, PLANNER_PKG):
         manifest = os.path.join(package_root, "package.xml")
@@ -129,6 +133,9 @@ def main() -> int:
         "obstacle_detector/nav_protocol.py obstacle_detector/serial_transport.py "
         "obstacle_detector/field_goals.py obstacle_detector/stm32_bridge.py "
         "obstacle_detector/medical_navigator.py obstacle_detector/lidar_transform.py "
+        "obstacle_detector/lidar_odometry_core.py "
+        "obstacle_detector/lidar_odometry_guard.py "
+        "obstacle_detector/stp23l_calibration.py "
         "launch/obstacle.launch.py "
         "scripts/make_static_map.py"
     )
@@ -151,7 +158,8 @@ def main() -> int:
     # This value persists across service restarts and NUC reboots.
     rc, out, err = run(
         f"mkdir -p {REMOTE_HOME}/.config && "
-        f"printf 'MEDICAL_NAV_DRY_RUN=false\\n' > "
+        f"printf 'MEDICAL_NAV_DRY_RUN=false\\nROS_DOMAIN_ID={ROS_DOMAIN_ID}\\n"
+        "ROS_LOCALHOST_ONLY=1\\n' > "
         f"{REMOTE_HOME}/.config/medical-navigation.env"
     )
     if rc != 0:
