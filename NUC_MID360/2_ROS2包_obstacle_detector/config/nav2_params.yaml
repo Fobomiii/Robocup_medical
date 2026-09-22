@@ -155,10 +155,8 @@ controller_server:
       vy_std: 0.25
       wz_std: 0.30
 
-      # Linear limits for the NUC side. Keep vx_min at zero: this navigation
-      # profile does not intentionally command reverse motion.
       vx_max: 1.00
-      vx_min: 0.0
+      vx_min: -0.40
       vy_max: 1.00
       wz_max: 0.80
 
@@ -219,7 +217,9 @@ controller_server:
         enabled: true
         cost_power: 1
         cost_weight: 3.0
-        threshold_to_consider: 0.5
+        # Start restoring the requested final yaw while the chassis is still
+        # approaching, instead of reaching the point and rotating in place.
+        threshold_to_consider: 1.2
 
       PathAlignCritic:
         enabled: true
@@ -248,7 +248,7 @@ controller_server:
         offset_from_furthest: 4
         threshold_to_consider: 0.5
         max_angle_to_furthest: 1.0
-        mode: 0
+        mode: 1
 
 planner_server:
   ros__parameters:
@@ -381,7 +381,7 @@ collision_monitor:
     livox:
       type: "pointcloud"
       topic: /livox/lidar_filtered
-      # Upright Mid360 optical centre is at z=0.37 m. Keep the band above
+      # Upright Mid360 optical centre is at z=0.33 m. Keep the band above
       # that height so horizontal returns remain available to safety checks.
       max_height: 0.60
       min_height: 0.08

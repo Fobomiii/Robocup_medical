@@ -1,0 +1,19 @@
+code_scanner:
+  ros__parameters:
+    camera_device: /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0
+    width: 1920
+    height: 1200
+    fps: 30.0
+    decode_rate_hz: 15.0
+    confirm_hits: 2
+    confirm_window_s: 0.8
+    roi_left: 0.05
+    roi_right: 0.95
+    roi_top: 0.15
+    roi_bottom: 0.85
+    full_frame_fallback_period: 6
+    power_line_frequency: 1
+    auto_exposure: 3
+    autofocus: false
+    focus_absolute: 630
+    preview: false

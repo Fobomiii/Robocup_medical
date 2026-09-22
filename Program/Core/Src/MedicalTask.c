@@ -24,10 +24,10 @@
 /*
  * Final docking targets are sensor-face distances.  The field geometry uses
  * 1300 mm from the vehicle centre to the side reference and 500 mm to the
- * front reference; the STP23L heads are 155 mm from the vehicle centre.
+ * front reference; the STP23L heads are 153 mm from the vehicle centre.
  */
-#define MEDICAL_DOCK_FRONT_TARGET_MM 345
-#define MEDICAL_DOCK_SIDE_TARGET_MM 1145
+#define MEDICAL_DOCK_FRONT_TARGET_MM 347
+#define MEDICAL_DOCK_SIDE_TARGET_MM 1147
 #define MEDICAL_DOCK_TOLERANCE_MM 35
 #define MEDICAL_DOCK_MAX_SPEED_MM_S 120
 #define MEDICAL_DOCK_MIN_SPEED_MM_S 20
@@ -42,7 +42,7 @@
  * Set this to 0 before the formal medicine-delivery run to restore the
  * four-read order and bedside barcode checks below.
  */
-#define MEDICAL_TEST_AUTO_SKIP_SCAN 1U
+#define MEDICAL_TEST_AUTO_SKIP_SCAN 0U
 
 typedef enum {
   MEDICINE_BOX_LEFT = 0,
@@ -59,6 +59,7 @@ static MedicineBox s_bed1_box;
 static MedicineBox s_bed3_box;
 static char s_scan_candidate[GM65_CODE_MAX];
 static uint8_t s_scan_candidate_count;
+static char s_last_scan[MEDICAL_TASK_SCAN_CODE_MAX];
 static uint32_t s_dock_in_tolerance_since_ms;
 
 static void medical_set_state(MedicalTaskState next);
@@ -170,6 +171,25 @@ static void medical_scan_reset(void)
   s_scan_candidate_count = 0U;
   /* Do not let a code captured while driving satisfy a scan state. */
   GM65_ClearFrameReady();
+  NUC_Nav_ClearScanResult();
+}
+
+static void medical_store_last_scan(const char *value)
+{
+  uint32_t primask;
+
+  if (value == NULL)
+  {
+    return;
+  }
+  primask = __get_PRIMASK();
+  __disable_irq();
+  strncpy(s_last_scan, value, sizeof(s_last_scan) - 1U);
+  s_last_scan[sizeof(s_last_scan) - 1U] = '\0';
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
 }
 
 static uint8_t medical_scan_confirmed(char *confirmed, uint16_t confirmed_size)
@@ -223,6 +243,93 @@ static uint8_t medical_scan_confirmed(char *confirmed, uint16_t confirmed_size)
   confirmed[confirmed_size - 1U] = '\0';
   medical_scan_reset();
   return 1U;
+}
+
+static uint8_t medical_scan_value_allowed(uint8_t format, const char *code)
+{
+  static const char *const order_codes[] = {"11", "13", "31", "33"};
+  static const char *const bed_codes[] = {
+      "6946522463487", "6921361255288", "6911345321863",
+      "6944060407291", "6906841121017", "6938237700261"};
+  const char *const *codes;
+  uint8_t count;
+  uint8_t i;
+
+  if (format == (uint8_t)NUC_SCAN_FORMAT_QR)
+  {
+    codes = order_codes;
+    count = (uint8_t)(sizeof(order_codes) / sizeof(order_codes[0]));
+  }
+  else if (format == (uint8_t)NUC_SCAN_FORMAT_CODE128)
+  {
+    codes = bed_codes;
+    count = (uint8_t)(sizeof(bed_codes) / sizeof(bed_codes[0]));
+  }
+  else
+  {
+    return 0U;
+  }
+
+  for (i = 0U; i < count; i++)
+  {
+    if (strcmp(code, codes[i]) == 0)
+    {
+      return 1U;
+    }
+  }
+  return 0U;
+}
+
+static uint8_t medical_take_scan(uint8_t expected_context,
+                                 uint8_t expected_format,
+                                 char *confirmed,
+                                 uint16_t confirmed_size)
+{
+  NUC_NavScanResult nuc_scan;
+  NUC_ScanAckStatus ack_status;
+
+  if (confirmed == NULL || confirmed_size == 0U)
+  {
+    return 0U;
+  }
+
+  /* The NUC camera is primary. Its own temporal confirmation is repeated
+   * here with task-state and whitelist validation before any state change. */
+  if (NUC_Nav_TakeScanResult(&nuc_scan) != 0U)
+  {
+    if (nuc_scan.context != expected_context ||
+        nuc_scan.format != expected_format)
+    {
+      ack_status = NUC_SCAN_ACK_WRONG_STATE;
+    }
+    else if (medical_scan_value_allowed(nuc_scan.format, nuc_scan.value) == 0U)
+    {
+      ack_status = NUC_SCAN_ACK_INVALID_CODE;
+    }
+    else
+    {
+      ack_status = NUC_SCAN_ACK_ACCEPTED;
+    }
+
+    (void)NUC_Nav_SendScanAck(nuc_scan.scan_id, ack_status);
+    if (ack_status == NUC_SCAN_ACK_ACCEPTED)
+    {
+      strncpy(confirmed, nuc_scan.value, confirmed_size - 1U);
+      confirmed[confirmed_size - 1U] = '\0';
+      medical_store_last_scan(confirmed);
+      return 1U;
+    }
+  }
+
+  /* Keep the hardware GM65 as an independent fallback. It still needs four
+   * identical frames, then passes through the same competition whitelist. */
+  if (medical_scan_confirmed(confirmed, confirmed_size) != 0U &&
+      medical_scan_value_allowed(expected_format, confirmed) != 0U)
+  {
+    medical_store_last_scan(confirmed);
+    return 1U;
+  }
+  return 0U;
 }
 
 static MedicineBox medical_box_for_bed(uint8_t bed)
@@ -383,6 +490,7 @@ void MedicalTask_Init(void)
   s_delivered_count = 0U;
   s_bed1_box = MEDICINE_BOX_LEFT;
   s_bed3_box = MEDICINE_BOX_RIGHT;
+  s_last_scan[0] = '\0';
   medical_scan_reset();
   medical_docking_reset();
   SERVO1_CLOSE();
@@ -410,7 +518,9 @@ void MedicalTask_Update(void)
       s_bed3_box = MEDICINE_BOX_RIGHT;
       medical_request_bed(s_first_bed);
 #else
-      if (medical_scan_confirmed(confirmed_code, sizeof(confirmed_code)) &&
+      if (medical_take_scan((uint8_t)NUC_SCAN_CONTEXT_ORDER,
+                            (uint8_t)NUC_SCAN_FORMAT_QR,
+                            confirmed_code, sizeof(confirmed_code)) &&
           medical_decode_order(confirmed_code))
       {
         medical_request_bed(s_first_bed);
@@ -426,10 +536,9 @@ void MedicalTask_Update(void)
 #if MEDICAL_TEST_AUTO_SKIP_SCAN
       medical_set_state(MEDICAL_TASK_DISPENSE_BED1);
 #else
-      /* The rule-specific bed barcode value is not yet calibrated.  Requiring
-       * four equal reads still prevents a transient/noisy frame from dispensing.
-       */
-      if (medical_scan_confirmed(confirmed_code, sizeof(confirmed_code)))
+      if (medical_take_scan((uint8_t)NUC_SCAN_CONTEXT_BED1,
+                            (uint8_t)NUC_SCAN_FORMAT_CODE128,
+                            confirmed_code, sizeof(confirmed_code)))
       {
         medical_set_state(MEDICAL_TASK_DISPENSE_BED1);
       }
@@ -449,7 +558,9 @@ void MedicalTask_Update(void)
 #if MEDICAL_TEST_AUTO_SKIP_SCAN
       medical_set_state(MEDICAL_TASK_DISPENSE_BED3);
 #else
-      if (medical_scan_confirmed(confirmed_code, sizeof(confirmed_code)))
+      if (medical_take_scan((uint8_t)NUC_SCAN_CONTEXT_BED3,
+                            (uint8_t)NUC_SCAN_FORMAT_CODE128,
+                            confirmed_code, sizeof(confirmed_code)))
       {
         medical_set_state(MEDICAL_TASK_DISPENSE_BED3);
       }
@@ -488,6 +599,25 @@ void MedicalTask_Update(void)
 uint8_t MedicalTask_GetState(void)
 {
   return (uint8_t)s_state;
+}
+
+uint8_t MedicalTask_GetLastScan(char *value, uint16_t value_size)
+{
+  uint32_t primask;
+
+  if (value == NULL || value_size == 0U)
+  {
+    return 0U;
+  }
+  primask = __get_PRIMASK();
+  __disable_irq();
+  strncpy(value, s_last_scan, value_size - 1U);
+  value[value_size - 1U] = '\0';
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+  return value[0] != '\0' ? 1U : 0U;
 }
 
 uint8_t MedicalTask_AllowsMotion(void)

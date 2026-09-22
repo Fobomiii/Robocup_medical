@@ -22,12 +22,26 @@ MSG_POSE = 0x10
 MSG_GOAL_REQUEST = 0x11
 MSG_NAV_STATUS = 0x12
 MSG_STP23L = 0x13
+MSG_SCAN_ACK = 0x14
 MSG_PATH_BEGIN = 0x20
 MSG_WAYPOINT = 0x21
 MSG_PATH_COMMIT = 0x22
 MSG_PATH_CANCEL = 0x23
 MSG_HEARTBEAT = 0x30
 MSG_VEL_CMD = 0x40
+MSG_SCAN_RESULT = 0x41
+
+SCAN_CONTEXT_ORDER = 1
+SCAN_CONTEXT_BED1 = 2
+SCAN_CONTEXT_BED3 = 3
+
+SCAN_FORMAT_QR = 1
+SCAN_FORMAT_CODE128 = 2
+
+SCAN_ACK_ACCEPTED = 1
+SCAN_ACK_WRONG_STATE = 2
+SCAN_ACK_INVALID_CODE = 3
+SCAN_CODE_MAX = 32
 
 GOAL_NONE = 0
 GOAL_HOME = 1
@@ -78,6 +92,20 @@ class Stp23lTelemetry:
     b_mm: int
     c_mm: int
     valid_mask: int
+
+
+@dataclass(frozen=True)
+class ScanResult:
+    scan_id: int
+    context: int
+    format: int
+    value: str
+
+
+@dataclass(frozen=True)
+class ScanAck:
+    scan_id: int
+    status: int
 
 
 def crc16_ccitt(data: bytes) -> int:
@@ -174,6 +202,50 @@ def decode_stp23l(payload: bytes) -> Stp23lTelemetry:
     if len(payload) != 7:
         raise ValueError(f"STP23L payload length is {len(payload)}, expected 7")
     return Stp23lTelemetry(*struct.unpack(">HHHB", payload))
+
+
+def encode_scan_result(scan_id: int, context: int, format: int, value: str) -> bytes:
+    if context not in {SCAN_CONTEXT_ORDER, SCAN_CONTEXT_BED1, SCAN_CONTEXT_BED3}:
+        raise ValueError(f"invalid scan context: {context}")
+    if format not in {SCAN_FORMAT_QR, SCAN_FORMAT_CODE128}:
+        raise ValueError(f"invalid scan format: {format}")
+    encoded = value.encode("ascii", "strict")
+    if not encoded or len(encoded) >= SCAN_CODE_MAX:
+        raise ValueError(f"scan value length must be 1..{SCAN_CODE_MAX - 1}")
+    if any(byte < 0x20 or byte > 0x7E for byte in encoded):
+        raise ValueError("scan value contains a control character")
+    return struct.pack(">HBBB", scan_id & 0xFFFF, context, format, len(encoded)) + encoded
+
+
+def decode_scan_result(payload: bytes) -> ScanResult:
+    if len(payload) < 6:
+        raise ValueError("SCAN_RESULT payload is too short")
+    scan_id, context, format, value_len = struct.unpack(">HBBB", payload[:5])
+    if value_len == 0 or value_len >= SCAN_CODE_MAX or len(payload) != 5 + value_len:
+        raise ValueError("SCAN_RESULT value length is invalid")
+    if context not in {SCAN_CONTEXT_ORDER, SCAN_CONTEXT_BED1, SCAN_CONTEXT_BED3}:
+        raise ValueError(f"invalid scan context: {context}")
+    if format not in {SCAN_FORMAT_QR, SCAN_FORMAT_CODE128}:
+        raise ValueError(f"invalid scan format: {format}")
+    value = payload[5:].decode("ascii", "strict")
+    if any(ord(character) < 0x20 or ord(character) > 0x7E for character in value):
+        raise ValueError("SCAN_RESULT value contains a control character")
+    return ScanResult(scan_id, context, format, value)
+
+
+def encode_scan_ack(scan_id: int, status: int) -> bytes:
+    if status not in {SCAN_ACK_ACCEPTED, SCAN_ACK_WRONG_STATE, SCAN_ACK_INVALID_CODE}:
+        raise ValueError(f"invalid scan ACK status: {status}")
+    return struct.pack(">HB", scan_id & 0xFFFF, status & 0xFF)
+
+
+def decode_scan_ack(payload: bytes) -> ScanAck:
+    if len(payload) != 3:
+        raise ValueError(f"SCAN_ACK payload length is {len(payload)}, expected 3")
+    ack = ScanAck(*struct.unpack(">HB", payload))
+    if ack.status not in {SCAN_ACK_ACCEPTED, SCAN_ACK_WRONG_STATE, SCAN_ACK_INVALID_CODE}:
+        raise ValueError(f"invalid scan ACK status: {ack.status}")
+    return ack
 
 
 def encode_path_begin(path_id: int, request_id: int, goal_id: int, count: int) -> bytes:

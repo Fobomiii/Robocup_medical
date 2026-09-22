@@ -92,7 +92,7 @@ def load_calibration_config(path: str) -> CalibrationConfig:
 
     return CalibrationConfig(
         enabled=bool(section.get("enabled", False)),
-        sensor_radius_mm=float(section.get("sensor_radius_mm", 155.0)),
+        sensor_radius_mm=float(section.get("sensor_radius_mm", 153.0)),
         samples_required=max(3, int(section.get("samples_required", 7))),
         max_offset_spread_mm=float(section.get("max_offset_spread_mm", 40.0)),
         distance_tolerance_mm=float(section.get("distance_tolerance_mm", 200.0)),

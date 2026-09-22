@@ -3,6 +3,7 @@
 
 import os
 import posixpath
+import shlex
 import stat
 import sys
 
@@ -13,6 +14,11 @@ HOST = os.environ.get("MEDICAL_NUC_HOST", "192.168.50.22")
 USER = os.environ.get("MEDICAL_NUC_USER", "fzurobot")
 PASSWORD = os.environ.get("MEDICAL_NUC_PASSWORD")
 ROS_DOMAIN_ID = os.environ.get("MEDICAL_ROS_DOMAIN_ID", "77")
+SCANNER_ENABLED = os.environ.get("MEDICAL_SCANNER_ENABLED", "true").lower()
+SCAN_CAMERA = os.environ.get(
+    "MEDICAL_SCAN_CAMERA",
+    "/dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0",
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
@@ -52,6 +58,12 @@ def main() -> int:
     if not ROS_DOMAIN_ID.isdigit() or not 0 <= int(ROS_DOMAIN_ID) <= 101:
         print("MEDICAL_ROS_DOMAIN_ID must be an integer from 0 to 101.")
         return 2
+    if SCANNER_ENABLED not in {"true", "false"}:
+        print("MEDICAL_SCANNER_ENABLED must be true or false.")
+        return 2
+    if not SCAN_CAMERA.startswith("/dev/"):
+        print("MEDICAL_SCAN_CAMERA must be an absolute /dev path.")
+        return 2
     for package_root in (PKG, PLANNER_PKG):
         manifest = os.path.join(package_root, "package.xml")
         if not os.path.isfile(manifest):
@@ -76,6 +88,8 @@ def main() -> int:
             stdout.read().decode(errors="replace"),
             stderr.read().decode(errors="replace"),
         )
+
+    sudo = f"printf '%s\\n' {shlex.quote(PASSWORD)} | sudo -S"
 
     sftp = client.open_sftp()
 
@@ -118,6 +132,33 @@ def main() -> int:
     sftp.close()
 
     run(f"chmod +x {REMOTE_HOME}/start_*.sh {REMOTE_HOME}/check_nuc.sh")
+
+    print("Installing scanner runtime dependencies...")
+    rc, out, err = run(
+        f"{sudo} env DEBIAN_FRONTEND=noninteractive apt-get install -y "
+        "python3-opencv python3-numpy python3-pyzbar libzbar0 v4l-utils python3-pip",
+        timeout=600,
+    )
+    print(out.strip() or err.strip())
+    if rc != 0:
+        client.close()
+        return rc
+
+    rc, out, err = run(
+        "/usr/bin/python3 -c 'import zxingcpp' 2>/dev/null || "
+        "/usr/bin/python3 -m pip install --user --no-deps zxing-cpp==3.1.1",
+        timeout=300,
+    )
+    print(out.strip() or err.strip())
+    if rc != 0:
+        client.close()
+        return rc
+
+    rc, out, err = run(f"{sudo} usermod -aG video {shlex.quote(USER)}")
+    if rc != 0:
+        print(err or out)
+        client.close()
+        return rc
     # RViz is a diagnostics tool and must not consume resources on every
     # desktop login. Remove the legacy autostart entry; start_rviz.sh remains
     # available for explicit remote or local launch.
@@ -129,13 +170,14 @@ def main() -> int:
         client.close()
         return rc
     rc, out, err = run(
-        f"cd {REMOTE_PKG} && python3 -m py_compile "
+        f"cd {REMOTE_PKG} && /usr/bin/python3 -m py_compile "
         "obstacle_detector/nav_protocol.py obstacle_detector/serial_transport.py "
         "obstacle_detector/field_goals.py obstacle_detector/stm32_bridge.py "
         "obstacle_detector/medical_navigator.py obstacle_detector/lidar_transform.py "
         "obstacle_detector/lidar_odometry_core.py "
         "obstacle_detector/lidar_odometry_guard.py "
         "obstacle_detector/stp23l_calibration.py "
+        "obstacle_detector/scanner_core.py obstacle_detector/code_scanner.py "
         "launch/obstacle.launch.py "
         "scripts/make_static_map.py"
     )
@@ -156,18 +198,23 @@ def main() -> int:
 
     # Configure unattended automatic navigation with real chassis output.
     # This value persists across service restarts and NUC reboots.
+    environment = (
+        "MEDICAL_NAV_DRY_RUN=false\n"
+        f"ROS_DOMAIN_ID={ROS_DOMAIN_ID}\n"
+        "ROS_LOCALHOST_ONLY=1\n"
+        f"MEDICAL_SCANNER_ENABLED={SCANNER_ENABLED}\n"
+        f"MEDICAL_SCAN_CAMERA={SCAN_CAMERA}\n"
+    )
     rc, out, err = run(
-        f"mkdir -p {REMOTE_HOME}/.config && "
-        f"printf 'MEDICAL_NAV_DRY_RUN=false\\nROS_DOMAIN_ID={ROS_DOMAIN_ID}\\n"
-        "ROS_LOCALHOST_ONLY=1\\n' > "
-        f"{REMOTE_HOME}/.config/medical-navigation.env"
+        f"mkdir -p {shlex.quote(REMOTE_HOME + '/.config')} && "
+        f"printf %s {shlex.quote(environment)} > "
+        f"{shlex.quote(REMOTE_HOME + '/.config/medical-navigation.env')}"
     )
     if rc != 0:
         print(err or out)
         client.close()
         return rc
 
-    sudo = f"printf '%s\\n' '{PASSWORD}' | sudo -S"
     rc, out, err = run(
         f"{sudo} install -m 0644 {REMOTE_HOME}/mid360.service "
         "/etc/systemd/system/mid360.service && "
@@ -181,6 +228,7 @@ def main() -> int:
     client.close()
     if rc == 0:
         print("Deployment complete in AUTORUN mode (DRY-RUN=false).")
+        print(f"Scanner: enabled={SCANNER_ENABLED} camera={SCAN_CAMERA}")
         print("WARNING: powering or rebooting the robot may start chassis motion automatically.")
         print("RViz autostart is disabled; run ~/start_rviz.sh when needed.")
     return rc

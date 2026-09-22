@@ -35,6 +35,17 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         )
         self.assertFalse(follow_path["visualize"])
 
+    def test_omni_controller_can_reverse_without_forcing_path_heading(self):
+        follow_path = self.config["controller_server"]["ros__parameters"]["FollowPath"]
+        self.assertEqual(follow_path["motion_model"], "Omni")
+        self.assertEqual(follow_path["vx_min"], -0.40)
+        self.assertTrue(follow_path["PathAngleCritic"]["enabled"])
+        self.assertEqual(follow_path["PathAngleCritic"]["mode"], 1)
+        self.assertTrue(follow_path["GoalAngleCritic"]["enabled"])
+        self.assertEqual(
+            follow_path["GoalAngleCritic"]["threshold_to_consider"], 1.2
+        )
+
     def test_collision_monitor_has_predictive_and_emergency_guards(self):
         monitor = self.config["collision_monitor"]["ros__parameters"]
         self.assertEqual(

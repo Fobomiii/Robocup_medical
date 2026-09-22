@@ -39,19 +39,19 @@ class Stp23lCalibrationTest(unittest.TestCase):
             self.assertEqual(
                 bed.expected_center_side_distance_mm
                 - self.config.sensor_radius_mm,
-                1145.0,
+                1147.0,
             )
             self.assertEqual(
                 bed.expected_center_front_distance_mm
                 - self.config.sensor_radius_mm,
-                345.0,
+                347.0,
             )
 
     def test_protocol_round_trip(self):
-        payload = bytes.fromhex("04 79 01 59 04 79 07")
+        payload = bytes.fromhex("04 7B 01 5B 04 7B 07")
         frame = FrameParser().feed(encode_frame(MSG_STP23L, 9, payload))[0]
         ranges = decode_stp23l(frame.payload)
-        self.assertEqual(ranges, Stp23lTelemetry(1145, 345, 1145, 0x07))
+        self.assertEqual(ranges, Stp23lTelemetry(1147, 347, 1147, 0x07))
 
     def test_bed1_corrects_surveyed_ops_to_true_circle_center(self):
         event = None
@@ -64,8 +64,8 @@ class Stp23lCalibrationTest(unittest.TestCase):
             actual_y = raw_y + 50.0
             ranges = Stp23lTelemetry(
                 0,
-                int(5900.0 - actual_y - 155.0),
-                int(actual_x - (-3500.0) - 155.0),
+                int(5900.0 - actual_y - 153.0),
+                int(actual_x - (-3500.0) - 153.0),
                 0x06,
             )
             event = self.calibrator.update(
@@ -79,7 +79,7 @@ class Stp23lCalibrationTest(unittest.TestCase):
         )
 
     def test_bed3_uses_right_sensor_and_recalibrates_current_drift(self):
-        ranges = Stp23lTelemetry(1145, 345, 0, 0x03)
+        ranges = Stp23lTelemetry(1147, 347, 0, 0x03)
         event = None
         for _ in range(self.config.samples_required):
             event = self.calibrator.update(
@@ -98,7 +98,7 @@ class Stp23lCalibrationTest(unittest.TestCase):
         self.assertFalse(event.applied)
 
     def test_leaving_bed_rearms_calibration_for_next_visit(self):
-        ranges = Stp23lTelemetry(0, 345, 1145, 0x06)
+        ranges = Stp23lTelemetry(0, 347, 1147, 0x06)
         for _ in range(self.config.samples_required):
             first = self.calibrator.update(
                 3, NAV_FOLLOWING, -2200.0, 5400.0, 0, ranges

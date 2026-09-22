@@ -21,8 +21,8 @@ Nav2 global/local costmap -> NavFn + MPPI(Omni) -> Collision Monitor
 
 定位主体使用 OPS9 的 X/Y 和 HWT101CT 航向，不使用 Mid360 里程计或旧算法估计位置。
 1/3 床停车位增加 STP23L 绝对距离校正：A=右、B=前、C=左，三者均安装在距车心
-`155 mm` 处。停车圆边与床边相切；侧向传感器光路不受床遮挡，测外侧场地边界约
-`1145 mm`，前向传感器测紧贴床体的床头柜前缘约 `345 mm`。程序只在匹配床位、
+`153 mm` 处。停车圆边与床边相切；侧向传感器光路不受床遮挡，测外侧场地边界约
+`1147 mm`，前向传感器测紧贴床体的床头柜前缘约 `347 mm`。程序只在匹配床位、
 距离和航向均通过门限时更新 OPS XY 偏置。
 
 ## 医疗任务链
@@ -30,9 +30,9 @@ Nav2 global/local costmap -> NavFn + MPPI(Omni) -> Collision Monitor
 STM32 的 `MedicalTask` 只负责任务编排，不参与运动计算：
 
 ```text
-Nav2 到护士台 -> GM65 连续确认任务码
-              -> Nav2 到第一张床 -> 连续确认床头码 -> 对应药箱放药
-              -> Nav2 到第二张床 -> 连续确认床头码 -> 对应药箱放药
+Nav2 到护士台 -> NUC 相机/GM65 确认任务码
+              -> Nav2 到第一张床 -> NUC 相机/GM65 确认床头码 -> 对应药箱放药
+              -> Nav2 到第二张床 -> NUC 相机/GM65 确认床头码 -> 对应药箱放药
               -> Nav2 回起点
 ```
 
@@ -40,6 +40,10 @@ Nav2 到护士台 -> GM65 连续确认任务码
 3 号床；个位决定第一张床使用左/右药箱，另一张床使用另一个药箱。每次移动只发送
 `home/nurse/bed1/bed3` 目标给 `medical_navigator`，旧分段转向、STM32 位姿 PID 和 OA
 不会重新进入控制链。
+
+DECXIN 相机是主扫码源：任务态 2 只识别 QR，任务态 4/7 只识别 CODE128；两帧一致后
+经带 ACK 和重发的串口消息交给 STM32。STM32 会再次检查任务状态和赛事码白名单，只有
+通过校验才继续任务。原 GM65 保留为备用源，并继续使用四次一致确认。
 
 速度还有独立任务门控：只有任务状态为前往护士台、1 号床、3 号床或起点，且 Nav2
 状态为 `FOLLOWING` 时，STM32 才接受速度。NUC bridge 默认也执行同样检查，因此扫码、
@@ -62,15 +66,15 @@ STM32 的 `DJI_Chassis_SetVelocityCommand()` 中转换。
 
 `config/robot.urdf` 当前使用以下实测初值：
 
-- 雷达中心在车体旋转中心前方 `0.10 m`。
-- 雷达中心离地 `0.30 m`。
-- 上下颠倒且朝向反转，按绕 Y 轴 `180°` 表示。
+- 雷达中心位于车体旋转中心正上方，水平偏移为 `0 m`。
+- 雷达中心离地 `0.33 m`。
+- 雷达正装，前向轴与物理车头一致，使用 `rpy="0 0 0"`。
 - 原始点云保持驱动时间戳和 `livox_frame`；自滤节点使用 URDF TF 转到 `base_link`，删除车体
   半径 `0.26 m`、高度 `-0.05–0.45 m` 内的铝型材/车身回波，再发布
   `/livox/lidar_filtered` 给 costmap 和 Collision Monitor。
 - costmap 只采用车体坐标高度约 `0.04–0.32 m` 的点。
 
-若“前方 10 cm”的实际安装方向相反，只修改 URDF 中 `livox_joint` 的 X 符号。
+安装位置统一由 URDF 中 `livox_joint` 的 `xyz="0 0 0.33"` 表示。
 
 ## 主要文件
 
@@ -79,7 +83,10 @@ STM32 的 `DJI_Chassis_SetVelocityCommand()` 中转换。
 ├── obstacle_detector/stm32_bridge.py       串口唯一所有者、里程计/TF、速度下发
 ├── obstacle_detector/medical_navigator.py  STM32 目标请求转 NavigateToPose action
 ├── obstacle_detector/lidar_transform.py    Mid360 外参变换与车体自回波过滤
+├── obstacle_detector/code_scanner.py       DECXIN QR/CODE128 状态门控扫码
+├── obstacle_detector/scanner_core.py       扫码白名单和多帧一致确认
 ├── config/nav2_params.yaml                 Nav2、MPPI、PointCloud2 costmap 参数
+├── config/scanner.yaml                     相机、ROI、焦距和确认参数
 ├── config/robot.urdf                       车体和 Mid360 安装外参
 ├── config/static_map.yaml/.pgm             静态场地图
 ├── scripts/make_static_map.py              场地坐标转 ROS 静态地图
@@ -104,7 +111,7 @@ journalctl -fu obstacle-detector.service
 RViz 必须在图形用户登录后启动，因此使用：
 
 ```text
-/home/gp-pcie/start_rviz.sh
+$HOME/start_rviz.sh
 ```
 
 所有本车 ROS 2 进程固定使用独立 Domain，并限制为 NUC 本机发现，避免比赛网络中的其他
@@ -176,10 +183,22 @@ Remove-Item Env:MEDICAL_NUC_PASSWORD
 部署会移除旧的 RViz desktop 自启动项。RViz 仅在需要诊断时手动运行。当前部署脚本会按比赛模式写入：
 
 ```text
-/home/gp-pcie/.config/medical-navigation.env
+$HOME/.config/medical-navigation.env
 MEDICAL_NAV_DRY_RUN=false
 ROS_DOMAIN_ID=77
 ROS_LOCALHOST_ONLY=1
+MEDICAL_SCANNER_ENABLED=true
+MEDICAL_SCAN_CAMERA=/dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0
+```
+
+部署脚本会安装 OpenCV、ZBar、v4l-utils 和 ZXing，并把用户加入 `video` 组。相机参数或
+设备路径需要修改时，可先在 PowerShell 设置 `MEDICAL_SCAN_CAMERA` 或直接编辑
+`config/scanner.yaml`，再执行同一个 `deploy_nuc.py`。部署后可用以下命令检查链路：
+
+```bash
+ros2 topic echo /medical_nav/scanner_status
+ros2 topic echo /medical_nav/scan_transport_status
+ros2 topic echo /medical_nav/task_state
 ```
 
 脚本随后会重启服务，STM32 满足任务门控时车体可能立即运动。首次验证新规划器时必须架空
@@ -234,7 +253,7 @@ python3 scripts/make_static_map.py
    接近 10 Hz；雷达 delay 应较小且稳定。静止时观察 `/medical_nav/bridge_status` 中的
    `yaw_cdeg`，若持续抖动超过约 100--200 cdeg，远处障碍会明显左右摆动。
 
-MID360 中心离旋转中心 0.10 m、离地约 0.30 m，且倒装后主要看到 0.30 m 以下物体，
-所以点云只显示障碍物下部是硬件视场造成的正常现象。确认 TF、航向和时间戳都正确后，
+MID360 中心位于旋转中心正上方、离地约 0.33 m。若点云只显示障碍物下部，应先结合
+实际视场确认是否属于正常现象。确认 TF、航向和时间戳都正确后，
 若 costmap 仍因 Livox 稀疏帧闪烁，再把 `observation_persistence` 从 `0.0` 小幅调到
 `0.2--0.3 s`；过大则会留下移动拖影。

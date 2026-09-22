@@ -1173,6 +1173,7 @@ void StartOledTask(void *argument)
 
   for (;;)
   {
+    char scan_code[MEDICAL_TASK_SCAN_CODE_MAX];
     uint16_t distance_a_mm = STP32_getA();
     uint16_t distance_b_mm = STP32_getB();
     uint16_t distance_c_mm = STP32_getC();
@@ -1180,6 +1181,16 @@ void StartOledTask(void *argument)
     ssd1309_clearDisplay();
     ssd1309_setTextSize(1U);
     ssd1309_setTextColor(SSD1309_WHITE);
+
+    ssd1309_setCursor(0, 0);
+    if (MedicalTask_GetLastScan(scan_code, sizeof(scan_code)) != 0U)
+    {
+      ssd1309_printf("SCAN:%s", scan_code);
+    }
+    else
+    {
+      ssd1309_print("SCAN:--");
+    }
 
     ssd1309_setCursor(0, 8);
     ssd1309_printf("X:%.2f", OPS_GetX());
@@ -1194,6 +1205,8 @@ void StartOledTask(void *argument)
     ssd1309_printf("B:%umm", (unsigned int)distance_b_mm);
     ssd1309_setCursor(0, 48);
     ssd1309_printf("C:%umm", (unsigned int)distance_c_mm);
+    ssd1309_setCursor(0, 56);
+    ssd1309_printf("TASK:%u", (unsigned int)MedicalTask_GetState());
 
     ssd1309_display();
     osDelay(100);

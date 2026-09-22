@@ -2,7 +2,7 @@
 # Read-only Nav2 preflight for the NUC. This script never enables chassis motion.
 
 ROS_SETUP=/opt/ros/humble/setup.bash
-WS_SETUP=/home/gp-pcie/livox_ws/install/setup.bash
+WS_SETUP="$HOME/livox_ws/install/setup.bash"
 
 section() {
     printf '\n=== %s ===\n' "$1"
@@ -30,11 +30,24 @@ else
     echo "[WARN] workspace setup not found: $WS_SETUP"
 fi
 
+NAV_ENV="$HOME/.config/medical-navigation.env"
+if [ -r "$NAV_ENV" ]; then
+    set -a
+    source "$NAV_ENV"
+    set +a
+fi
+
+export ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-77}
+export ROS_LOCALHOST_ONLY=${ROS_LOCALHOST_ONLY:-1}
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
 # ROS 2 environment hooks may probe optional unset variables while sourcing.
 # Enable strict unset-variable checking only after both setup files have run.
 set -u
+
+section "ROS network isolation"
+printf 'ROS_DOMAIN_ID=%s\n' "$ROS_DOMAIN_ID"
+printf 'ROS_LOCALHOST_ONLY=%s\n' "$ROS_LOCALHOST_ONLY"
 
 section "Required ROS packages"
 for package in \
@@ -67,8 +80,8 @@ do
 done
 
 section "Motion lock"
-if [ -f /home/gp-pcie/.config/medical-navigation.env ]; then
-    cat /home/gp-pcie/.config/medical-navigation.env
+if [ -f "$HOME/.config/medical-navigation.env" ]; then
+    cat "$HOME/.config/medical-navigation.env"
 else
     echo "[WARN] mode file missing; service fallback is dry-run=true"
 fi

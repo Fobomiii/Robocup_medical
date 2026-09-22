@@ -31,7 +31,7 @@ from geometry_msgs.msg import PoseStamped, TransformStamped, Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Range
-from std_msgs.msg import String
+from std_msgs.msg import String, UInt8
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
 from .nav_protocol import (
@@ -41,17 +41,23 @@ from .nav_protocol import (
     MSG_HEARTBEAT,
     MSG_NAV_STATUS,
     MSG_POSE,
+    MSG_SCAN_ACK,
+    MSG_SCAN_RESULT,
     MSG_STP23L,
     MSG_VEL_CMD,
     NAV_FOLLOWING,
+    SCAN_ACK_ACCEPTED,
     decode_goal_request,
     decode_pose,
+    decode_scan_ack,
     decode_stp23l,
     encode_frame,
     encode_heartbeat,
     encode_nav_status,
+    encode_scan_result,
     encode_velocity,
 )
+from .scanner_core import scan_matches_task
 from .serial_transport import SerialTransport
 from .stp23l_calibration import (
     CalibrationConfig,
@@ -87,6 +93,7 @@ class Stm32Bridge(Node):
         self.declare_parameter("cmd_timeout_s", 0.4)
         self.declare_parameter("publish_rate_hz", 50.0)
         self.declare_parameter("heartbeat_rate_hz", 10.0)
+        self.declare_parameter("scan_retry_s", 0.15)
         self.declare_parameter("twist_filter_alpha", 0.35)
         # NUC-side linear clamp: 1.00 m/s per body-axis component. The
         # STM32 applies its own independent 2.00 m/s hard cap.
@@ -113,6 +120,7 @@ class Stm32Bridge(Node):
         self.max_speed_mm_s = float(get("max_speed_mm_s"))
         self.max_yaw_cdeg_s = float(get("max_yaw_cdeg_s"))
         self.twist_filter_alpha = max(0.0, min(1.0, float(get("twist_filter_alpha"))))
+        self.scan_retry_s = max(0.05, float(get("scan_retry_s")))
         self.dry_run = bool(get("dry_run"))
         self.enforce_task_gate = bool(get("enforce_task_gate"))
         field_config = str(get("field_config"))
@@ -123,7 +131,7 @@ class Stm32Bridge(Node):
                 f"STP23L calibration disabled: cannot load {field_config}: {exc}"
             )
             calibration_config = CalibrationConfig(
-                False, 155.0, 7, 40.0, 200.0, 8.0, 400.0, ()
+                False, 153.0, 7, 40.0, 200.0, 8.0, 400.0, ()
             )
         self.calibrator = OpsRangeCalibrator(calibration_config)
         self.sensor_radius_m = calibration_config.sensor_radius_mm / 1000.0
@@ -142,6 +150,9 @@ class Stm32Bridge(Node):
         self.started_s = time.monotonic()
         self.stp23l = None
         self.last_calibration_event = None
+        self.next_scan_id = 0
+        self.pending_scan = None
+        self.last_scan_ack = None
 
         self.tf_broadcaster = TransformBroadcaster(self)
         self.static_tf_broadcaster = StaticTransformBroadcaster(self)
@@ -156,6 +167,10 @@ class Stm32Bridge(Node):
         self.calibration_pub = self.create_publisher(
             String, "/medical_nav/ops_calibration", 10
         )
+        self.task_state_pub = self.create_publisher(UInt8, "/medical_nav/task_state", 10)
+        self.scan_transport_pub = self.create_publisher(
+            String, "/medical_nav/scan_transport_status", 10
+        )
         self.range_pubs = {
             "a": self.create_publisher(Range, "/medical_nav/stp23l/right", 10),
             "b": self.create_publisher(Range, "/medical_nav/stp23l/front", 10),
@@ -165,6 +180,9 @@ class Stm32Bridge(Node):
         self.create_subscription(Twist, self.cmd_vel_topic, self._cmd_vel, 10)
         self.create_subscription(
             String, "/medical_nav/navigator_status", self._navigator_status, 10
+        )
+        self.create_subscription(
+            String, "/medical_nav/scan_result", self._scanner_result, 10
         )
 
         self.transport = SerialTransport(
@@ -204,12 +222,15 @@ class Stm32Bridge(Node):
                     self._handle_goal_request(frame)
                 elif frame.msg_type == MSG_STP23L:
                     self._handle_stp23l(frame)
+                elif frame.msg_type == MSG_SCAN_ACK:
+                    self._handle_scan_ack(frame)
             except (ValueError, struct.error) as exc:
                 self.get_logger().warn(
                     f"Rejected frame 0x{frame.msg_type:02X}: {exc}", throttle_duration_sec=2.0
                 )
 
     def _handle_pose(self, frame: Frame) -> None:
+        previous_task_state = self.pose.task_state if self.pose is not None else None
         pose = decode_pose(frame.payload)
         received_s = time.monotonic()
         x, y, yaw = self._as_ros(pose.x_mm, pose.y_mm, pose.yaw_cdeg)
@@ -240,6 +261,18 @@ class Stm32Bridge(Node):
         self.previous_ros_pose = (x, y, yaw, received_s)
         self.pose = pose
         self.last_pose_s = received_s
+        task_message = UInt8()
+        task_message.data = pose.task_state
+        self.task_state_pub.publish(task_message)
+        if previous_task_state != pose.task_state and self.pending_scan is not None:
+            pending = self.pending_scan
+            if not scan_matches_task(
+                pose.task_state,
+                pending["context"],
+                pending["format"],
+                pending["value"],
+            ):
+                self.pending_scan = None
 
     def _handle_goal_request(self, frame: Frame) -> None:
         request = decode_goal_request(frame.payload)
@@ -318,6 +351,73 @@ class Stm32Bridge(Node):
                 f"field pose=({event.measured_x_mm:.1f}, {event.measured_y_mm:.1f}) mm"
             )
 
+    def _handle_scan_ack(self, frame: Frame) -> None:
+        ack = decode_scan_ack(frame.payload)
+        if self.pending_scan is None or ack.scan_id != self.pending_scan["scan_id"]:
+            return
+        self.last_scan_ack = {"scan_id": ack.scan_id, "status": ack.status}
+        message = String()
+        message.data = json.dumps(self.last_scan_ack)
+        self.scan_transport_pub.publish(message)
+        if ack.status == SCAN_ACK_ACCEPTED:
+            self.get_logger().info(
+                f"STM32 accepted scan #{ack.scan_id}: {self.pending_scan['value']}"
+            )
+        else:
+            self.get_logger().warn(
+                f"STM32 rejected scan #{ack.scan_id} with status {ack.status}"
+            )
+        self.pending_scan = None
+
+    def _scanner_result(self, message: String) -> None:
+        try:
+            result = json.loads(message.data)
+            context = int(result["context"])
+            scan_format = int(result["format"])
+            value = str(result["value"])
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            self.get_logger().warn(f"Bad scanner result: {exc}")
+            return
+        if not self._pose_is_fresh() or not scan_matches_task(
+            self.pose.task_state, context, scan_format, value
+        ):
+            self.get_logger().warn(
+                f"Ignored scan outside expected task state: state="
+                f"{self.pose.task_state if self.pose else 'none'} value={value}"
+            )
+            return
+        if self.pending_scan is not None:
+            return
+
+        self.next_scan_id = (self.next_scan_id + 1) & 0xFFFF
+        if self.next_scan_id == 0:
+            self.next_scan_id = 1
+        payload = encode_scan_result(
+            self.next_scan_id, context, scan_format, value
+        )
+        self.pending_scan = {
+            "scan_id": self.next_scan_id,
+            "context": context,
+            "format": scan_format,
+            "value": value,
+            "payload": payload,
+            "last_sent_s": 0.0,
+            "attempts": 0,
+        }
+        self._send_pending_scan(force=True)
+
+    def _send_pending_scan(self, force=False) -> None:
+        if self.pending_scan is None:
+            return
+        now = time.monotonic()
+        if not force and now - self.pending_scan["last_sent_s"] < self.scan_retry_s:
+            return
+        frame = encode_frame(MSG_SCAN_RESULT, self.tx_seq, self.pending_scan["payload"])
+        if self.transport.send(frame):
+            self.tx_seq = (self.tx_seq + 1) & 0xFF
+            self.pending_scan["last_sent_s"] = now
+            self.pending_scan["attempts"] += 1
+
     # ------------------------------------------------------------------
     # Pose out
     # ------------------------------------------------------------------
@@ -363,6 +463,7 @@ class Stm32Bridge(Node):
 
     def _tick(self) -> None:
         self._drain_frames()
+        self._send_pending_scan()
         if self._pose_is_fresh():
             self._publish_pose()
         self._command_watchdog()
@@ -533,6 +634,12 @@ class Stm32Bridge(Node):
                 "c_left_mm": self.stp23l.c_mm,
                 "valid_mask": self.stp23l.valid_mask,
             }
+        status["scanner_transport"] = {
+            "pending": self.pending_scan is not None,
+            "attempts": self.pending_scan["attempts"] if self.pending_scan else 0,
+            "value": self.pending_scan["value"] if self.pending_scan else None,
+            "last_ack": self.last_scan_ack,
+        }
         message = String()
         message.data = json.dumps(status, ensure_ascii=False)
         self.status_pub.publish(message)

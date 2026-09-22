@@ -18,14 +18,14 @@ from obstacle_detector.lidar_transform import (
 
 
 class LidarSelfFilterTest(unittest.TestCase):
-    def test_urdf_mount_transform_matches_inverted_mid360(self):
-        rotation = quaternion_matrix(0.0, 1.0, 0.0, 0.0)
-        translation = np.array([0.10, 0.0, 0.30], dtype=np.float32)
+    def test_urdf_mount_transform_matches_centered_upright_mid360(self):
+        rotation = quaternion_matrix(0.0, 0.0, 0.0, 1.0)
+        translation = np.array([0.0, 0.0, 0.33], dtype=np.float32)
         sensor_points = np.array([[1.0, 2.0, 3.0]], dtype=np.float32)
 
         actual = transform_points(sensor_points, rotation, translation)
 
-        np.testing.assert_allclose(actual, [[-0.90, 2.0, -2.70]], atol=1e-6)
+        np.testing.assert_allclose(actual, [[1.0, 2.0, 3.33]], atol=1e-6)
 
     def test_quaternion_is_normalized_before_use(self):
         rotation = quaternion_matrix(0.0, 2.0, 0.0, 0.0)

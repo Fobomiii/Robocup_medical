@@ -34,14 +34,14 @@ goals:
   bed1:  {id: 3, label: "Bed 1 goal", x_mm: -2200, y_mm: 5400, yaw_deg: 0}
   bed3:  {id: 4, label: "Bed 3 goal", x_mm: 2200, y_mm: 5400, yaw_deg: 0}
 
-# A=right, B=front, C=left. The sensors sit 155 mm from the vehicle centre.
+# A=right, B=front, C=left. The sensors sit 153 mm from the vehicle centre.
 # The 300 mm parking circle is tangent to the bed's inner side, but the side
 # sensor has an unobstructed line of sight to the outer field boundary. The
-# expected sensor-face ranges are side=1300-155=1145 mm and
-# front=500-155=345 mm.
+# expected sensor-face ranges are side=1300-153=1147 mm and
+# front=500-153=347 mm.
 stp23l_calibration:
   enabled: true
-  sensor_radius_mm: 155
+  sensor_radius_mm: 153
   samples_required: 7
   max_offset_spread_mm: 40
   distance_tolerance_mm: 200

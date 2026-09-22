@@ -1,13 +1,162 @@
-调整膨胀区
+NUC / ROS 2 操作说明（当前主机）
+
+主机信息
+- SSH：fzurobot@192.168.50.22
+- Ubuntu：22.04
+- ROS 2：Humble
+- 工作区：/home/fzurobot/livox_ws
+- Mid360 主机网口：192.168.1.50
+- Mid360 地址：192.168.1.107
+- STM32 稳定设备名：/dev/medical_stm32
+- ROS_DOMAIN_ID=77
+- ROS_LOCALHOST_ONLY=1（ROS 只在本机通信，避免比赛网络中的其他 ROS 设备干扰）
+
+
+一、每次 SSH 后加载环境
+
 set +u
+set -a
+source ~/.config/medical-navigation.env
+set +a
 source /opt/ros/humble/setup.bash
 source ~/livox_ws/install/setup.bash
+
+
+set -a
+source ~/.config/medical-navigation.env
+set +a
+source /opt/ros/humble/setup.bash
+source ~/livox_ws/install/setup.bash
+查看当前隔离和运动模式：
+
+env | grep -E 'ROS_DOMAIN_ID|ROS_LOCALHOST_ONLY|MEDICAL_NAV_DRY_RUN'
+ros2 param get /stm32_bridge dry_run
+
+说明：
+- dry_run=true：不向 STM32 发送底盘速度，适合部署和只读检查。
+- dry_run=false：允许真实运动；STM32 若已派发任务，服务启动后可能立即运动。
+
+
+二、服务和系统状态检查
+
+systemctl is-active mid360.service obstacle-detector.service
+systemctl show mid360.service obstacle-detector.service \
+  -p Id -p ActiveState -p SubState -p MainPID -p NRestarts
+
+bash ~/check_nuc.sh
+
+常用单项检查：
+
+ros2 node list | sort
+timeout 8 ros2 topic hz /livox/lidar
+timeout 8 ros2 topic hz /livox/lidar_filtered
+timeout 8 ros2 topic hz /odom
+timeout 5 ros2 topic echo --once /medical_nav/bridge_status
+ros2 lifecycle get /map_server
+ros2 lifecycle get /collision_monitor
+timeout 5 ros2 run tf2_ros tf2_echo map base_link
+
+正常参考值：
+- /livox/lidar：约 10 Hz
+- /livox/lidar_filtered：约 10 Hz
+- /odom：约 50 Hz
+- map_server、controller_server、planner_server、behavior_server、bt_navigator、collision_monitor：active [3]
+- mid360.service、obstacle-detector.service：active，NRestarts=0
+
+tf2_echo 刚启动时短暂显示 frame does not exist，随后能持续输出变换，属于发现过程，不是故障。
+
+
+三、当前导航任务状态
+
+timeout 5 ros2 topic echo --once \
+  /navigate_to_pose/_action/status || true
+
+常见状态：
+- status: 2：任务正在执行。
+- 如果 status: 2 且 dry_run=true，机器人不会移动，随后出现 Failed to make progress、spin failed、backup failed 是预期结果，不代表地图或 TF 损坏。
+- 暂时不测试运动时，停止导航服务，避免不断恢复和刷日志：
+
+sudo systemctl stop obstacle-detector.service
+
+
+四、安全模式与真实运动模式
+
+1. 切换到安全模式（不输出底盘速度）
+
+sudo systemctl stop obstacle-detector.service
+mkdir -p ~/.config
+printf '%s\n' \
+  'MEDICAL_NAV_DRY_RUN=true' \
+  'ROS_DOMAIN_ID=77' \
+  'ROS_LOCALHOST_ONLY=1' \
+  > ~/.config/medical-navigation.env
+sudo systemctl start obstacle-detector.service
+sleep 8
+ros2 param get /stm32_bridge dry_run
+
+必须显示：Boolean value is: True
+
+2. 切换到真实运动模式
+
+警告：确认场地安全、底盘架空或急停可用，并确认 STM32 当前任务。服务重启后可能立即执行已存在任务。
+
+sudo systemctl stop obstacle-detector.service
+sed -i \
+  's/^MEDICAL_NAV_DRY_RUN=.*/MEDICAL_NAV_DRY_RUN=false/' \
+  ~/.config/medical-navigation.env
+sudo systemctl start obstacle-detector.service
+sleep 8
+ros2 param get /stm32_bridge dry_run
+timeout 5 ros2 topic echo --once /medical_nav/bridge_status
+
+必须显示：Boolean value is: False
+机器人开始执行时，bridge_status 中的 cmd_count 应持续增加。
+
+
+五、手动启动 RViz（不会自启动）
+
+先用带 X11 转发的 SSH 登录；Windows 端需要可用的 X Server：
+
+ssh -Y fzurobot@192.168.50.22
+
+远端运行：
+set +u
+set -a
+source ~/.config/medical-navigation.env
+set +a
+source /opt/ros/humble/setup.bash
+source ~/livox_ws/install/setup.bash
+pkill -TERM rviz2 2>/dev/null || true
+unset LIBGL_ALWAYS_SOFTWARE
+bash ~/start_rviz.sh
+
+如果 NUC 连接了本地显示器，也可直接在 NUC 桌面终端运行 bash ~/start_rviz.sh。
+不要把 RViz 加入开机自启动。
+
+
+六、查看日志
+
+journalctl -u mid360.service -n 100 --no-pager
+journalctl -u obstacle-detector.service -n 150 --no-pager
+
+只看最近错误：
+
+journalctl -u obstacle-detector.service --since '-10 min' --no-pager | \
+grep -Ei 'error|failed|exception|traceback|segfault|bus error|process has died' | \
+tail -n 100
+
+实时查看：
+
+journalctl -fu obstacle-detector.service
+
+
+七、调整膨胀区（临时参数）
 
 # 查看当前值
 ros2 param get /local_costmap/local_costmap inflation_layer.inflation_radius
 ros2 param get /global_costmap/global_costmap inflation_layer.inflation_radius
 
-# 设置局部、全局膨胀半径 决定膨胀区域延伸多远
+# 设置局部、全局膨胀半径
 ros2 param set /local_costmap/local_costmap inflation_layer.inflation_radius 0.30
 ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0.30
 
@@ -15,83 +164,100 @@ ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0
 ros2 param set /local_costmap/local_costmap inflation_layer.enabled true
 ros2 param set /global_costmap/global_costmap inflation_layer.enabled true
 
-# 清空并立即重建代价图
-ros2 service call /local_costmap/clear_entirely_local_costmap \
-nav2_msgs/srv/ClearEntireCostmap "{}"
-
-ros2 service call /global_costmap/clear_entirely_global_costmap \
-nav2_msgs/srv/ClearEntireCostmap "{}"
-
-验证
-ros2 param get /local_costmap/local_costmap inflation_layer.inflation_radius
-ros2 param get /global_costmap/global_costmap inflation_layer.inflation_radius
-
-代价区衰减
-
-# 数值越大，代价下降越快；数值越小，高代价区域越宽  决定膨胀区域内颜色/代价衰减多快
+# 数值越大，代价下降越快；数值越小，高代价区域越宽
 ros2 param set /local_costmap/local_costmap inflation_layer.cost_scaling_factor 25.0
 ros2 param set /global_costmap/global_costmap inflation_layer.cost_scaling_factor 25.0
 
+# 清空并重建代价图
+ros2 service call /local_costmap/clear_entirely_local_costmap \
+  nav2_msgs/srv/ClearEntireCostmap '{}'
+ros2 service call /global_costmap/clear_entirely_global_costmap \
+  nav2_msgs/srv/ClearEntireCostmap '{}'
 
-在shh中开启RVIZ
+ros2 param set 修改的参数只在本次进程中有效；服务重启后恢复 YAML 配置。
+永久值修改：
+C:\Users\ASUS\Desktop\Robocup医疗\NUC_MID360\2_ROS2包_obstacle_detector\config\nav2_params.yaml
 
-set +u
-source /opt/ros/humble/setup.bash
-source ~/livox_ws/install/setup.bash
 
-export QT_X11_NO_MITSHM=1
-rviz2 -d ~/medical_nav.rviz
+八、调整全局规划器净空倾向（临时参数）
 
-路径规划
+查看当前参数：
+
+ros2 param get /planner_server GridBased.preferred_clearance
+ros2 param get /planner_server GridBased.clearance_weight
+ros2 param get /planner_server GridBased.density_radius
+ros2 param get /planner_server GridBased.density_weight
+ros2 param get /planner_server GridBased.goal_exemption_radius
+
+旧 NavFn 的 cost_travel_multiplier 命令只适用于仍使用该参数的规划器；当前主要使用 medical_clearance_planner 的上述净空参数。
+
+
+九、仅测试路径计算
 
 ros2 action send_goal /compute_path_to_pose \
-nav2_msgs/action/ComputePathToPose \
-"{start: {header: {frame_id: map}, pose: {position: {x: 5.4, y: 2.1, z: 0.0}, orientation: {w: 1.0}}}, goal: {header: {frame_id: map}, pose: {position: {x: 5.4, y: -2.1, z: 0.0}, orientation: {w: 1.0}}}, planner_id: GridBased, use_start: true}"
+  nav2_msgs/action/ComputePathToPose \
+  "{start: {header: {frame_id: map}, pose: {position: {x: 5.4, y: 2.1, z: 0.0}, orientation: {w: 1.0}}}, goal: {header: {frame_id: map}, pose: {position: {x: 5.4, y: -2.1, z: 0.0}, orientation: {w: 1.0}}}, planner_id: GridBased, use_start: true}"
 
-参数设置在 保存更改 C:\Users\ASUS\Desktop\Robocup医疗\NUC_MID360\2_ROS2包_obstacle_detector\config\nav2_params.yaml
-nav2_params.yaml修改后需要
-set +u
-source /opt/ros/humble/setup.bash
+该命令只计算路径，不会让底盘沿路径运动。
 
-cd ~/livox_ws
-colcon build --symlink-install --packages-select obstacle_detector
 
-sudo systemctl restart obstacle-detector.service
-重新编译 重启生效
+十、本地修改后编译（在 NUC 上）
 
-如果是在windows里面 该工作区根录目下
-
-$env:MEDICAL_NUC_PASSWORD='<YOUR_NUC_PASSWORD>'
-python ".\NUC_MID360\4_启动脚本\deploy_nuc.py"
-
-（可能需要更改NUC IP地址 目前连接的是FZU_ROG IP 192.168.50.63
-确保windows和NUC在同一网段
-
-推送后重启
 set +u
 source /opt/ros/humble/setup.bash
 source ~/livox_ws/install/setup.bash
+cd ~/livox_ws
 
-sudo systemctl stop obstacle-detector.service
+colcon build --symlink-install \
+  --packages-select medical_clearance_planner obstacle_detector
 
-mkdir -p ~/.config
-printf 'MEDICAL_NAV_DRY_RUN=true\n' > ~/.config/medical-navigation.env
+sudo systemctl restart obstacle-detector.service
 
-sudo systemctl daemon-reload
-sudo systemctl start obstacle-detector.service
 
-地图修改
-以后遇到比赛场地变化时，按这个流程处理：
+十一、从 Windows 工作区推送
+
+在 PowerShell 中进入工作区根目录：
+
+cd 'C:\Users\ASUS\Desktop\Robocup医疗'
+$env:MEDICAL_NUC_HOST='192.168.50.22'
+$env:MEDICAL_NUC_USER='fzurobot'
+$env:MEDICAL_NUC_PASSWORD='<填写当前 NUC 密码>'
+python '.\NUC_MID360\4_启动脚本\deploy_nuc.py'
+
+重要：当前 deploy_nuc.py 会在部署完成后写入 MEDICAL_NAV_DRY_RUN=false，并重启服务，即允许真实底盘运动。部署前必须保证场地和急停安全。
+若只想安全检查，部署完成后立即按照“四、1”切回 dry_run=true。
+
+
+十二、地图修改
+
+比赛场地变化时：
 1. 以起点为原点，沿用当前坐标约定：+X 向右，+Y 向场地前方。
 2. 测量场地边界、三张床、三个床头柜、护士台中心位置。
-3. 只修改 field_map.yaml 中的 x_mm、y_mm 和尺寸。
-4. 重新生成地图：python ".\NUC_MID360\2_ROS2包_obstacle_detector\scripts\make_static_map.py"
+3. 只修改 field_map.yaml 中对应物体的 x_mm、y_mm 和尺寸。
+4. 在 Windows 工作区重新生成地图：
 
-配置文件在2_ROS2包  config
+python '.\NUC_MID360\2_ROS2包_obstacle_detector\scripts\make_static_map.py'
+
+配置目录：
+C:\Users\ASUS\Desktop\Robocup医疗\NUC_MID360\2_ROS2包_obstacle_detector\config
 
 
-全局规划器的避障代价权重  越大则越会避开高代价区
-ros2 param set /planner_server GridBased.cost_travel_multiplier 24.0
+十三、STM32 串口异常
 
-ros2 service call /global_costmap/clear_entirely_global_costmap \
-nav2_msgs/srv/ClearEntireCostmap "{}"
+ls -l /dev/medical_stm32 /dev/ttyUSB* 2>/dev/null
+id | grep dialout
+journalctl -b -k --no-pager | grep -Ei 'ch341|ttyUSB|brltty' | tail -n 50
+
+正常状态：
+- /dev/medical_stm32 -> ttyUSB0（实际 ttyUSB 编号可变化）
+- 设备所属组为 dialout
+- fzurobot 用户属于 dialout
+- brltty 已卸载，不再抢占 CH340
+
+
+十四、当前已验证结论（2026-09-21）
+
+- Mid360、滤波点云、OPS 里程计、静态地图、TF 和 Nav2 生命周期均正常。
+- map -> base_link 已能持续发布；当前输出为零位姿时表示机器人正处于地图原点，不是 TF 故障。
+- 当前任务状态 status: 2 表示任务执行中。
+- 当前若保持 dry_run=true，底盘不会运动，Nav2 的无进展恢复日志可忽略；不测试时建议停止 obstacle-detector.service。

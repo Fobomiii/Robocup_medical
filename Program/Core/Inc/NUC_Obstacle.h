@@ -34,6 +34,7 @@ extern "C" {
 #include <stdint.h>
 
 #define NUC_NAV_MAX_WAYPOINTS 16U
+#define NUC_NAV_SCAN_CODE_MAX 32U
 
 typedef enum {
   NUC_NAV_GOAL_NONE  = 0,
@@ -51,12 +52,37 @@ typedef enum {
   NUC_NAV_ERROR = 4
 } NUC_NavStatus;
 
+typedef enum {
+  NUC_SCAN_CONTEXT_ORDER = 1,
+  NUC_SCAN_CONTEXT_BED1 = 2,
+  NUC_SCAN_CONTEXT_BED3 = 3
+} NUC_ScanContext;
+
+typedef enum {
+  NUC_SCAN_FORMAT_QR = 1,
+  NUC_SCAN_FORMAT_CODE128 = 2
+} NUC_ScanFormat;
+
+typedef enum {
+  NUC_SCAN_ACK_ACCEPTED = 1,
+  NUC_SCAN_ACK_WRONG_STATE = 2,
+  NUC_SCAN_ACK_INVALID_CODE = 3
+} NUC_ScanAckStatus;
+
 typedef struct {
   int32_t x_mm;
   int32_t y_mm;
   int16_t yaw_cdeg;
   uint16_t speed_mm_s;
 } NUC_NavWaypoint;
+
+typedef struct {
+  uint16_t scan_id;
+  uint8_t context;
+  uint8_t format;
+  uint8_t length;
+  char value[NUC_NAV_SCAN_CODE_MAX];
+} NUC_NavScanResult;
 
 extern UART_HandleTypeDef huart8;
 
@@ -120,6 +146,16 @@ uint8_t NUC_Nav_GetVelocityCommand(int16_t *forward_mm_s,
 
 /** Invalidate the current Nav2 velocity command immediately. */
 void NUC_Nav_ClearVelocity(void);
+
+/** Atomically consume the latest camera scan received from the NUC. */
+uint8_t NUC_Nav_TakeScanResult(NUC_NavScanResult *result);
+
+/** Drop a scan captured before the current task state was entered. */
+void NUC_Nav_ClearScanResult(void);
+
+/** Acknowledge a camera scan after the medical task validates it. */
+HAL_StatusTypeDef NUC_Nav_SendScanAck(uint16_t scan_id,
+                                      NUC_ScanAckStatus status);
 
 /** Last navigation action status reported by the NUC. */
 NUC_NavStatus NUC_Nav_GetStatus(void);

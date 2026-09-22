@@ -3,6 +3,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from nav2_common.launch import RewrittenYaml
@@ -17,6 +18,7 @@ def generate_launch_description():
     default_params = os.path.join(package_share, "config", "nav2_params.yaml")
     default_map = os.path.join(package_share, "config", "static_map.yaml")
     field_map = os.path.join(package_share, "config", "field_map.yaml")
+    scanner_params = os.path.join(package_share, "config", "scanner.yaml")
     default_bt_xml = os.path.join(
         package_share, "config", "navigate_to_pose_1hz.xml"
     )
@@ -32,6 +34,8 @@ def generate_launch_description():
     bt_xml_file = LaunchConfiguration("bt_xml_file")
     dry_run = LaunchConfiguration("dry_run")
     enforce_task_gate = LaunchConfiguration("enforce_task_gate")
+    scanner_enabled = LaunchConfiguration("scanner_enabled")
+    scan_camera = LaunchConfiguration("scan_camera")
 
     # YAML cannot expand an ament package path itself. Rewrite only this leaf
     # parameter so bt_navigator receives the installed XML's absolute path.
@@ -53,6 +57,14 @@ def generate_launch_description():
             DeclareLaunchArgument("dry_run", default_value="false"),
             # Reject Nav2 velocity outside the four delivery navigation states.
             DeclareLaunchArgument("enforce_task_gate", default_value="true"),
+            DeclareLaunchArgument("scanner_enabled", default_value="true"),
+            DeclareLaunchArgument(
+                "scan_camera",
+                default_value=(
+                    "/dev/v4l/by-id/"
+                    "usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0"
+                ),
+            ),
             Node(
                 package="robot_state_publisher",
                 executable="robot_state_publisher",
@@ -120,6 +132,16 @@ def generate_launch_description():
                         "field_config": field_map,
                     }
                 ],
+            ),
+            Node(
+                package="obstacle_detector",
+                executable="code_scanner",
+                name="code_scanner",
+                output="screen",
+                condition=IfCondition(scanner_enabled),
+                parameters=[scanner_params, {"camera_device": scan_camera}],
+                respawn=True,
+                respawn_delay=2.0,
             ),
             # First-stage OPS slip experiment. Robust temporal scan matching
             # is independent of planning-only static-map annotations. It is

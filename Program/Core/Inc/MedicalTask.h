@@ -15,6 +15,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#define MEDICAL_TASK_SCAN_CODE_MAX 32U
+
 typedef enum {
   MEDICAL_TASK_INIT = 0,
   MEDICAL_TASK_NAV_NURSE = 1,
@@ -41,6 +43,9 @@ void MedicalTask_Update(void);
 
 /** State byte included in the STM32 -> NUC pose telemetry. */
 uint8_t MedicalTask_GetState(void);
+
+/** Copy the latest task-validated QR/CODE128 value for local display. */
+uint8_t MedicalTask_GetLastScan(char *value, uint16_t value_size);
 
 /**
  * Return 1 only while the delivery sequence is actively navigating.

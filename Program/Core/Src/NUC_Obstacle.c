@@ -34,12 +34,14 @@
 #define NAV_MSG_GOAL_REQUEST 0x11U
 #define NAV_MSG_NAV_STATUS   0x12U
 #define NAV_MSG_STP23L       0x13U
+#define NAV_MSG_SCAN_ACK     0x14U
 #define NAV_MSG_PATH_BEGIN   0x20U
 #define NAV_MSG_WAYPOINT     0x21U
 #define NAV_MSG_PATH_COMMIT  0x22U
 #define NAV_MSG_PATH_CANCEL  0x23U
 #define NAV_MSG_HEARTBEAT    0x30U
 #define NAV_MSG_VEL_CMD      0x40U
+#define NAV_MSG_SCAN_RESULT  0x41U
 
 static uint8_t s_it_byte;
 static uint8_t s_buf[NUC_FRAME_LEN];
@@ -98,6 +100,8 @@ static volatile int16_t s_nav_yaw_ccw_cdeg_s;
 static volatile uint16_t s_nav_velocity_stamp_cs;
 static volatile uint32_t s_nav_last_velocity_ms;
 static volatile NUC_NavStatus s_nav_status;
+static NUC_NavScanResult s_nav_scan_result;
+static volatile uint8_t s_nav_scan_pending;
 
 /* Final linear-speed guard on the STM32 side. The NUC currently limits each
  * body-axis component to 1000 mm/s, while this lower-level guard allows up to
@@ -294,6 +298,36 @@ static void nav_parse_frame(void)
     s_nav_yaw_ccw_cdeg_s = read_i16_be(&payload[4]);
     s_nav_velocity_stamp_cs = read_u16_be(&payload[6]);
     s_nav_last_velocity_ms = HAL_GetTick();
+  }
+  else if (type == NAV_MSG_SCAN_RESULT && payload_len >= 6U)
+  {
+    uint8_t code_len = payload[4];
+    uint8_t i;
+
+    if (code_len == 0U || code_len >= NUC_NAV_SCAN_CODE_MAX ||
+        payload_len != (uint8_t)(5U + code_len) ||
+        payload[2] < (uint8_t)NUC_SCAN_CONTEXT_ORDER ||
+        payload[2] > (uint8_t)NUC_SCAN_CONTEXT_BED3 ||
+        payload[3] < (uint8_t)NUC_SCAN_FORMAT_QR ||
+        payload[3] > (uint8_t)NUC_SCAN_FORMAT_CODE128)
+    {
+      return;
+    }
+    for (i = 0U; i < code_len; i++)
+    {
+      if (payload[5U + i] < 0x20U || payload[5U + i] > 0x7EU)
+      {
+        return;
+      }
+    }
+
+    s_nav_scan_result.scan_id = read_u16_be(&payload[0]);
+    s_nav_scan_result.context = payload[2];
+    s_nav_scan_result.format = payload[3];
+    s_nav_scan_result.length = code_len;
+    memcpy(s_nav_scan_result.value, &payload[5], code_len);
+    s_nav_scan_result.value[code_len] = '\0';
+    s_nav_scan_pending = 1U;
   }
 }
 
@@ -499,12 +533,14 @@ void NUC_Obstacle_Init(void)
   s_nav_velocity_stamp_cs = 0U;
   s_nav_last_velocity_ms = 0U;
   s_nav_status = NUC_NAV_IDLE;
+  s_nav_scan_pending = 0U;
   memset((void *)g_nuc_debug_buf, 0, sizeof(g_nuc_debug_buf));
   memset((void *)g_nuc_rx_history, 0, sizeof(g_nuc_rx_history));
   g_nuc_history_idx = 0;
   memset(s_buf, 0, sizeof(s_buf));
   memset(s_nav_buf, 0, sizeof(s_nav_buf));
   memset(s_nav_paths, 0, sizeof(s_nav_paths));
+  memset(&s_nav_scan_result, 0, sizeof(s_nav_scan_result));
   (void)HAL_UART_AbortReceive_IT(&huart8);
   (void)HAL_UART_Receive_IT(&huart8, &s_it_byte, 1);
 }
@@ -795,6 +831,61 @@ void NUC_Nav_ClearVelocity(void)
   {
     __enable_irq();
   }
+}
+
+uint8_t NUC_Nav_TakeScanResult(NUC_NavScanResult *result)
+{
+  uint32_t primask;
+
+  if (result == NULL)
+  {
+    return 0U;
+  }
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  if (s_nav_scan_pending == 0U)
+  {
+    if (primask == 0U)
+    {
+      __enable_irq();
+    }
+    return 0U;
+  }
+  *result = s_nav_scan_result;
+  s_nav_scan_pending = 0U;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+  return 1U;
+}
+
+void NUC_Nav_ClearScanResult(void)
+{
+  uint32_t primask = __get_PRIMASK();
+
+  __disable_irq();
+  s_nav_scan_pending = 0U;
+  memset(&s_nav_scan_result, 0, sizeof(s_nav_scan_result));
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+}
+
+HAL_StatusTypeDef NUC_Nav_SendScanAck(uint16_t scan_id,
+                                      NUC_ScanAckStatus status)
+{
+  uint8_t payload[3];
+
+  if (status < NUC_SCAN_ACK_ACCEPTED || status > NUC_SCAN_ACK_INVALID_CODE)
+  {
+    return HAL_ERROR;
+  }
+  write_u16_be(&payload[0], scan_id);
+  payload[2] = (uint8_t)status;
+  return nav_send_frame(NAV_MSG_SCAN_ACK, payload, sizeof(payload));
 }
 
 NUC_NavStatus NUC_Nav_GetStatus(void)
