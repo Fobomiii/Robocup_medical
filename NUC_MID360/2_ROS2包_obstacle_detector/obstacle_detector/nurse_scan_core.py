@@ -46,6 +46,17 @@ def field_yaw_toward(
     return math.degrees(math.atan2(target_x_mm - x_mm, target_y_mm - y_mm))
 
 
+def next_nurse_viewpoint_index(current_index: int, viewpoint_count: int) -> int:
+    """Visit center once, then continuously alternate the side viewpoints."""
+    if viewpoint_count <= 0:
+        raise ValueError("nurse scan requires at least one viewpoint")
+    if current_index < 0:
+        raise ValueError("nurse viewpoint index cannot be negative")
+    if current_index < viewpoint_count:
+        return current_index
+    return 1 if viewpoint_count > 1 else 0
+
+
 def load_nurse_scan_config(config_path: str) -> NurseScanConfig:
     path = Path(config_path).expanduser()
     with path.open("r", encoding="utf-8") as stream:

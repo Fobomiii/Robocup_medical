@@ -32,6 +32,7 @@
  */
 #define MEDICAL_DOCK_FRONT_TARGET_MM 347
 #define MEDICAL_DOCK_SIDE_TARGET_MM 1147
+#define MEDICAL_DOCK_SIDE_SPLIT_THRESHOLD_MM 1600U
 #define MEDICAL_DOCK_TOLERANCE_MM 35
 #define MEDICAL_DOCK_SAMPLE_COUNT 12U
 #define MEDICAL_DOCK_SAMPLE_TRIM_COUNT 1U
@@ -56,8 +57,11 @@ typedef enum {
 
 typedef enum {
   MEDICAL_DOCK_SAMPLE_INITIAL = 0,
-  MEDICAL_DOCK_MOVE = 1,
-  MEDICAL_DOCK_SAMPLE_VERIFY = 2
+  MEDICAL_DOCK_MOVE_COMBINED = 1,
+  MEDICAL_DOCK_SAMPLE_VERIFY = 2,
+  MEDICAL_DOCK_MOVE_SPLIT_SIDE = 3,
+  MEDICAL_DOCK_SAMPLE_SPLIT_FRONT = 4,
+  MEDICAL_DOCK_MOVE_SPLIT_FRONT = 5
 } MedicalDockPhase;
 
 static MedicalTaskState s_state = MEDICAL_TASK_INIT;
@@ -158,6 +162,28 @@ static uint8_t medical_docking_collect_samples(void)
              : 0U;
 }
 
+static uint8_t medical_docking_collect_front_samples(void)
+{
+  uint16_t distance_mm;
+  uint32_t frame_sequence;
+
+  if ((HAL_GetTick() - s_dock_phase_enter_ms) <
+      MEDICAL_DOCK_SAMPLE_SETTLE_MS)
+  {
+    return 0U;
+  }
+
+  if ((s_dock_front_sample_count < MEDICAL_DOCK_SAMPLE_COUNT) &&
+      (STP23L_GetSampleB(&distance_mm, &frame_sequence) != 0U) &&
+      (frame_sequence != s_dock_last_front_sequence))
+  {
+    s_dock_last_front_sequence = frame_sequence;
+    s_dock_front_samples[s_dock_front_sample_count++] = distance_mm;
+  }
+
+  return (s_dock_front_sample_count == MEDICAL_DOCK_SAMPLE_COUNT) ? 1U : 0U;
+}
+
 static uint16_t medical_docking_filtered_distance(const uint16_t *samples)
 {
   uint16_t sorted[MEDICAL_DOCK_SAMPLE_COUNT];
@@ -197,6 +223,30 @@ static void medical_docking_finish(void)
   medical_set_state((s_state == MEDICAL_TASK_DOCK_BED1)
                         ? MEDICAL_TASK_SCAN_BED1
                         : MEDICAL_TASK_SCAN_BED3);
+}
+
+static void medical_docking_start_move(float pos_x,
+                                       float pos_y,
+                                       float yaw_clockwise_deg,
+                                       float forward_delta,
+                                       float right_delta,
+                                       MedicalDockPhase move_phase)
+{
+  float yaw_rad = yaw_clockwise_deg * MEDICAL_DOCK_PI / 180.0f;
+  float field_x_delta = right_delta * cosf(yaw_rad) +
+                        forward_delta * sinf(yaw_rad);
+  float field_y_delta = -right_delta * sinf(yaw_rad) +
+                        forward_delta * cosf(yaw_rad);
+
+  ChassisCtrl_MoveTarget(pos_x + field_x_delta,
+                         pos_y + field_y_delta,
+                         0.0f,
+                         pos_x,
+                         pos_y,
+                         yaw_clockwise_deg);
+  ChassisCtrl_Enable(true);
+  s_dock_correction_count++;
+  s_dock_phase = move_phase;
 }
 
 static void medical_scan_reset(void)
@@ -825,9 +875,6 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
   int32_t side_error;
   float forward_delta;
   float right_delta;
-  float yaw_rad;
-  float field_x_delta;
-  float field_y_delta;
 
   if (!medical_is_docking_state())
   {
@@ -840,7 +887,9 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
     return 1U;
   }
 
-  if (s_dock_phase == MEDICAL_DOCK_MOVE)
+  if ((s_dock_phase == MEDICAL_DOCK_MOVE_COMBINED) ||
+      (s_dock_phase == MEDICAL_DOCK_MOVE_SPLIT_SIDE) ||
+      (s_dock_phase == MEDICAL_DOCK_MOVE_SPLIT_FRONT))
   {
     if (pose_valid == 0U)
     {
@@ -852,14 +901,54 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
       if (ChassisCtrl_Update(pos_x, pos_y, yaw_clockwise_deg))
       {
         ChassisCtrl_Enable(false);
-        s_dock_phase = MEDICAL_DOCK_SAMPLE_VERIFY;
-        medical_docking_sample_reset();
+        if (s_dock_phase == MEDICAL_DOCK_MOVE_SPLIT_SIDE)
+        {
+          s_dock_phase = MEDICAL_DOCK_SAMPLE_SPLIT_FRONT;
+          medical_docking_sample_reset();
+        }
+        else if (s_dock_phase == MEDICAL_DOCK_MOVE_SPLIT_FRONT)
+        {
+          medical_docking_finish();
+        }
+        else
+        {
+          s_dock_phase = MEDICAL_DOCK_SAMPLE_VERIFY;
+          medical_docking_sample_reset();
+        }
       }
     }
     return 1U;
   }
 
   ChassisCtrl_Enable(false);
+  if (s_dock_phase == MEDICAL_DOCK_SAMPLE_SPLIT_FRONT)
+  {
+    if (medical_docking_collect_front_samples() == 0U)
+    {
+      return 1U;
+    }
+
+    front_mm = medical_docking_filtered_distance(s_dock_front_samples);
+    front_error = (int32_t)front_mm - MEDICAL_DOCK_FRONT_TARGET_MM;
+    if (abs(front_error) <= MEDICAL_DOCK_TOLERANCE_MM)
+    {
+      medical_docking_finish();
+      return 1U;
+    }
+    if (pose_valid == 0U)
+    {
+      return 1U;
+    }
+
+    medical_docking_start_move(pos_x,
+                               pos_y,
+                               yaw_clockwise_deg,
+                               (float)front_error,
+                               0.0f,
+                               MEDICAL_DOCK_MOVE_SPLIT_FRONT);
+    return 1U;
+  }
+
   if (medical_docking_collect_samples() == 0U)
   {
     return 1U;
@@ -869,6 +958,25 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
   side_mm = medical_docking_filtered_distance(s_dock_side_samples);
   front_error = (int32_t)front_mm - MEDICAL_DOCK_FRONT_TARGET_MM;
   side_error = (int32_t)side_mm - MEDICAL_DOCK_SIDE_TARGET_MM;
+
+  if ((s_dock_phase == MEDICAL_DOCK_SAMPLE_INITIAL) &&
+      (side_mm > MEDICAL_DOCK_SIDE_SPLIT_THRESHOLD_MM))
+  {
+    if (pose_valid == 0U)
+    {
+      return 1U;
+    }
+    right_delta = (s_state == MEDICAL_TASK_DOCK_BED1)
+                      ? -(float)side_error
+                      : (float)side_error;
+    medical_docking_start_move(pos_x,
+                               pos_y,
+                               yaw_clockwise_deg,
+                               0.0f,
+                               right_delta,
+                               MEDICAL_DOCK_MOVE_SPLIT_SIDE);
+    return 1U;
+  }
 
   if (((abs(front_error) <= MEDICAL_DOCK_TOLERANCE_MM) &&
        (abs(side_error) <= MEDICAL_DOCK_TOLERANCE_MM)) ||
@@ -887,20 +995,11 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
   right_delta = (s_state == MEDICAL_TASK_DOCK_BED1)
                     ? -(float)side_error
                     : (float)side_error;
-  yaw_rad = yaw_clockwise_deg * MEDICAL_DOCK_PI / 180.0f;
-  field_x_delta = right_delta * cosf(yaw_rad) +
-                  forward_delta * sinf(yaw_rad);
-  field_y_delta = -right_delta * sinf(yaw_rad) +
-                  forward_delta * cosf(yaw_rad);
-
-  ChassisCtrl_MoveTarget(pos_x + field_x_delta,
-                         pos_y + field_y_delta,
-                         0.0f,
-                         pos_x,
-                         pos_y,
-                         yaw_clockwise_deg);
-  ChassisCtrl_Enable(true);
-  s_dock_correction_count++;
-  s_dock_phase = MEDICAL_DOCK_MOVE;
+  medical_docking_start_move(pos_x,
+                             pos_y,
+                             yaw_clockwise_deg,
+                             forward_delta,
+                             right_delta,
+                             MEDICAL_DOCK_MOVE_COMBINED);
   return 1U;
 }

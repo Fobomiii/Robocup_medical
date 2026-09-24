@@ -34,9 +34,9 @@ goals:
   bed1:  {id: 3, label: "Bed 1 goal", x_mm: -2200, y_mm: 5400, yaw_deg: 0}
   bed3:  {id: 4, label: "Bed 3 goal", x_mm: 2200, y_mm: 5400, yaw_deg: 0}
 
-# The nurse-station QR is acquired from sequential center/left/right scan
-# viewpoints rather than requiring the single point above. The front face is
-# y=2150 mm; every viewpoint computes its yaw toward that QR at runtime.
+# The nurse-station QR is acquired from a center scan followed by continuous
+# left/right alternating viewpoints. The front face is y=2150 mm; every
+# viewpoint computes its yaw toward that QR at runtime.
 nurse_scan:
   zone: {min_x_mm: -650, max_x_mm: 650, min_y_mm: 1350, max_y_mm: 1850}
   qr_target: {x_mm: 0, y_mm: 2150}

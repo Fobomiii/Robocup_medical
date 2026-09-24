@@ -5,6 +5,7 @@ import unittest
 from obstacle_detector.nurse_scan_core import (
     field_yaw_toward,
     load_nurse_scan_config,
+    next_nurse_viewpoint_index,
 )
 
 
@@ -60,6 +61,29 @@ class NurseScanCoreTests(unittest.TestCase):
         self.assertEqual(
             [viewpoint.name for viewpoint in self.config.viewpoints],
             ["nurse_scan_center", "nurse_scan_left", "nurse_scan_right"],
+        )
+
+    def test_viewpoint_selection_alternates_sides_after_center(self):
+        next_index = 0
+        selected = []
+        for _ in range(7):
+            selected_index = next_nurse_viewpoint_index(
+                next_index, len(self.config.viewpoints)
+            )
+            selected.append(self.config.viewpoints[selected_index].name)
+            next_index = selected_index + 1
+
+        self.assertEqual(
+            selected,
+            [
+                "nurse_scan_center",
+                "nurse_scan_left",
+                "nurse_scan_right",
+                "nurse_scan_left",
+                "nurse_scan_right",
+                "nurse_scan_left",
+                "nurse_scan_right",
+            ],
         )
 
 

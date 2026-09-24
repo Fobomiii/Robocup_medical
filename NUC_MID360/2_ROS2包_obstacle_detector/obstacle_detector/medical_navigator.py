@@ -36,7 +36,11 @@ from .nav_protocol import (
     NAV_WAIT_PATH,
     SCAN_CONTEXT_ORDER,
 )
-from .nurse_scan_core import field_yaw_toward, load_nurse_scan_config
+from .nurse_scan_core import (
+    field_yaw_toward,
+    load_nurse_scan_config,
+    next_nurse_viewpoint_index,
+)
 
 
 class MedicalNavigator(Node):
@@ -337,22 +341,16 @@ class MedicalNavigator(Node):
             if generation != self.goal_generation or self.nurse_qr_seen:
                 hold_for_qr = self.nurse_qr_seen
                 viewpoint = None
-            elif self.nurse_viewpoint_index >= len(
-                self.nurse_scan_config.viewpoints
-            ):
-                hold_for_qr = False
-                viewpoint = None
             else:
                 hold_for_qr = False
-                viewpoint = self.nurse_scan_config.viewpoints[
-                    self.nurse_viewpoint_index
-                ]
-                self.nurse_viewpoint_index += 1
+                selected_index = next_nurse_viewpoint_index(
+                    self.nurse_viewpoint_index,
+                    len(self.nurse_scan_config.viewpoints),
+                )
+                viewpoint = self.nurse_scan_config.viewpoints[selected_index]
+                self.nurse_viewpoint_index = selected_index + 1
         if hold_for_qr:
             self._hold_nurse_for_qr(generation)
-            return
-        if viewpoint is None:
-            self._finish(NAV_REACHED, "nurse_scan_viewpoints_exhausted", generation)
             return
         goal = self._nurse_goal_at(viewpoint.name, viewpoint.x_mm, viewpoint.y_mm)
         self._queue_nurse_scan_goal(

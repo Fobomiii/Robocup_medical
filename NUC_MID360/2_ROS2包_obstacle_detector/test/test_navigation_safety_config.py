@@ -223,6 +223,23 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"navigator_status_timeout_s": 1.2', launch_source)
         self.assertIn('"goal_handoff_timeout_s": 1.0', launch_source)
 
+    def test_abnormal_bed_docking_splits_side_and_front_moves(self):
+        root = PACKAGE.parents[1]
+        medical_task = (root / "Program" / "Core" / "Src" / "MedicalTask.c").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("MEDICAL_DOCK_SIDE_SPLIT_THRESHOLD_MM 1600U", medical_task)
+        self.assertRegex(
+            medical_task,
+            r"if \(s_state == MEDICAL_TASK_DOCK_BED1\)\s*"
+            r"\{\s*return STP23L_GetSampleC\(distance_mm, frame_sequence\);\s*\}\s*"
+            r"return STP23L_GetSampleA\(distance_mm, frame_sequence\);",
+        )
+        self.assertIn("MEDICAL_DOCK_MOVE_SPLIT_SIDE", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_SPLIT_FRONT", medical_task)
+        self.assertIn("MEDICAL_DOCK_MOVE_SPLIT_FRONT", medical_task)
+        self.assertIn("medical_docking_collect_front_samples", medical_task)
+
     def test_scanner_uses_full_frame_and_bed_proximity_gate(self):
         scanner = yaml.safe_load(SCANNER_PARAMS.read_text(encoding="utf-8"))[
             "code_scanner"
