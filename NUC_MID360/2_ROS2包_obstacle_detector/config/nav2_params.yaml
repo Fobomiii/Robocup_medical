@@ -156,7 +156,7 @@ controller_server:
       wz_std: 0.30
 
       vx_max: 2.00
-      vx_min: -0.40
+      vx_min: -1.20
       vy_max: 2.00
       wz_max: 0.80
 
@@ -277,11 +277,13 @@ planner_server:
       # density are explicit terms, so zero-cost gaps are no longer treated
       # as equally attractive open space.
       costmap_weight: 3.0
-      preferred_clearance: 0.65
-      clearance_weight: 12.0
+      # Prefer the shorter direct corridor when obstacles are well separated,
+      # while lethal and footprint-collision cells remain non-traversable.
+      preferred_clearance: 0.55
+      clearance_weight: 8.0
       clearance_power: 2.0
-      density_radius: 0.75
-      density_weight: 8.0
+      density_radius: 0.60
+      density_weight: 5.0
       density_normalization: 0.18
 
       # Fade only the private preference cost near start/goal. Lethal and
@@ -290,7 +292,7 @@ planner_server:
       # footprint and the existing 0.25 m visible inflation radius.
       goal_exemption_radius: 0.75
       start_exemption_radius: 0.45
-      simplification_cost_tolerance: 1.03
+      simplification_cost_tolerance: 1.06
 
 smoother_server:
   ros__parameters:
@@ -336,11 +338,11 @@ velocity_smoother:
     # Keep these at the NUC linear limit. The STM32 has a separate 4.00 m/s
     # hard cap, so any other command source still has a lower-level guard.
     max_velocity: [2.00, 2.00, 0.80]
-    min_velocity: [-0.40, -2.00, -0.80]
-    # Raise XY acceleration conservatively from the stable 1.5 m/s^2 profile.
+    min_velocity: [-1.20, -2.00, -0.80]
+    # Raise XY acceleration to reach the 2.0 m/s command sooner on short runs.
     # Keep the proven braking limits; 4.0/-4.5 m/s^2 caused chassis overshoot.
     # Collision Monitor emergency stops still bypass this ramp and command zero.
-    max_accel: [2.0, 2.0, 3.6]
+    max_accel: [2.5, 2.5, 3.6]
     max_decel: [-1.8, -1.8, -4.5]
     odom_topic: /odom
     odom_duration: 0.1

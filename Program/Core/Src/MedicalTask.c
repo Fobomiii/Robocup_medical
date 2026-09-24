@@ -4,10 +4,9 @@
  */
 #include "MedicalTask.h"
 
-#include "ASR_Pro.h"
 #include "Board.h"
 #include "ChassisCtrl.h"
-#include "GM65.h"
+#include "CN_TTS.h"
 #include "NUC_Obstacle.h"
 #include "Servo.h"
 #include "STP23L.h"
@@ -18,8 +17,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Preserve the original four-read confirmation used for the GM65 scanner. */
-#define MEDICAL_SCAN_CONFIRM_COUNT 4U
 #define MEDICAL_SCAN_BEEP_MS 200U
 #define MEDICAL_ORDER_HANDOFF_STOP_MS 500U
 /* Allow the selected compartment time to release the medicine before moving. */
@@ -72,8 +69,6 @@ static uint8_t s_current_bed;
 static uint8_t s_delivered_count;
 static MedicineBox s_bed1_box;
 static MedicineBox s_bed3_box;
-static char s_scan_candidate[GM65_CODE_MAX];
-static uint8_t s_scan_candidate_count;
 static char s_last_scan[MEDICAL_TASK_SCAN_CODE_MAX];
 static char s_bed1_scan[MEDICAL_TASK_SCAN_CODE_MAX];
 static char s_bed3_scan[MEDICAL_TASK_SCAN_CODE_MAX];
@@ -251,10 +246,6 @@ static void medical_docking_start_move(float pos_x,
 
 static void medical_scan_reset(void)
 {
-  s_scan_candidate[0] = '\0';
-  s_scan_candidate_count = 0U;
-  /* Do not let a code captured while driving satisfy a scan state. */
-  GM65_ClearFrameReady();
   NUC_Nav_ClearScanResult();
 }
 
@@ -341,59 +332,6 @@ static void medical_scan_beep_update(void)
   }
 }
 
-static uint8_t medical_scan_confirmed(char *confirmed, uint16_t confirmed_size)
-{
-  char code[GM65_CODE_MAX];
-  const char *source;
-  uint32_t primask;
-
-  if (confirmed == NULL || confirmed_size == 0U || !GM65_FrameReady())
-  {
-    return 0U;
-  }
-
-  /* GM65 publishes its buffer from the UART callback. Copy one coherent frame. */
-  primask = __get_PRIMASK();
-  __disable_irq();
-  source = GM65_GetLastCode();
-  strncpy(code, source, sizeof(code) - 1U);
-  code[sizeof(code) - 1U] = '\0';
-  GM65_ClearFrameReady();
-  if (primask == 0U)
-  {
-    __enable_irq();
-  }
-
-  if (code[0] == '\0')
-  {
-    return 0U;
-  }
-
-  if (strcmp(code, s_scan_candidate) == 0)
-  {
-    if (s_scan_candidate_count < 0xFFU)
-    {
-      s_scan_candidate_count++;
-    }
-  }
-  else
-  {
-    strncpy(s_scan_candidate, code, sizeof(s_scan_candidate) - 1U);
-    s_scan_candidate[sizeof(s_scan_candidate) - 1U] = '\0';
-    s_scan_candidate_count = 1U;
-  }
-
-  if (s_scan_candidate_count < MEDICAL_SCAN_CONFIRM_COUNT)
-  {
-    return 0U;
-  }
-
-  strncpy(confirmed, s_scan_candidate, confirmed_size - 1U);
-  confirmed[confirmed_size - 1U] = '\0';
-  medical_scan_reset();
-  return 1U;
-}
-
 static uint8_t medical_scan_value_allowed(uint8_t format, const char *code)
 {
   static const char *const order_codes[] = {"11", "13", "31", "33"};
@@ -472,16 +410,6 @@ static uint8_t medical_take_scan(uint8_t expected_context,
     }
   }
 
-  /* Keep the hardware GM65 as an independent fallback. It still needs four
-   * identical frames, then passes through the same competition whitelist. */
-  if (medical_scan_confirmed(confirmed, confirmed_size) != 0U &&
-      medical_scan_value_allowed(expected_format, confirmed) != 0U)
-  {
-    medical_store_last_scan(confirmed);
-    medical_store_bed_scan(expected_context, confirmed);
-    medical_scan_beep_start();
-    return 1U;
-  }
   return 0U;
 }
 
@@ -560,13 +488,13 @@ static void medical_set_state(MedicalTaskState next)
 
     case MEDICAL_TASK_DISPENSE_BED1:
       NUC_Nav_ClearVelocity();
-      (void)ASR_Pro_AnnounceBed1();
+      (void)CN_TTS_AnnounceBed1();
       medical_box_open(medical_box_for_bed(s_current_bed));
       break;
 
     case MEDICAL_TASK_DISPENSE_BED3:
       NUC_Nav_ClearVelocity();
-      (void)ASR_Pro_AnnounceBed3();
+      (void)CN_TTS_AnnounceBed3();
       medical_box_open(medical_box_for_bed(s_current_bed));
       break;
 
@@ -663,7 +591,7 @@ void MedicalTask_Init(void)
 void MedicalTask_Update(void)
 {
 #if !MEDICAL_TEST_AUTO_SKIP_SCAN
-  char confirmed_code[GM65_CODE_MAX];
+  char confirmed_code[MEDICAL_TASK_SCAN_CODE_MAX];
 #endif
 
   medical_scan_beep_update();

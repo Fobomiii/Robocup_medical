@@ -26,13 +26,12 @@
 #include "OPS.h"
 #include "Servo.h"
 #include "HWT101CT.h"
-#include "GM65.h"
 #include "OLED_SSD1309.h"
 #include "NUC_Obstacle.h"
 #include "Board.h"
 #include "MedicalTask.h"
 #include "STP23L.h"
-#include "ASR_Pro.h"
+#include "CN_TTS.h"
 #include "PID.h"
 
 /* USER CODE END Includes */
@@ -200,7 +199,7 @@ int main(void)
   MX_LPUART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  /* ASR Pro power-on test: allow boot, then announce bed 1 and bed 3. */
+  CN_TTS_Init();
 
   SERVO_Init();
   STP23L_Init();
@@ -219,7 +218,6 @@ int main(void)
   PID_SetY(0.5f, 0.0f, 0.08f, -40.0f, 40.0f, 0.0f);
   PID_SetZ(1.2f, 0.0f, 0.0f, -120.0f, 120.0f, 0.0f);
 
-  GM65_Init();
   NUC_Obstacle_Init();
   while (!NUC_IsOnline())
   {

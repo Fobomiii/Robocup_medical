@@ -411,11 +411,6 @@
               <FilePath>../Core/Src/HWT101CT.c</FilePath>
             </File>
             <File>
-              <FileName>GM65.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Core/Src/GM65.c</FilePath>
-            </File>
-            <File>
               <FileName>NUC_Obstacle.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/NUC_Obstacle.c</FilePath>
@@ -426,9 +421,9 @@
               <FilePath>../Core/Src/MedicalTask.c</FilePath>
             </File>
             <File>
-              <FileName>ASR_Pro.c</FileName>
+              <FileName>CN_TTS.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Core/Src/ASR_Pro.c</FilePath>
+              <FilePath>../Core/Src/CN_TTS.c</FilePath>
             </File>
             <File>
               <FileName>Board.c</FileName>

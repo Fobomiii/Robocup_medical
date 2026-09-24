@@ -7,7 +7,6 @@
  *   TYPE=0x53 ???    Yaw @ DATA3 -> /32768*180 ??
  */
 #include "HWT101CT.h"
-#include "GM65.h"
 #include <string.h>
 
 #define HWT_RX_BUF_SIZE  64U
@@ -131,10 +130,6 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
       feed_bytes(s_rx_dma, Size);
     }
     hwt_start_rx();
-  }
-  else if (huart->Instance == UART7)
-  {
-    GM65_OnRxEvent(Size);
   }
 }
 
