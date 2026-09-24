@@ -46,7 +46,11 @@ from .nav_protocol import (
     MSG_STP23L,
     MSG_VEL_CMD,
     NAV_FOLLOWING,
+    NAV_IDLE,
+    NAV_WAIT_PATH,
     SCAN_ACK_ACCEPTED,
+    SCAN_CONTEXT_BED1,
+    SCAN_CONTEXT_BED3,
     decode_goal_request,
     decode_pose,
     decode_scan_ack,
@@ -57,7 +61,13 @@ from .nav_protocol import (
     encode_scan_result,
     encode_velocity,
 )
-from .scanner_core import scan_matches_task
+from .bridge_safety import navigation_motion_is_authorized
+from .field_goals import load_field_goals
+from .scanner_core import (
+    TASK_NAV_NURSE,
+    scan_matches_task,
+    scan_position_is_allowed,
+)
 from .serial_transport import SerialTransport
 from .stp23l_calibration import (
     CalibrationConfig,
@@ -73,9 +83,6 @@ POINT_NAMES = {
     3: "bed1",
     4: "bed3",
 }
-
-NAVIGATION_TASK_STATES = {1, 3, 6, 9}
-
 
 class Stm32Bridge(Node):
     def __init__(self) -> None:
@@ -94,10 +101,14 @@ class Stm32Bridge(Node):
         self.declare_parameter("publish_rate_hz", 50.0)
         self.declare_parameter("heartbeat_rate_hz", 10.0)
         self.declare_parameter("scan_retry_s", 0.15)
+        self.declare_parameter("bed_scan_activation_distance_m", 1.2)
+        self.declare_parameter("goal_handoff_hold_s", 0.5)
+        self.declare_parameter("navigator_following_hold_s", 0.3)
+        self.declare_parameter("navigator_status_timeout_s", 1.2)
         self.declare_parameter("twist_filter_alpha", 0.35)
-        # NUC-side linear clamp: 1.00 m/s per body-axis component. The
-        # STM32 applies its own independent 2.00 m/s hard cap.
-        self.declare_parameter("max_speed_mm_s", 1000.0)
+        # NUC-side linear clamp: 2.00 m/s per body-axis component. The
+        # STM32 applies its own independent 4.00 m/s hard cap.
+        self.declare_parameter("max_speed_mm_s", 2000.0)
         self.declare_parameter("max_yaw_cdeg_s", 9000.0)
         # Competition mode also applies when this node is launched directly.
         self.declare_parameter("dry_run", False)
@@ -121,9 +132,30 @@ class Stm32Bridge(Node):
         self.max_yaw_cdeg_s = float(get("max_yaw_cdeg_s"))
         self.twist_filter_alpha = max(0.0, min(1.0, float(get("twist_filter_alpha"))))
         self.scan_retry_s = max(0.05, float(get("scan_retry_s")))
+        self.bed_scan_activation_distance_mm = max(
+            0.1, float(get("bed_scan_activation_distance_m"))
+        ) * 1000.0
+        self.goal_handoff_hold_s = max(0.0, float(get("goal_handoff_hold_s")))
+        self.navigator_following_hold_s = max(
+            0.0, float(get("navigator_following_hold_s"))
+        )
+        self.navigator_status_timeout_s = max(
+            0.5, float(get("navigator_status_timeout_s"))
+        )
         self.dry_run = bool(get("dry_run"))
         self.enforce_task_gate = bool(get("enforce_task_gate"))
         field_config = str(get("field_config"))
+        goals_by_name, _ = load_field_goals(field_config)
+        self.scan_targets_mm = {
+            SCAN_CONTEXT_BED1: (
+                goals_by_name["bed1"].x_mm,
+                goals_by_name["bed1"].y_mm,
+            ),
+            SCAN_CONTEXT_BED3: (
+                goals_by_name["bed3"].x_mm,
+                goals_by_name["bed3"].y_mm,
+            ),
+        }
         try:
             calibration_config = load_calibration_config(field_config)
         except (OSError, KeyError, TypeError, ValueError) as exc:
@@ -153,6 +185,14 @@ class Stm32Bridge(Node):
         self.next_scan_id = 0
         self.pending_scan = None
         self.last_scan_ack = None
+        self.requested_request_id = 0
+        self.requested_goal_id = GOAL_NONE
+        self.navigator_request_id = 0
+        self.navigator_goal_id = GOAL_NONE
+        self.navigator_state = NAV_IDLE
+        self.goal_request_s = 0.0
+        self.last_navigator_status_s = 0.0
+        self.navigator_following_s = 0.0
 
         self.tf_broadcaster = TransformBroadcaster(self)
         self.static_tf_broadcaster = StaticTransformBroadcaster(self)
@@ -233,6 +273,16 @@ class Stm32Bridge(Node):
         previous_task_state = self.pose.task_state if self.pose is not None else None
         pose = decode_pose(frame.payload)
         received_s = time.monotonic()
+        if (
+            pose.task_state == TASK_NAV_NURSE
+            and previous_task_state != TASK_NAV_NURSE
+        ):
+            self.calibrator.reset()
+            self.previous_ros_pose = None
+            self.twist = (0.0, 0.0, 0.0)
+            self.get_logger().info(
+                "New medical mission: cleared STP23L OPS calibration offset"
+            )
         x, y, yaw = self._as_ros(pose.x_mm, pose.y_mm, pose.yaw_cdeg)
 
         if self.previous_ros_pose is not None:
@@ -261,6 +311,9 @@ class Stm32Bridge(Node):
         self.previous_ros_pose = (x, y, yaw, received_s)
         self.pose = pose
         self.last_pose_s = received_s
+        if previous_task_state is not None and previous_task_state != pose.task_state:
+            self.stopped = True
+            self._send_velocity(0.0, 0.0, 0.0, source="task_transition")
         task_message = UInt8()
         task_message.data = pose.task_state
         self.task_state_pub.publish(task_message)
@@ -278,6 +331,21 @@ class Stm32Bridge(Node):
         request = decode_goal_request(frame.payload)
         if request.goal_id == GOAL_NONE:
             return
+        request_changed = (
+            request.request_id != self.requested_request_id
+            or request.goal_id != self.requested_goal_id
+        )
+        if request_changed:
+            self.requested_request_id = request.request_id
+            self.requested_goal_id = request.goal_id
+            self.navigator_state = NAV_WAIT_PATH
+            self.goal_request_s = time.monotonic()
+            self.navigator_request_id = 0
+            self.navigator_goal_id = GOAL_NONE
+            self.last_navigator_status_s = 0.0
+            self.navigator_following_s = 0.0
+            self.stopped = True
+            self._send_velocity(0.0, 0.0, 0.0, source="goal_handoff")
         name = POINT_NAMES.get(request.goal_id, str(request.goal_id))
         message = String()
         message.data = json.dumps(
@@ -384,6 +452,21 @@ class Stm32Bridge(Node):
             self.get_logger().warn(
                 f"Ignored scan outside expected task state: state="
                 f"{self.pose.task_state if self.pose else 'none'} value={value}"
+            )
+            return
+        corrected_x_mm, corrected_y_mm = self.calibrator.corrected_xy(
+            self.pose.x_mm, self.pose.y_mm
+        )
+        if not scan_position_is_allowed(
+            context,
+            corrected_x_mm,
+            corrected_y_mm,
+            self.scan_targets_mm,
+            self.bed_scan_activation_distance_mm,
+        ):
+            self.get_logger().warn(
+                f"Ignored bed scan outside target area: context={context} "
+                f"pose=({corrected_x_mm:.0f}, {corrected_y_mm:.0f}) value={value}"
             )
             return
         if self.pending_scan is not None:
@@ -531,10 +614,24 @@ class Stm32Bridge(Node):
     def _motion_is_authorized(self) -> bool:
         if not self.enforce_task_gate:
             return True
-        return (
-            self._pose_is_fresh()
-            and self.pose.task_state in NAVIGATION_TASK_STATES
-            and self.pose.nav_status == NAV_FOLLOWING
+        return navigation_motion_is_authorized(
+            self._pose_is_fresh(),
+            self.last_navigator_status_s > 0.0
+            and time.monotonic() - self.last_navigator_status_s
+            <= self.navigator_status_timeout_s,
+            self.goal_request_s > 0.0
+            and time.monotonic() - self.goal_request_s
+            >= self.goal_handoff_hold_s,
+            self.navigator_following_s > 0.0
+            and time.monotonic() - self.navigator_following_s
+            >= self.navigator_following_hold_s,
+            self.pose.task_state if self.pose is not None else -1,
+            self.pose.nav_status if self.pose is not None else NAV_IDLE,
+            self.requested_request_id,
+            self.requested_goal_id,
+            self.navigator_request_id,
+            self.navigator_goal_id,
+            self.navigator_state,
         )
 
     def _send_velocity(self, vx: float, vy: float, wz: float, source: str) -> None:
@@ -574,10 +671,44 @@ class Stm32Bridge(Node):
             self.get_logger().warn(f"Bad navigator status: {exc}")
             return
 
-        payload = encode_nav_status(request_id, goal_id, nav_state)
-        frame = encode_frame(MSG_NAV_STATUS, self.tx_seq, payload)
-        if self.transport.send(frame):
-            self.tx_seq = (self.tx_seq + 1) & 0xFF
+        if (
+            request_id == self.requested_request_id
+            and goal_id == self.requested_goal_id
+        ):
+            received_s = time.monotonic()
+            was_following = (
+                self.navigator_request_id == request_id
+                and self.navigator_goal_id == goal_id
+                and self.navigator_state == NAV_FOLLOWING
+                and self.last_navigator_status_s > 0.0
+                and received_s - self.last_navigator_status_s
+                <= self.navigator_status_timeout_s
+            )
+            self.navigator_request_id = request_id
+            self.navigator_goal_id = goal_id
+            self.navigator_state = nav_state
+            self.last_navigator_status_s = received_s
+            if nav_state == NAV_FOLLOWING:
+                if not was_following:
+                    self.navigator_following_s = self.last_navigator_status_s
+                    self.stopped = True
+                    self._send_velocity(
+                        0.0, 0.0, 0.0, source="navigator_following_hold"
+                    )
+            else:
+                self.navigator_following_s = 0.0
+                self.stopped = True
+                self._send_velocity(0.0, 0.0, 0.0, source="navigator_state")
+            payload = encode_nav_status(request_id, goal_id, nav_state)
+            frame = encode_frame(MSG_NAV_STATUS, self.tx_seq, payload)
+            if self.transport.send(frame):
+                self.tx_seq = (self.tx_seq + 1) & 0xFF
+        else:
+            self.get_logger().warn(
+                "Ignored stale navigator status for "
+                f"request={request_id} goal={goal_id}",
+                throttle_duration_sec=1.0,
+            )
 
     def _command_watchdog(self) -> None:
         if self.last_cmd_s == 0.0:
@@ -609,6 +740,22 @@ class Stm32Bridge(Node):
             "dry_run": self.dry_run,
             "task_gate": self.enforce_task_gate,
             "motion_authorized": self._motion_is_authorized(),
+            "goal_gate": {
+                "requested_request_id": self.requested_request_id,
+                "requested_goal_id": self.requested_goal_id,
+                "navigator_request_id": self.navigator_request_id,
+                "navigator_goal_id": self.navigator_goal_id,
+                "navigator_state": self.navigator_state,
+                "navigator_fresh": self.last_navigator_status_s > 0.0
+                and time.monotonic() - self.last_navigator_status_s
+                <= self.navigator_status_timeout_s,
+                "handoff_ready": self.goal_request_s > 0.0
+                and time.monotonic() - self.goal_request_s
+                >= self.goal_handoff_hold_s,
+                "navigator_following_ready": self.navigator_following_s > 0.0
+                and time.monotonic() - self.navigator_following_s
+                >= self.navigator_following_hold_s,
+            },
             "ops_offset_mm": {
                 "x": round(self.calibrator.offset_x_mm, 1),
                 "y": round(self.calibrator.offset_y_mm, 1),

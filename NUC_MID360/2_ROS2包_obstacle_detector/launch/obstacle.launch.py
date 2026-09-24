@@ -2,7 +2,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -82,7 +82,7 @@ def generate_launch_description():
                         "input_topic": "/livox/lidar",
                         "output_topic": "/livox/lidar_filtered",
                         "target_frame": "base_link",
-                        # Chassis radius 0.225 m plus 35 mm for frame/wheel returns.
+                        # Chassis radius 0.23 m plus 30 mm for frame/wheel returns.
                         "self_radius": 0.26,
                         "self_min_z": -0.05,
                         # The upright lidar mount/aluminium returns reach about
@@ -113,6 +113,26 @@ def generate_launch_description():
             ),
             Node(
                 package="obstacle_detector",
+                executable="cone_footprint_compensator",
+                name="cone_footprint_compensator",
+                output="screen",
+                parameters=[
+                    {
+                        "input_topic": "/livox/lidar_filtered",
+                        "output_topic": "/livox/lidar_nav",
+                        # Competition cone: 0.65 m tall with a 0.155 m
+                        # circumscribed ground-base radius.
+                        "cone_height": 0.65,
+                        "base_radius": 0.155,
+                        "min_z": 0.08,
+                        "max_range": 4.5,
+                    }
+                ],
+                respawn=True,
+                respawn_delay=2.0,
+            ),
+            Node(
+                package="obstacle_detector",
                 executable="stm32_bridge",
                 name="stm32_bridge",
                 output="screen",
@@ -122,14 +142,18 @@ def generate_launch_description():
                         "baud_rate": baud_rate,
                         "yaw_sign": -1.0,
                         "cmd_vel_topic": "/cmd_vel_safe",
-                        # NUC-side linear clamp: 1.00 m/s per body-axis
-                        # component. STM32 keeps a separate 2.00 m/s cap.
-                        "max_speed_mm_s": 1000.0,
+                        "goal_handoff_hold_s": 0.5,
+                        "navigator_following_hold_s": 0.3,
+                        "navigator_status_timeout_s": 1.2,
+                        # NUC-side linear clamp: 2.00 m/s per body-axis
+                        # component. STM32 keeps a separate 4.00 m/s cap.
+                        "max_speed_mm_s": 2000.0,
                         "dry_run": ParameterValue(dry_run, value_type=bool),
                         "enforce_task_gate": ParameterValue(
                             enforce_task_gate, value_type=bool
                         ),
                         "field_config": field_map,
+                        "bed_scan_activation_distance_m": 1.2,
                     }
                 ],
             ),
@@ -139,7 +163,10 @@ def generate_launch_description():
                 name="code_scanner",
                 output="screen",
                 condition=IfCondition(scanner_enabled),
-                parameters=[scanner_params, {"camera_device": scan_camera}],
+                parameters=[
+                    scanner_params,
+                    {"camera_device": scan_camera, "field_config": field_map},
+                ],
                 respawn=True,
                 respawn_delay=2.0,
             ),
@@ -175,20 +202,29 @@ def generate_launch_description():
                     }
                 ],
             ),
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(nav2_share, "launch", "navigation_launch.py")
-                ),
-                launch_arguments={
-                    "use_sim_time": "false",
-                    "autostart": autostart,
-                    "params_file": nav2_params_file,
-                    # Humble's navigation_launch.py embeds this value in a
-                    # PythonExpression ("not <value>"), so it must use the
-                    # Python boolean spelling rather than YAML's lowercase.
-                    "use_composition": "False",
-                    "use_respawn": "true",
-                }.items(),
+            # Bring up the serial bridge, TF, map and lidar pipeline first.
+            # Starting all Nav2 lifecycle nodes in the same CPU-heavy burst
+            # can make Humble time out on smoother_server/change_state and
+            # leave NavigateToPose permanently unavailable.
+            TimerAction(
+                period=3.0,
+                actions=[
+                    IncludeLaunchDescription(
+                        PythonLaunchDescriptionSource(
+                            os.path.join(nav2_share, "launch", "navigation_launch.py")
+                        ),
+                        launch_arguments={
+                            "use_sim_time": "false",
+                            "autostart": autostart,
+                            "params_file": nav2_params_file,
+                            # Humble's navigation_launch.py embeds this value in a
+                            # PythonExpression ("not <value>"), so it must use the
+                            # Python boolean spelling rather than YAML's lowercase.
+                            "use_composition": "False",
+                            "use_respawn": "true",
+                        }.items(),
+                    )
+                ],
             ),
             Node(
                 package="nav2_collision_monitor",
@@ -222,6 +258,7 @@ def generate_launch_description():
                         "map_config": field_map,
                         "map_frame": "map",
                         "yaw_sign": -1.0,
+                        "goal_handoff_timeout_s": 1.0,
                     }
                 ],
             ),

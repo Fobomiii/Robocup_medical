@@ -20,6 +20,10 @@ uint8_t STP23L_IsOnlineA(void);
 uint8_t STP23L_IsOnlineB(void);
 uint8_t STP23L_IsOnlineC(void);
 
+uint8_t STP23L_GetSampleA(uint16_t *distance_mm, uint32_t *frame_sequence);
+uint8_t STP23L_GetSampleB(uint16_t *distance_mm, uint32_t *frame_sequence);
+uint8_t STP23L_GetSampleC(uint16_t *distance_mm, uint32_t *frame_sequence);
+
 #ifdef __cplusplus
 }
 #endif

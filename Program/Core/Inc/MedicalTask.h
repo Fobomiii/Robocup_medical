@@ -47,23 +47,21 @@ uint8_t MedicalTask_GetState(void);
 /** Copy the latest task-validated QR/CODE128 value for local display. */
 uint8_t MedicalTask_GetLastScan(char *value, uint16_t value_size);
 
+/** Copy the accepted CODE128 value for bed 1 or bed 3. */
+uint8_t MedicalTask_GetBedScan(uint8_t bed,
+                               char *value,
+                               uint16_t value_size);
+
 /**
  * Return 1 only while the delivery sequence is actively navigating.
  * Scanner, dispensing, completed and error states must never accept motion.
  */
 uint8_t MedicalTask_AllowsMotion(void);
 
-/**
- * Return 1 while final docking owns the chassis command.
- * The returned velocity uses the ROS/body convention expected by
- * DJI_Chassis_SetVelocityCommand(): forward mm/s, left mm/s and
- * counter-clockwise centi-degrees/s.  Invalid or timed-out ranges return
- * zero velocity while the docking state waits.  The docking timeout is
- * handled by MedicalTask_Update(), which stops and advances the workflow.
- */
-uint8_t MedicalTask_GetDockVelocity(int16_t *forward_mm_s,
-                                    int16_t *left_mm_s,
-                                    int16_t *yaw_ccw_cdeg_s);
+uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
+                                   float pos_x,
+                                   float pos_y,
+                                   float yaw_clockwise_deg);
 
 #ifdef __cplusplus
 }

@@ -8,6 +8,7 @@ from obstacle_detector.nav_protocol import (
     MSG_SCAN_RESULT,
     SCAN_ACK_ACCEPTED,
     SCAN_CONTEXT_BED1,
+    SCAN_CONTEXT_BED3,
     SCAN_CONTEXT_ORDER,
     SCAN_FORMAT_CODE128,
     SCAN_FORMAT_QR,
@@ -22,6 +23,7 @@ from obstacle_detector.nav_protocol import (
 from obstacle_detector.scanner_core import (
     ScanConsensus,
     scan_matches_task,
+    scan_position_is_allowed,
 )
 
 
@@ -59,6 +61,7 @@ class ScanProtocolTest(unittest.TestCase):
             decode_scan_ack(b"\x00\x01\x09")
 
     def test_state_format_and_whitelist_are_all_required(self):
+        self.assertTrue(scan_matches_task(1, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
         self.assertTrue(scan_matches_task(2, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
         self.assertFalse(scan_matches_task(4, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
         self.assertFalse(
@@ -67,7 +70,17 @@ class ScanProtocolTest(unittest.TestCase):
         self.assertFalse(scan_matches_task(2, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "99"))
         self.assertTrue(
             scan_matches_task(
+                3, SCAN_CONTEXT_BED1, SCAN_FORMAT_CODE128, "6906841121017"
+            )
+        )
+        self.assertTrue(
+            scan_matches_task(
                 4, SCAN_CONTEXT_BED1, SCAN_FORMAT_CODE128, "6906841121017"
+            )
+        )
+        self.assertTrue(
+            scan_matches_task(
+                6, SCAN_CONTEXT_BED3, SCAN_FORMAT_CODE128, "6906841121017"
             )
         )
 
@@ -84,6 +97,27 @@ class ScanProtocolTest(unittest.TestCase):
         consensus = ScanConsensus(required_hits=2, window_s=0.8)
         self.assertFalse(consensus.observe(SCAN_FORMAT_CODE128, "6946522463487", 1.0))
         self.assertFalse(consensus.observe(SCAN_FORMAT_CODE128, "6946522463487", 2.0))
+
+    def test_bed_scan_requires_proximity_to_its_current_target(self):
+        targets = {
+            SCAN_CONTEXT_BED1: (-2200.0, 5400.0),
+            SCAN_CONTEXT_BED3: (2200.0, 5400.0),
+        }
+        self.assertTrue(
+            scan_position_is_allowed(
+                SCAN_CONTEXT_BED1, -2200.0, 4500.0, targets, 1200.0
+            )
+        )
+        self.assertFalse(
+            scan_position_is_allowed(
+                SCAN_CONTEXT_BED3, -2200.0, 5400.0, targets, 1200.0
+            )
+        )
+        self.assertTrue(
+            scan_position_is_allowed(
+                SCAN_CONTEXT_ORDER, None, None, targets, 1200.0
+            )
+        )
 
 
 if __name__ == "__main__":

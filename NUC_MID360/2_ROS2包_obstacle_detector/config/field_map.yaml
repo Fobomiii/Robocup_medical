@@ -26,13 +26,26 @@ fixtures:
 
 goals:
   home:  {id: 1, label: "起点/终点", x_mm: 0, y_mm: 0, yaw_deg: 0}
-  # OPS-measured parking point in front of the nurse station; this is not the
-  # nurse-station fixture centre.
+  # Protocol anchor for goal id 2. Runtime nurse navigation uses the scan
+  # viewpoints below directly, so an obstacle here cannot stall the mission.
   nurse: {id: 2, label: "护士台停车点", x_mm: 0, y_mm: 1700, yaw_deg: 0}
   # True field geometry: the 300 mm parking circle is tangent to the inner bed
   # edge; its centre is 500 mm behind the bedside-cabinet near edge.
   bed1:  {id: 3, label: "Bed 1 goal", x_mm: -2200, y_mm: 5400, yaw_deg: 0}
   bed3:  {id: 4, label: "Bed 3 goal", x_mm: 2200, y_mm: 5400, yaw_deg: 0}
+
+# The nurse-station QR is acquired from sequential center/left/right scan
+# viewpoints rather than requiring the single point above. The front face is
+# y=2150 mm; every viewpoint computes its yaw toward that QR at runtime.
+nurse_scan:
+  zone: {min_x_mm: -650, max_x_mm: 650, min_y_mm: 1350, max_y_mm: 1850}
+  qr_target: {x_mm: 0, y_mm: 2150}
+  dwell_s: 1.5
+  viewpoint_timeout_s: 6.0
+  viewpoints:
+    - {name: nurse_scan_center, x_mm: 0, y_mm: 1700}
+    - {name: nurse_scan_left, x_mm: -450, y_mm: 1600}
+    - {name: nurse_scan_right, x_mm: 450, y_mm: 1600}
 
 # A=right, B=front, C=left. The sensors sit 153 mm from the vehicle centre.
 # The 300 mm parking circle is tangent to the bed's inner side, but the side
@@ -49,14 +62,14 @@ stp23l_calibration:
   max_offset_mm: 400
   beds:
     bed1:
-      task_states: [3, 4, 5]
+      task_states: [12]
       side_sensor: C
       side_reference_x_mm: -3500
       front_reference_y_mm: 5900
       expected_center_side_distance_mm: 1300
       expected_center_front_distance_mm: 500
     bed3:
-      task_states: [6, 7, 8]
+      task_states: [13]
       side_sensor: A
       side_reference_x_mm: 3500
       front_reference_y_mm: 5900

@@ -20,6 +20,7 @@ typedef struct
   uint8_t header_count;
   volatile uint16_t distance_mm;
   volatile uint32_t last_frame_ms;
+  volatile uint32_t frame_sequence;
   volatile uint8_t has_frame;
 } STP23L_Channel;
 
@@ -89,6 +90,7 @@ static void STP23L_ApplyFrame(STP23L_Channel *channel)
                              ? (uint16_t)(distance_sum / valid_count)
                              : 0U;
   channel->last_frame_ms = HAL_GetTick();
+  channel->frame_sequence++;
   channel->has_frame = 1U;
 }
 
@@ -186,6 +188,43 @@ static uint16_t STP23L_GetDistance(const STP23L_Channel *channel)
   return (STP23L_IsFresh(channel) != 0U) ? channel->distance_mm : 0U;
 }
 
+static uint8_t STP23L_GetSample(const STP23L_Channel *channel,
+                                uint16_t *distance_mm,
+                                uint32_t *frame_sequence)
+{
+  uint16_t distance;
+  uint32_t sequence;
+  uint32_t last_frame_ms;
+  uint8_t has_frame;
+  uint32_t primask;
+
+  if ((distance_mm == NULL) || (frame_sequence == NULL))
+  {
+    return 0U;
+  }
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  distance = channel->distance_mm;
+  sequence = channel->frame_sequence;
+  last_frame_ms = channel->last_frame_ms;
+  has_frame = channel->has_frame;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+
+  if ((has_frame == 0U) || (distance == 0U) ||
+      ((uint32_t)(HAL_GetTick() - last_frame_ms) > STP23L_TIMEOUT_MS))
+  {
+    return 0U;
+  }
+
+  *distance_mm = distance;
+  *frame_sequence = sequence;
+  return 1U;
+}
+
 void STP23L_Init(void)
 {
   memset(&s_channel_a, 0, sizeof(s_channel_a));
@@ -255,4 +294,19 @@ uint8_t STP23L_IsOnlineB(void)
 uint8_t STP23L_IsOnlineC(void)
 {
   return STP23L_IsFresh(&s_channel_c);
+}
+
+uint8_t STP23L_GetSampleA(uint16_t *distance_mm, uint32_t *frame_sequence)
+{
+  return STP23L_GetSample(&s_channel_a, distance_mm, frame_sequence);
+}
+
+uint8_t STP23L_GetSampleB(uint16_t *distance_mm, uint32_t *frame_sequence)
+{
+  return STP23L_GetSample(&s_channel_b, distance_mm, frame_sequence);
+}
+
+uint8_t STP23L_GetSampleC(uint16_t *distance_mm, uint32_t *frame_sequence)
+{
+  return STP23L_GetSample(&s_channel_c, distance_mm, frame_sequence);
 }

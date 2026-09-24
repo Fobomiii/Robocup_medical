@@ -2,20 +2,38 @@
 """State-gated QR and arbitrary-angle CODE128 scanner for the DECXIN camera."""
 
 import json
+import math
+import os
 import subprocess
 import threading
 import time
-from typing import Tuple
+from typing import Optional, Tuple
 
 import cv2
 import rclpy
 import zxingcpp
+from ament_index_python.packages import get_package_share_directory
+from geometry_msgs.msg import PoseStamped
 from pyzbar.pyzbar import ZBarSymbol, decode
 from rclpy.node import Node
+from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String, UInt8
 
-from .nav_protocol import SCAN_FORMAT_CODE128, SCAN_FORMAT_QR
-from .scanner_core import ScanConsensus, expected_scan, value_is_allowed
+from .nav_protocol import (
+    SCAN_CONTEXT_BED1,
+    SCAN_CONTEXT_BED3,
+    SCAN_CONTEXT_ORDER,
+    SCAN_FORMAT_CODE128,
+    SCAN_FORMAT_QR,
+)
+from .field_goals import load_field_goals
+from .scanner_core import (
+    TASK_NAV_NURSE,
+    ScanConsensus,
+    expected_scan,
+    scan_position_is_allowed,
+    value_is_allowed,
+)
 
 
 ANGLE_GROUPS = (
@@ -59,16 +77,31 @@ class CodeScanner(Node):
         self.declare_parameter("decode_rate_hz", 15.0)
         self.declare_parameter("confirm_hits", 2)
         self.declare_parameter("confirm_window_s", 0.8)
-        self.declare_parameter("roi_left", 0.05)
-        self.declare_parameter("roi_right", 0.95)
-        self.declare_parameter("roi_top", 0.15)
-        self.declare_parameter("roi_bottom", 0.85)
+        self.declare_parameter("roi_left", 0.0)
+        self.declare_parameter("roi_right", 1.0)
+        self.declare_parameter("roi_top", 0.0)
+        self.declare_parameter("roi_bottom", 1.0)
         self.declare_parameter("full_frame_fallback_period", 6)
+        self.declare_parameter("bed_scan_activation_distance_m", 1.2)
+        self.declare_parameter("pose_timeout_s", 0.5)
         self.declare_parameter("power_line_frequency", 1)
         self.declare_parameter("auto_exposure", 3)
         self.declare_parameter("autofocus", False)
         self.declare_parameter("focus_absolute", 630)
         self.declare_parameter("preview", False)
+        self.declare_parameter(
+            "preview_topic", "/medical_nav/scanner_preview/compressed"
+        )
+        self.declare_parameter("preview_rate_hz", 8.0)
+        self.declare_parameter("preview_width", 640)
+        self.declare_parameter("preview_height", 400)
+        self.declare_parameter("preview_jpeg_quality", 75)
+        default_field_config = os.path.join(
+            get_package_share_directory("obstacle_detector"),
+            "config",
+            "field_map.yaml",
+        )
+        self.declare_parameter("field_config", default_field_config)
 
         get = lambda name: self.get_parameter(name).value
         self.camera_device = str(get("camera_device"))
@@ -83,16 +116,39 @@ class CodeScanner(Node):
                 0.0 <= self.roi[2] < self.roi[3] <= 1.0):
             raise ValueError(f"invalid scanner ROI: {self.roi}")
         self.full_frame_period = max(1, int(get("full_frame_fallback_period")))
+        self.bed_scan_activation_distance_mm = max(
+            0.1, float(get("bed_scan_activation_distance_m"))
+        ) * 1000.0
+        self.pose_timeout_s = max(0.1, float(get("pose_timeout_s")))
         self.power_line_frequency = int(get("power_line_frequency"))
         self.auto_exposure = int(get("auto_exposure"))
         self.autofocus = bool(get("autofocus"))
         self.focus_absolute = int(get("focus_absolute"))
         self.preview = bool(get("preview"))
+        self.preview_width = max(160, int(get("preview_width")))
+        self.preview_height = max(100, int(get("preview_height")))
+        self.preview_jpeg_quality = max(
+            30, min(95, int(get("preview_jpeg_quality")))
+        )
         self.consensus = ScanConsensus(
             int(get("confirm_hits")), float(get("confirm_window_s"))
         )
+        goals_by_name, _ = load_field_goals(str(get("field_config")))
+        self.scan_targets_mm = {
+            SCAN_CONTEXT_BED1: (
+                goals_by_name["bed1"].x_mm,
+                goals_by_name["bed1"].y_mm,
+            ),
+            SCAN_CONTEXT_BED3: (
+                goals_by_name["bed3"].x_mm,
+                goals_by_name["bed3"].y_mm,
+            ),
+        }
 
         self.task_state = 0
+        self.robot_field_pose_mm = None
+        self.last_pose_s = 0.0
+        self.spatial_gate_open = False
         self.frame_index = 0
         self.latest_frame = None
         self.frame_lock = threading.Lock()
@@ -102,13 +158,26 @@ class CodeScanner(Node):
         self.last_value = ""
         self.last_source = ""
         self.last_decode_ms = 0.0
+        self.scan_values = {
+            SCAN_CONTEXT_ORDER: "",
+            SCAN_CONTEXT_BED1: "",
+            SCAN_CONTEXT_BED3: "",
+        }
 
         self.result_pub = self.create_publisher(String, "/medical_nav/scan_result", 10)
         self.status_pub = self.create_publisher(String, "/medical_nav/scanner_status", 10)
+        self.preview_pub = self.create_publisher(
+            CompressedImage, str(get("preview_topic")), 2
+        )
         self.create_subscription(UInt8, "/medical_nav/task_state", self._task_state, 10)
+        self.create_subscription(
+            PoseStamped, "/medical_nav/robot_pose", self._robot_pose, 10
+        )
 
         rate = max(1.0, float(get("decode_rate_hz")))
+        preview_rate = max(1.0, float(get("preview_rate_hz")))
         self.create_timer(1.0 / rate, self._decode_tick)
+        self.create_timer(1.0 / preview_rate, self._preview_tick)
         self.create_timer(1.0, self._publish_status)
         self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
         self.capture_thread.start()
@@ -171,13 +240,93 @@ class CodeScanner(Node):
             with self.frame_lock:
                 self.latest_frame = frame
 
+    def _preview_tick(self) -> None:
+        with self.frame_lock:
+            frame = None if self.latest_frame is None else self.latest_frame.copy()
+        if frame is None:
+            return
+
+        preview = cv2.resize(
+            frame,
+            (self.preview_width, self.preview_height),
+            interpolation=cv2.INTER_AREA,
+        )
+        height, width = preview.shape[:2]
+        left, right, top, bottom = self.roi
+        cv2.rectangle(
+            preview,
+            (int(width * left), int(height * top)),
+            (
+                min(width - 1, int(width * right)),
+                min(height - 1, int(height * bottom)),
+            ),
+            (0, 220, 255),
+            2,
+        )
+        ok, encoded = cv2.imencode(
+            ".jpg",
+            preview,
+            [cv2.IMWRITE_JPEG_QUALITY, self.preview_jpeg_quality],
+        )
+        if not ok:
+            return
+
+        message = CompressedImage()
+        message.header.stamp = self.get_clock().now().to_msg()
+        message.format = "jpeg"
+        message.data = encoded.tobytes()
+        self.preview_pub.publish(message)
+
     def _task_state(self, message: UInt8) -> None:
         state = int(message.data)
         if state != self.task_state:
+            if state == TASK_NAV_NURSE:
+                self.scan_values = dict.fromkeys(self.scan_values, "")
             self.task_state = state
             self.consensus.reset()
+            self.spatial_gate_open = False
             self.last_value = ""
             self.last_source = ""
+
+    def _robot_pose(self, message: PoseStamped) -> None:
+        # ROS map (x forward, y left) -> surveyed field (x right, y forward).
+        self.robot_field_pose_mm = (
+            -float(message.pose.position.y) * 1000.0,
+            float(message.pose.position.x) * 1000.0,
+        )
+        self.last_pose_s = time.monotonic()
+
+    def _target_distance_m(self, context: int) -> Optional[float]:
+        if context == SCAN_CONTEXT_ORDER:
+            return 0.0
+        if (
+            self.robot_field_pose_mm is None
+            or time.monotonic() - self.last_pose_s > self.pose_timeout_s
+        ):
+            return None
+        target = self.scan_targets_mm.get(context)
+        if target is None:
+            return None
+        return math.hypot(
+            self.robot_field_pose_mm[0] - target[0],
+            self.robot_field_pose_mm[1] - target[1],
+        ) / 1000.0
+
+    def _scan_position_is_allowed(self, context: int) -> bool:
+        if context == SCAN_CONTEXT_ORDER:
+            return True
+        if (
+            self.robot_field_pose_mm is None
+            or time.monotonic() - self.last_pose_s > self.pose_timeout_s
+        ):
+            return False
+        return scan_position_is_allowed(
+            context,
+            self.robot_field_pose_mm[0],
+            self.robot_field_pose_mm[1],
+            self.scan_targets_mm,
+            self.bed_scan_activation_distance_mm,
+        )
 
     @staticmethod
     def _decode_qr(gray) -> Tuple[str, str]:
@@ -231,15 +380,28 @@ class CodeScanner(Node):
             return
 
         context, format = expected
+        spatial_gate_open = self._scan_position_is_allowed(context)
+        if spatial_gate_open != self.spatial_gate_open:
+            self.consensus.reset()
+            self.spatial_gate_open = spatial_gate_open
+        if not spatial_gate_open:
+            return
+
         height, width = frame.shape[:2]
         left, right, top, bottom = self.roi
         x1, x2 = int(width * left), int(width * right)
         y1, y2 = int(height * top), int(height * bottom)
-        gray = cv2.cvtColor(frame[y1:y2, x1:x2], cv2.COLOR_BGR2GRAY)
+        full_frame = x1 == 0 and x2 == width and y1 == 0 and y2 == height
+        scan_frame = frame if full_frame else frame[y1:y2, x1:x2]
+        gray = cv2.cvtColor(scan_frame, cv2.COLOR_BGR2GRAY)
 
         started = time.perf_counter()
         value, source = self._decode(gray, format)
-        if not value and self.frame_index % self.full_frame_period == 0:
+        if (
+            not value
+            and not full_frame
+            and self.frame_index % self.full_frame_period == 0
+        ):
             full_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             value, source = self._decode(full_gray, format)
             if value:
@@ -250,6 +412,7 @@ class CodeScanner(Node):
         if value and self.consensus.observe(format, value, time.monotonic()):
             self.last_value = value
             self.last_source = source
+            self.scan_values[context] = value
             message = String()
             message.data = json.dumps(
                 {"context": context, "format": format, "value": value, "source": source}
@@ -275,6 +438,7 @@ class CodeScanner(Node):
 
     def _publish_status(self) -> None:
         expected = expected_scan(self.task_state)
+        context = expected[0] if expected else 0
         message = String()
         message.data = json.dumps(
             {
@@ -282,11 +446,18 @@ class CodeScanner(Node):
                 "device": self.camera_device,
                 "task_state": self.task_state,
                 "active": expected is not None,
-                "context": expected[0] if expected else 0,
+                "context": context,
                 "format": expected[1] if expected else 0,
                 "value": self.last_value,
                 "source": self.last_source,
                 "decode_ms": round(self.last_decode_ms, 1),
+                "scan_values": self.scan_values,
+                "spatial_gate_open": self._scan_position_is_allowed(context)
+                if expected
+                else False,
+                "target_distance_m": self._target_distance_m(context)
+                if expected
+                else None,
             }
         )
         self.status_pub.publish(message)

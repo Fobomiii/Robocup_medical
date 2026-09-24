@@ -1,7 +1,8 @@
 """Pure validation and temporal confirmation for competition code scanning."""
 
 from collections import defaultdict
-from typing import DefaultDict, List, Optional, Tuple
+import math
+from typing import DefaultDict, List, Mapping, Optional, Tuple
 
 from .nav_protocol import (
     SCAN_CONTEXT_BED1,
@@ -12,8 +13,11 @@ from .nav_protocol import (
 )
 
 
+TASK_NAV_NURSE = 1
 TASK_SCAN_ORDER = 2
+TASK_NAV_BED1 = 3
 TASK_SCAN_BED1 = 4
+TASK_NAV_BED3 = 6
 TASK_SCAN_BED3 = 7
 
 QR_VALUES = frozenset(("11", "13", "31", "33"))
@@ -30,11 +34,11 @@ CODE128_VALUES = frozenset(
 
 
 def expected_scan(task_state: int) -> Optional[Tuple[int, int]]:
-    if task_state == TASK_SCAN_ORDER:
+    if task_state in (TASK_NAV_NURSE, TASK_SCAN_ORDER):
         return SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR
-    if task_state == TASK_SCAN_BED1:
+    if task_state in (TASK_NAV_BED1, TASK_SCAN_BED1):
         return SCAN_CONTEXT_BED1, SCAN_FORMAT_CODE128
-    if task_state == TASK_SCAN_BED3:
+    if task_state in (TASK_NAV_BED3, TASK_SCAN_BED3):
         return SCAN_CONTEXT_BED3, SCAN_FORMAT_CODE128
     return None
 
@@ -50,6 +54,23 @@ def value_is_allowed(format: int, value: str) -> bool:
 def scan_matches_task(task_state: int, context: int, format: int, value: str) -> bool:
     expected = expected_scan(task_state)
     return expected == (context, format) and value_is_allowed(format, value)
+
+
+def scan_position_is_allowed(
+    context: int,
+    robot_x_mm: Optional[float],
+    robot_y_mm: Optional[float],
+    targets_mm: Mapping[int, Tuple[float, float]],
+    max_distance_mm: float,
+) -> bool:
+    if context == SCAN_CONTEXT_ORDER:
+        return True
+    if robot_x_mm is None or robot_y_mm is None or max_distance_mm <= 0.0:
+        return False
+    target = targets_mm.get(context)
+    if target is None:
+        return False
+    return math.hypot(robot_x_mm - target[0], robot_y_mm - target[1]) <= max_distance_mm
 
 
 class ScanConsensus:

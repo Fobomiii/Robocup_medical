@@ -25,7 +25,7 @@
 #define NAV_FRAME_MAX_LEN    (2U + 4U + NAV_MAX_PAYLOAD + 2U)
 #define NAV_ONLINE_MS        500U
 #define NAV_VELOCITY_TIMEOUT_MS 250U
-#define NAV_STM32_MAX_LINEAR_MM_S 2000
+#define NAV_STM32_MAX_LINEAR_MM_S 4000
 #define NAV_POSE_PERIOD_MS   20U
 #define NAV_GOAL_PERIOD_MS   250U
 #define NAV_STP23L_PERIOD_MS 100U
@@ -104,8 +104,8 @@ static NUC_NavScanResult s_nav_scan_result;
 static volatile uint8_t s_nav_scan_pending;
 
 /* Final linear-speed guard on the STM32 side. The NUC currently limits each
- * body-axis component to 1000 mm/s, while this lower-level guard allows up to
- * 2.00 m/s for any future command source. */
+ * body-axis component to 2000 mm/s, while this lower-level guard allows up to
+ * 4.00 m/s for any future command source. */
 static int16_t clamp_nav_linear_speed(int16_t speed_mm_s)
 {
   if (speed_mm_s > NAV_STM32_MAX_LINEAR_MM_S)

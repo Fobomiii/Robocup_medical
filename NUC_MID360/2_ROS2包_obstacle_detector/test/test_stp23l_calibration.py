@@ -33,6 +33,8 @@ class Stp23lCalibrationTest(unittest.TestCase):
         self.assertEqual(beds["bed3"].true_x_mm, 2200.0)
         self.assertEqual(beds["bed1"].true_y_mm, 5400.0)
         self.assertEqual(beds["bed3"].true_y_mm, 5400.0)
+        self.assertEqual(beds["bed1"].task_states, (12,))
+        self.assertEqual(beds["bed3"].task_states, (13,))
         for bed in beds.values():
             self.assertEqual(bed.expected_center_side_distance_mm, 1300.0)
             self.assertEqual(bed.expected_center_front_distance_mm, 500.0)
@@ -55,8 +57,7 @@ class Stp23lCalibrationTest(unittest.TestCase):
 
     def test_bed1_corrects_surveyed_ops_to_true_circle_center(self):
         event = None
-        # Approach the goal while the independently estimated offset remains
-        # +50/+50 mm. Calibration should complete before Nav2 has to stop.
+        # Final docking samples retain a stable +50/+50 mm OPS offset.
         for index in range(self.config.samples_required):
             raw_x = -2100.0 - index * 20.0
             raw_y = 5200.0 + index * 20.0
@@ -69,7 +70,7 @@ class Stp23lCalibrationTest(unittest.TestCase):
                 0x06,
             )
             event = self.calibrator.update(
-                3, NAV_FOLLOWING, raw_x, raw_y, 0, ranges
+                12, NAV_FOLLOWING, raw_x, raw_y, 0, ranges
             )
         self.assertTrue(event.applied)
         self.assertAlmostEqual(self.calibrator.offset_x_mm, 50.0)
@@ -83,7 +84,7 @@ class Stp23lCalibrationTest(unittest.TestCase):
         event = None
         for _ in range(self.config.samples_required):
             event = self.calibrator.update(
-                6, NAV_FOLLOWING, 2150.0, 5450.0, 0, ranges
+                13, NAV_FOLLOWING, 2150.0, 5450.0, 0, ranges
             )
         self.assertTrue(event.applied)
         self.assertAlmostEqual(self.calibrator.offset_x_mm, 50.0)
@@ -92,25 +93,48 @@ class Stp23lCalibrationTest(unittest.TestCase):
     def test_unexpected_obstacle_range_is_rejected(self):
         ranges = Stp23lTelemetry(0, 150, 400, 0x06)
         event = self.calibrator.update(
-            3, NAV_FOLLOWING, -2250.0, 5350.0, 0, ranges
+            12, NAV_FOLLOWING, -2250.0, 5350.0, 0, ranges
         )
         self.assertEqual(event.state, "range_outside_geometry_gate")
+        self.assertFalse(event.applied)
+
+    def test_navigation_states_cannot_apply_bed_calibration(self):
+        ranges = Stp23lTelemetry(0, 347, 1147, 0x06)
+        event = self.calibrator.update(
+            3, NAV_FOLLOWING, -2200.0, 5400.0, 0, ranges
+        )
+        self.assertEqual(event.state, "not_at_calibration_point")
         self.assertFalse(event.applied)
 
     def test_leaving_bed_rearms_calibration_for_next_visit(self):
         ranges = Stp23lTelemetry(0, 347, 1147, 0x06)
         for _ in range(self.config.samples_required):
             first = self.calibrator.update(
-                3, NAV_FOLLOWING, -2200.0, 5400.0, 0, ranges
+                12, NAV_FOLLOWING, -2200.0, 5400.0, 0, ranges
             )
         self.assertTrue(first.applied)
         self.calibrator.update(9, NAV_FOLLOWING, 0.0, 0.0, 0, ranges)
         second = None
         for _ in range(self.config.samples_required):
             second = self.calibrator.update(
-                3, NAV_FOLLOWING, -2200.0, 5400.0, 0, ranges
+                12, NAV_FOLLOWING, -2200.0, 5400.0, 0, ranges
             )
         self.assertTrue(second.applied)
+
+    def test_new_mission_reset_clears_offset_and_samples(self):
+        ranges = Stp23lTelemetry(1147, 347, 0, 0x03)
+        for _ in range(self.config.samples_required):
+            event = self.calibrator.update(
+                13, NAV_FOLLOWING, 2150.0, 5450.0, 0, ranges
+            )
+        self.assertTrue(event.applied)
+        self.assertNotEqual(self.calibrator.corrected_xy(0.0, 0.0), (0.0, 0.0))
+
+        self.calibrator.reset()
+
+        self.assertEqual(self.calibrator.corrected_xy(0.0, 0.0), (0.0, 0.0))
+        self.assertEqual(self.calibrator.offset_x_mm, 0.0)
+        self.assertEqual(self.calibrator.offset_y_mm, 0.0)
 
 
 if __name__ == "__main__":

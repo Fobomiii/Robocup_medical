@@ -7,13 +7,23 @@ code_scanner:
     decode_rate_hz: 15.0
     confirm_hits: 2
     confirm_window_s: 0.8
-    roi_left: 0.05
-    roi_right: 0.95
-    roi_top: 0.15
-    roi_bottom: 0.85
+    # Decode the complete 1920x1200 image on every scan cycle.
+    roi_left: 0.0
+    roi_right: 1.0
+    roi_top: 0.0
+    roi_bottom: 1.0
     full_frame_fallback_period: 6
+    # Bed barcodes may be captured while approaching, but not while the robot
+    # is still beside the previously visited bed.
+    bed_scan_activation_distance_m: 1.2
+    pose_timeout_s: 0.5
     power_line_frequency: 1
     auto_exposure: 3
     autofocus: false
     focus_absolute: 630
     preview: false
+    preview_topic: /medical_nav/scanner_preview/compressed
+    preview_rate_hz: 8.0
+    preview_width: 640
+    preview_height: 400
+    preview_jpeg_quality: 75

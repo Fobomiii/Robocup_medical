@@ -1,0 +1,24 @@
+<!--
+  Fast nurse-station scan navigation. A blocked scan viewpoint gets one
+  costmap clear and then returns failure so the navigator can immediately try
+  the next center/left/right viewpoint. Deliberately contains no chassis
+  recovery motion such as Spin, Wait or BackUp.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <PipelineSequence name="NavigateNurseScanViewpoint">
+      <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
+      <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
+      <RateController hz="1.0">
+        <RecoveryNode number_of_retries="1" name="ComputeNurseScanPath">
+          <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}"/>
+          <ClearEntireCostmap name="ClearGlobalCostmap-NurseScan" service_name="global_costmap/clear_entirely_global_costmap"/>
+        </RecoveryNode>
+      </RateController>
+      <RecoveryNode number_of_retries="1" name="FollowNurseScanPath">
+        <FollowPath path="{path}" controller_id="{selected_controller}"/>
+        <ClearEntireCostmap name="ClearLocalCostmap-NurseScan" service_name="local_costmap/clear_entirely_local_costmap"/>
+      </RecoveryNode>
+    </PipelineSequence>
+  </BehaviorTree>
+</root>

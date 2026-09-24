@@ -441,6 +441,16 @@
               <FilePath>../Core/Src/DJIMotorCtrlSTM32.cpp</FilePath>
             </File>
             <File>
+              <FileName>PID.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>../Core/Src/PID.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>ChassisCtrl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/ChassisCtrl.c</FilePath>
+            </File>
+            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/main.c</FilePath>

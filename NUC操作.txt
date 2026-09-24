@@ -221,7 +221,7 @@ sudo systemctl restart obstacle-detector.service
 cd 'C:\Users\ASUS\Desktop\Robocup医疗'
 $env:MEDICAL_NUC_HOST='192.168.50.22'
 $env:MEDICAL_NUC_USER='fzurobot'
-$env:MEDICAL_NUC_PASSWORD='<填写当前 NUC 密码>'
+$env:MEDICAL_NUC_PASSWORD='FZURobot'
 python '.\NUC_MID360\4_启动脚本\deploy_nuc.py'
 
 重要：当前 deploy_nuc.py 会在部署完成后写入 MEDICAL_NAV_DRY_RUN=false，并重启服务，即允许真实底盘运动。部署前必须保证场地和急停安全。

@@ -114,6 +114,13 @@ class OpsRangeCalibrator:
             state: bed for bed in config.beds for state in bed.task_states
         }
 
+    def reset(self) -> None:
+        self.offset_x_mm = 0.0
+        self.offset_y_mm = 0.0
+        self._samples.clear()
+        self._active_bed = None
+        self._calibrated_beds.clear()
+
     def corrected_xy(self, raw_x_mm: float, raw_y_mm: float) -> Tuple[float, float]:
         return raw_x_mm + self.offset_x_mm, raw_y_mm + self.offset_y_mm
 

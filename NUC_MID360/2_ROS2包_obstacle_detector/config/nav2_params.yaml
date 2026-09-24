@@ -145,25 +145,30 @@ controller_server:
       # 1600 samples with a 2.5 s horizon saturated the NUC during navigation
       # and made safety point clouds 0.3-0.6 s stale.
       batch_size: 1200
-      # Explore enough of the 1.0 m/s command range. The previous narrow
+      # Explore enough of the 2.0 m/s command range. The previous narrow
       # distribution converged around 0.2-0.3 m/s even on an open path.
       vx_std: 0.30
       # The chassis is a 4-wheel omni base. Allow bounded lateral samples so
       # it can sidestep around the fixed beds/cabinets instead of first making
       # a full heading correction. The bridge limits each linear component to
-      # 1.00 m/s; the STM32 keeps an independent 2.00 m/s hard cap.
+      # 2.00 m/s; the STM32 keeps an independent 4.00 m/s hard cap.
       vy_std: 0.25
       wz_std: 0.30
 
-      vx_max: 1.00
+      vx_max: 2.00
       vx_min: -0.40
-      vy_max: 1.00
+      vy_max: 2.00
       wz_max: 0.80
 
       iteration_count: 1
-      prune_distance: 1.5
+      # Keep three metres of the global path available to the 2.0 s rollout.
+      # The enlarged 8 m local costmap can evaluate this look-ahead without
+      # trajectories immediately reaching the rolling-window boundary.
+      prune_distance: 3.0
       transform_tolerance: 0.3
-      temperature: 0.30
+      # Prefer the best-progressing samples slightly more decisively while
+      # retaining enough averaging to avoid command chatter.
+      temperature: 0.25
       gamma: 0.015
       # Use the actual holonomic model. GoalAngleCritic still encourages the
       # requested final heading, while the bounded vy range permits sideways
@@ -199,7 +204,9 @@ controller_server:
         cost_power: 1
         cost_weight: 10.0
         critical_cost: 60.0
-        # The costmaps use a circular robot_radius, not a polygon footprint.
+        # Check the robot centre here so MPPI can still command an escape when
+        # the physical footprint starts inside an inflated/lethal region.
+        # Cone-base expansion and Collision Monitor remain independent guards.
         consider_footprint: false
         collision_cost: 1000000.0
         # Match the clearance planner's goal exemption. A larger value lets
@@ -224,7 +231,8 @@ controller_server:
       PathAlignCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 10.0
+        # Permit useful holonomic shortcuts without abandoning the safe path.
+        cost_weight: 8.0
         max_path_occupancy_ratio: 0.05
         trajectory_point_step: 3
         threshold_to_consider: 0.5
@@ -244,7 +252,8 @@ controller_server:
       PathAngleCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 2.0
+        # Avoid spending excessive control authority matching path heading.
+        cost_weight: 1.5
         offset_from_furthest: 4
         threshold_to_consider: 0.5
         max_angle_to_furthest: 1.0
@@ -277,7 +286,7 @@ planner_server:
 
       # Fade only the private preference cost near start/goal. Lethal and
       # footprint-collision cells are never exempted. This preserves exact
-      # access to the nurse station and bed targets with the real 0.225 m
+      # access to the nurse station and bed targets with the real 0.23 m
       # footprint and the existing 0.25 m visible inflation radius.
       goal_exemption_radius: 0.75
       start_exemption_radius: 0.45
@@ -324,14 +333,14 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: false
     feedback: "OPEN_LOOP"
-    # Keep these at the NUC linear limit. The STM32 has a separate 2.00 m/s
+    # Keep these at the NUC linear limit. The STM32 has a separate 4.00 m/s
     # hard cap, so any other command source still has a lower-level guard.
-    max_velocity: [1.00, 1.00, 0.80]
-    min_velocity: [-1.00, -1.00, -0.80]
-    # Faster launch response: 3x the previous XY and yaw acceleration limits.
-    # Normal braking is slightly stronger than acceleration. Collision
-    # Monitor emergency stops still bypass this ramp and command zero.
-    max_accel: [1.5, 1.5, 3.6]
+    max_velocity: [2.00, 2.00, 0.80]
+    min_velocity: [-0.40, -2.00, -0.80]
+    # Raise XY acceleration conservatively from the stable 1.5 m/s^2 profile.
+    # Keep the proven braking limits; 4.0/-4.5 m/s^2 caused chassis overshoot.
+    # Collision Monitor emergency stops still bypass this ramp and command zero.
+    max_accel: [2.0, 2.0, 3.6]
     max_decel: [-1.8, -1.8, -4.5]
     odom_topic: /odom
     odom_duration: 0.1
@@ -356,7 +365,7 @@ collision_monitor:
 
     ApproachPolygon:
       type: "polygon"
-      # 0.28 m octagon: chassis radius 0.225 m plus 55 mm allowance. Unlike
+      # 0.28 m octagon: chassis radius 0.23 m plus 50 mm allowance. Unlike
       # a large fixed stop box, approach projects this shape along cmd_vel and
       # continuously scales the command only when that motion would collide.
       points: [0.28, 0.0, 0.20, -0.20, 0.0, -0.28, -0.20, -0.20, -0.28, 0.0, -0.20, 0.20, 0.0, 0.28, 0.20, 0.20]
@@ -370,7 +379,7 @@ collision_monitor:
     StopPolygon:
       type: "polygon"
       # Installed Humble collision_monitor expects a flat double array.
-      # Keep only 40 mm beyond the measured 0.225 m body radius. This catches
+      # Keep only 35 mm beyond the measured 0.23 m body radius. This catches
       # imminent contact without stopping normal 0.30 m bed approaches.
       points: [0.265, 0.0, 0.187, -0.187, 0.0, -0.265, -0.187, -0.187, -0.265, 0.0, -0.187, 0.187, 0.0, 0.265, 0.187, 0.187]
       action_type: "stop"
@@ -380,7 +389,9 @@ collision_monitor:
 
     livox:
       type: "pointcloud"
-      topic: /livox/lidar_filtered
+      # Navigation-only cloud includes the known 0.155 m competition-cone
+      # base; localisation continues to use the unexpanded filtered cloud.
+      topic: /livox/lidar_nav
       # Upright Mid360 optical centre is at z=0.33 m. Keep the band above
       # that height so horizontal returns remain available to safety checks.
       max_height: 0.60
@@ -399,12 +410,19 @@ local_costmap:
       # Keep a clearing-only band before returns leave the rolling window.
       # This prevents a fast-moving person from leaving a marked cell at the
       # edge: mark through 2.4 m, clear through 2.9 m, map edge at 3.0 m.
-      width: 6
-      height: 6
+      # An 8 m rolling window gives the 2 s MPPI rollout up to 4 m of local
+      # obstacle context, instead of truncating faster trajectories at 3 m.
+      width: 8
+      height: 8
       resolution: 0.05
-      # Measured chassis radius: 22.5 cm. The inflation layer below adds the
+      # Measured chassis radius: 23 cm. The inflation layer below adds the
       # navigation clearance; do not fold that clearance into robot_radius.
-      robot_radius: 0.225
+      robot_radius: 0.23
+      # Humble MPPI requires an explicit polygon when CostCritic checks the
+      # complete footprint. This 16-gon approximates the measured 0.23 m
+      # circular chassis while preserving the narrow bed parking clearance.
+      footprint: "[[0.2300, 0.0000], [0.2125, 0.0880], [0.1626, 0.1626], [0.0880, 0.2125], [0.0000, 0.2300], [-0.0880, 0.2125], [-0.1626, 0.1626], [-0.2125, 0.0880], [-0.2300, 0.0000], [-0.2125, -0.0880], [-0.1626, -0.1626], [-0.0880, -0.2125], [0.0000, -0.2300], [0.0880, -0.2125], [0.1626, -0.1626], [0.2125, -0.0880]]"
+      footprint_padding: 0.0
       # The rolling local map must also contain fixed field furniture.
       # Without StaticLayer, MPPI only sees the live Livox cloud and can
       # cut into a nurse station/bed when the chassis or lidar occludes it.
@@ -433,7 +451,7 @@ local_costmap:
         footprint_clearing_enabled: True
         observation_sources: livox
         livox:
-          topic: /livox/lidar_filtered
+          topic: /livox/lidar_nav
           min_obstacle_height: 0.08
           max_obstacle_height: 0.60
           clearing: True
@@ -458,7 +476,9 @@ global_costmap:
       robot_base_frame: base_link
       use_sim_time: false
       # Same physical footprint as the local costmap.
-      robot_radius: 0.225
+      robot_radius: 0.23
+      footprint: "[[0.2300, 0.0000], [0.2125, 0.0880], [0.1626, 0.1626], [0.0880, 0.2125], [0.0000, 0.2300], [-0.0880, 0.2125], [-0.1626, 0.1626], [-0.2125, 0.0880], [-0.2300, 0.0000], [-0.2125, -0.0880], [-0.1626, -0.1626], [-0.0880, -0.2125], [0.0000, -0.2300], [0.0880, -0.2125], [0.1626, -0.1626], [0.2125, -0.0880]]"
+      footprint_padding: 0.0
       resolution: 0.05
       # Exactly the surveyed field after conversion:
       # ROS x = field +Y (-0.5..6.5), ROS y = field -X (-3.5..3.5).
@@ -482,7 +502,7 @@ global_costmap:
         enabled: True
         observation_sources: livox
         livox:
-          topic: /livox/lidar_filtered
+          topic: /livox/lidar_nav
           min_obstacle_height: 0.08
           max_obstacle_height: 0.60
           clearing: True

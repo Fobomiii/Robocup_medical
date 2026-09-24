@@ -33,6 +33,7 @@
 #include "MedicalTask.h"
 #include "STP23L.h"
 #include "ASR_Pro.h"
+#include "PID.h"
 
 /* USER CODE END Includes */
 
@@ -213,7 +214,11 @@ int main(void)
   HAL_Delay(2000);
   HWT101_CaliYaw();
   OPS_Init();
-  
+
+  PID_SetX(0.5f, 0.0f, 0.08f, -40.0f, 40.0f, 0.0f);
+  PID_SetY(0.5f, 0.0f, 0.08f, -40.0f, 40.0f, 0.0f);
+  PID_SetZ(1.2f, 0.0f, 0.0f, -120.0f, 120.0f, 0.0f);
+
   GM65_Init();
   NUC_Obstacle_Init();
   while (!NUC_IsOnline())
@@ -1103,21 +1108,13 @@ void StartCanHostTask(void *argument)
                       task_state, nav_status, 0U, 0U);
     }
 
-    dock_override = 0U;
-    if (ops_ok && hwt_ok && NUC_Nav_IsOnline())
-    {
-      dock_override = MedicalTask_GetDockVelocity(
-          &forward_mm_s, &left_mm_s, &yaw_ccw_cdeg_s);
-    }
+    dock_override = MedicalTask_DockingControl(
+        (uint8_t)((ops_ok != 0U) && (hwt_ok != 0U)),
+        pos_x, pos_y, yaw_deg);
 
     if (dock_override != 0U)
     {
-      /* Final bed docking is a local STM32 loop; Nav2 has already reported
-       * the coarse goal as reached and its velocity command is deliberately
-       * ignored until the STP23L settle/timeout decision completes. */
-      DJI_Chassis_SetVelocityCommand((float)forward_mm_s,
-                                     (float)left_mm_s,
-                                     (float)yaw_ccw_cdeg_s);
+      /* MedicalTask owns the chassis output during final docking. */
     }
     else if (ops_ok && hwt_ok && NUC_Nav_IsOnline() &&
              MedicalTask_AllowsMotion() && nav_status == NUC_NAV_FOLLOWING &&
@@ -1173,7 +1170,8 @@ void StartOledTask(void *argument)
 
   for (;;)
   {
-    char scan_code[MEDICAL_TASK_SCAN_CODE_MAX];
+    char bed1_code[MEDICAL_TASK_SCAN_CODE_MAX];
+    char bed3_code[MEDICAL_TASK_SCAN_CODE_MAX];
     uint16_t distance_a_mm = STP32_getA();
     uint16_t distance_b_mm = STP32_getB();
     uint16_t distance_c_mm = STP32_getC();
@@ -1183,30 +1181,39 @@ void StartOledTask(void *argument)
     ssd1309_setTextColor(SSD1309_WHITE);
 
     ssd1309_setCursor(0, 0);
-    if (MedicalTask_GetLastScan(scan_code, sizeof(scan_code)) != 0U)
+    if (MedicalTask_GetBedScan(1U, bed1_code, sizeof(bed1_code)) != 0U)
     {
-      ssd1309_printf("SCAN:%s", scan_code);
+      ssd1309_printf("B1:%s", bed1_code);
     }
     else
     {
-      ssd1309_print("SCAN:--");
+      ssd1309_print("B1:--");
     }
 
     ssd1309_setCursor(0, 8);
-    ssd1309_printf("X:%.2f", OPS_GetX());
+    if (MedicalTask_GetBedScan(3U, bed3_code, sizeof(bed3_code)) != 0U)
+    {
+      ssd1309_printf("B3:%s", bed3_code);
+    }
+    else
+    {
+      ssd1309_print("B3:--");
+    }
+
     ssd1309_setCursor(0, 16);
-    ssd1309_printf("Y:%.2f", OPS_GetY());
+    ssd1309_printf("X:%.2f", OPS_GetX());
     ssd1309_setCursor(0, 24);
-    ssd1309_printf("Z:%.2f", pos_z);
+    ssd1309_printf("Y:%.2f", OPS_GetY());
 
     ssd1309_setCursor(0, 32);
-    ssd1309_printf("A:%umm", (unsigned int)distance_a_mm);
+    ssd1309_printf("Z:%.1f T:%u", pos_z,
+                   (unsigned int)MedicalTask_GetState());
     ssd1309_setCursor(0, 40);
-    ssd1309_printf("B:%umm", (unsigned int)distance_b_mm);
+    ssd1309_printf("A:%umm", (unsigned int)distance_a_mm);
     ssd1309_setCursor(0, 48);
-    ssd1309_printf("C:%umm", (unsigned int)distance_c_mm);
+    ssd1309_printf("B:%umm", (unsigned int)distance_b_mm);
     ssd1309_setCursor(0, 56);
-    ssd1309_printf("TASK:%u", (unsigned int)MedicalTask_GetState());
+    ssd1309_printf("C:%umm", (unsigned int)distance_c_mm);
 
     ssd1309_display();
     osDelay(100);
