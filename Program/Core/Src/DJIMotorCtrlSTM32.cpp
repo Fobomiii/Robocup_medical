@@ -262,8 +262,10 @@ public:
       return 0;
     }
 
-    if (m.online()) {
+    if (m.online() && fabsf(loc_k) > 1e-6f) {
       m.speed_loc_target += 8192.f * target_rpm * dt / 60.f;
+    } else if (fabsf(loc_k) <= 1e-6f) {
+      m.speed_loc_target = (float)m.location;
     }
 
     float err = (target_rpm - (float)m.speed)
@@ -316,12 +318,14 @@ private:
   bool ready_;
 };
 
-static DjiCanBus g_bus;
+static DjiCanBus g_chassis_bus;
+static DjiCanBus g_arm_bus;
 
 extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs)
 {
   (void)RxFifo0ITs;
-  g_bus.onRxFifo0(hfdcan);
+  g_chassis_bus.onRxFifo0(hfdcan);
+  g_arm_bus.onRxFifo0(hfdcan);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -344,9 +348,9 @@ void CHASSIS::begin(uint16_t frq_hz)
     frq_hz = 1000;
   }
   frq_ = frq_hz;
-  g_bus.attach(can_);
+  g_chassis_bus.attach(can_);
   for (uint8_t id = 1; id <= 4; ++id) {
-    MotorFb& m = g_bus.motor(id);
+    MotorFb& m = g_chassis_bus.motor(id);
     m.enable = 1;
     m.speed_loc_target = (float)m.location;
     m.speed_pid.reset();
@@ -377,9 +381,10 @@ void CHASSIS::Update(float Vx, float Vy, float W)
   int16_t cur[4];
   for (int i = 0; i < 4; ++i) {
     float rotor = out_rpm[i] * kGear3508;
-    cur[i] = g_bus.speedLoopStep(g_bus.motor((uint8_t)(i + 1)), rotor, kSpeedLocK, now, dt);
+    cur[i] = g_chassis_bus.speedLoopStep(
+      g_chassis_bus.motor((uint8_t)(i + 1)), rotor, kSpeedLocK, now, dt);
   }
-  g_bus.sendGroup200(cur[0], cur[1], cur[2], cur[3]);
+  g_chassis_bus.sendGroup200(cur[0], cur[1], cur[2], cur[3]);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -397,7 +402,7 @@ M2006Motor::M2006Motor(FDCAN_HandleTypeDef* hfdcan, uint8_t id, float gear_ratio
     target_deg_(0.f),
     cmd_deg_(0.f),
     traj_active_(false),
-    traj_t0_us_(0),
+    traj_t0_tick_(0),
     traj_T_(0.f),
     traj_start_(0.f),
     traj_final_(0.f),
@@ -425,8 +430,13 @@ float M2006Motor::encPerOutDeg() const
 
 float M2006Motor::getAngleDeg()
 {
-  MotorFb& m = g_bus.motor(id_);
+  MotorFb& m = g_arm_bus.motor(id_);
   return (float)m.location / encPerOutDeg();
+}
+
+bool M2006Motor::online()
+{
+  return g_arm_bus.motor(id_).online();
 }
 
 void M2006Motor::sendCurrent(int16_t current)
@@ -442,7 +452,7 @@ void M2006Motor::sendCurrent(int16_t current)
     } else {
       c4 = current;
     }
-    g_bus.sendGroup200(c1, c2, c3, c4);
+    g_arm_bus.sendGroup200(c1, c2, c3, c4);
   } else {
     int16_t c5 = 0, c6 = 0, c7 = 0, c8 = 0;
     if (id_ == 5) {
@@ -454,7 +464,7 @@ void M2006Motor::sendCurrent(int16_t current)
     } else {
       c8 = current;
     }
-    g_bus.sendGroup1FF(c5, c6, c7, c8);
+    g_arm_bus.sendGroup1FF(c5, c6, c7, c8);
   }
 }
 
@@ -467,17 +477,17 @@ void M2006Motor::begin(uint16_t frq_hz)
     frq_hz = 1000;
   }
   frq_ = frq_hz;
-  g_bus.attach(can_);
+  g_arm_bus.attach(can_);
 
   PidParam pos_default;
   pos_default.kp = 0.1f;
-  pos_default.ki = 0.1f;
+  pos_default.ki = 0.f;
   pos_default.kd = 0.f;
   pos_default.dead_zone = 2000.f;
-  pos_default.max_out = 3000.f;
+  pos_default.max_out = 6000.f;
   s_arm_pos_pid.setParam(pos_default);
 
-  MotorFb& m = g_bus.motor(id_);
+  MotorFb& m = g_arm_bus.motor(id_);
   m.enable = 1;
   m.speed_loc_target = (float)m.location;
   m.speed_pid.reset();
@@ -505,7 +515,7 @@ void M2006Motor::planTrapezoid(float start_deg, float final_deg, float time_s)
   traj_final_ = final_deg;
   traj_dir_ = (S >= 0.f) ? 1.f : -1.f;
   traj_T_ = time_s;
-  traj_t0_us_ = micros_u32();
+  traj_t0_tick_ = osKernelGetTickCount();
 
   if (Sabs < 1e-3f || time_s < 1e-3f) {
     traj_active_ = false;
@@ -582,7 +592,8 @@ void M2006Motor::update()
   }
 
   if (traj_active_) {
-    float t = 1e-6f * (float)(micros_u32() - traj_t0_us_);
+    uint32_t elapsed_ticks = osKernelGetTickCount() - traj_t0_tick_;
+    float t = (float)elapsed_ticks / (float)osKernelGetTickFreq();
     cmd_deg_ = trajEval(t);
     if (t >= traj_T_) {
       cmd_deg_ = traj_final_;
@@ -592,7 +603,7 @@ void M2006Motor::update()
     cmd_deg_ = target_deg_;
   }
 
-  MotorFb& m = g_bus.motor(id_);
+  MotorFb& m = g_arm_bus.motor(id_);
   uint32_t now = micros_u32();
   float dt = 1e-6f * (float)(now - s_arm_last_us);
   if (s_arm_last_us == 0 || dt <= 0.f || dt > 0.05f) {
@@ -604,7 +615,7 @@ void M2006Motor::update()
   float pos_err = target_loc - (float)m.location;
   float rotor_rpm = s_arm_pos_pid.control(pos_err, now);
 
-  int16_t cur = g_bus.speedLoopStep(m, rotor_rpm, kSpeedLocK, now, dt);
+  int16_t cur = g_arm_bus.speedLoopStep(m, rotor_rpm, 0.f, now, dt);
   sendCurrent(cur);
 }
 
@@ -612,10 +623,11 @@ void M2006Motor::update()
 /* Globals + C API                                                            */
 /* -------------------------------------------------------------------------- */
 extern FDCAN_HandleTypeDef hfdcan1;
+extern FDCAN_HandleTypeDef hfdcan2;
 
 CHASSIS chassis(&hfdcan1);
-/* M2006 + P36, CAN ID 5 */
-M2006Motor arm(&hfdcan1, 5, 36.f);
+/* M2006 + C610 + P36 on FDCAN2, CAN ID 1 */
+M2006Motor arm(&hfdcan2, 1, 36.f);
 
 static volatile float s_cmd_vx = 0.f;
 static volatile float s_cmd_vy = 0.f;
@@ -657,6 +669,16 @@ extern "C" void DJI_Arm_CtrlAngle(float deg)
 extern "C" void DJI_Arm_CtrlAngleTimed(float deg, float time_s)
 {
   arm.ctrlAngle(deg, time_s);
+}
+
+extern "C" float DJI_Arm_GetAngleDeg(void)
+{
+  return arm.getAngleDeg();
+}
+
+extern "C" uint8_t DJI_Arm_IsOnline(void)
+{
+  return arm.online() ? 1U : 0U;
 }
 
 extern "C" void DJI_Motor_ChassisTask(void)

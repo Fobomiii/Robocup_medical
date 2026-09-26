@@ -7,6 +7,7 @@
 #include "Board.h"
 #include "ChassisCtrl.h"
 #include "CN_TTS.h"
+#include "DJIMotorCtrlSTM32.h"
 #include "NUC_Obstacle.h"
 #include "Servo.h"
 #include "STP23L.h"
@@ -37,6 +38,8 @@
 #define MEDICAL_DOCK_MAX_CORRECTIONS 2U
 #define MEDICAL_DOCK_TIMEOUT_MS 8000U
 #define MEDICAL_DOCK_PI 3.14159265358979323846f
+#define MEDICAL_ARM_TRAVEL_DEG 750.0f
+#define MEDICAL_ARM_TRAVEL_TIME_S 1.5f
 /*
  * Bench/field navigation test mode:
  *   nurse -> bed1 -> bed3 -> home
@@ -83,8 +86,44 @@ static uint8_t s_dock_correction_count;
 static uint32_t s_dock_last_front_sequence;
 static uint32_t s_dock_last_side_sequence;
 static uint32_t s_dock_phase_enter_ms;
+static float s_arm_origin_deg;
+static uint8_t s_arm_origin_valid;
+static uint8_t s_arm_target_deployed;
+static uint8_t s_arm_commanded_deployed;
 
 static void medical_set_state(MedicalTaskState next);
+
+static void medical_arm_update(void)
+{
+  if (s_arm_origin_valid == 0U)
+  {
+    if (DJI_Arm_IsOnline() == 0U)
+    {
+      return;
+    }
+    s_arm_origin_deg = DJI_Arm_GetAngleDeg();
+    s_arm_origin_valid = 1U;
+    s_arm_commanded_deployed = 0U;
+  }
+
+  if (s_arm_target_deployed == s_arm_commanded_deployed)
+  {
+    return;
+  }
+
+  DJI_Arm_CtrlAngleTimed(
+      (s_arm_target_deployed != 0U)
+          ? (s_arm_origin_deg - MEDICAL_ARM_TRAVEL_DEG)
+          : s_arm_origin_deg,
+      MEDICAL_ARM_TRAVEL_TIME_S);
+  s_arm_commanded_deployed = s_arm_target_deployed;
+}
+
+static void medical_arm_set_deployed(uint8_t deployed)
+{
+  s_arm_target_deployed = (deployed != 0U) ? 1U : 0U;
+  medical_arm_update();
+}
 
 static uint8_t medical_is_docking_state(void)
 {
@@ -215,6 +254,7 @@ static uint16_t medical_docking_filtered_distance(const uint16_t *samples)
 static void medical_docking_finish(void)
 {
   ChassisCtrl_Enable(false);
+  medical_arm_set_deployed(1U);
   medical_set_state((s_state == MEDICAL_TASK_DOCK_BED1)
                         ? MEDICAL_TASK_SCAN_BED1
                         : MEDICAL_TASK_SCAN_BED3);
@@ -450,18 +490,21 @@ static void medical_set_state(MedicalTaskState next)
   switch (next)
   {
     case MEDICAL_TASK_NAV_NURSE:
+      medical_arm_set_deployed(0U);
       NUC_Nav_ClearVelocity();
       NUC_Nav_RequestGoal(NUC_NAV_GOAL_NURSE);
       break;
 
     case MEDICAL_TASK_NAV_BED1:
       s_current_bed = 1U;
+      medical_arm_set_deployed(0U);
       NUC_Nav_ClearVelocity();
       NUC_Nav_RequestGoal(NUC_NAV_GOAL_BED1);
       break;
 
     case MEDICAL_TASK_NAV_BED3:
       s_current_bed = 3U;
+      medical_arm_set_deployed(0U);
       NUC_Nav_ClearVelocity();
       NUC_Nav_RequestGoal(NUC_NAV_GOAL_BED3);
       break;
@@ -475,6 +518,7 @@ static void medical_set_state(MedicalTaskState next)
       break;
 
     case MEDICAL_TASK_NAV_HOME:
+      medical_arm_set_deployed(0U);
       NUC_Nav_ClearVelocity();
       NUC_Nav_RequestGoal(NUC_NAV_GOAL_HOME);
       break;
@@ -500,6 +544,7 @@ static void medical_set_state(MedicalTaskState next)
 
     case MEDICAL_TASK_COMPLETE:
     case MEDICAL_TASK_NAV_ERROR:
+      medical_arm_set_deployed(0U);
       NUC_Nav_ClearVelocity();
       SERVO1_CLOSE();
       SERVO2_CLOSE();
@@ -580,6 +625,7 @@ void MedicalTask_Init(void)
   s_bed3_scan[0] = '\0';
   s_scan_beep_start_ms = 0U;
   s_scan_beep_active = 0U;
+  s_arm_target_deployed = 0U;
   BUZZ_Off();
   medical_scan_reset();
   medical_docking_reset();
@@ -594,6 +640,7 @@ void MedicalTask_Update(void)
   char confirmed_code[MEDICAL_TASK_SCAN_CODE_MAX];
 #endif
 
+  medical_arm_update();
   medical_scan_beep_update();
 
   switch (s_state)

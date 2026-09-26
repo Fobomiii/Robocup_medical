@@ -430,7 +430,8 @@ static void MX_FDCAN2_Init(void)
   hfdcan2.Init.DataSyncJumpWidth = 6;
   hfdcan2.Init.DataTimeSeg1 = 18;
   hfdcan2.Init.DataTimeSeg2 = 6;
-  hfdcan2.Init.MessageRAMOffset = 0;
+  /* Keep FDCAN2 message RAM separate from the FDCAN1 allocation. */
+  hfdcan2.Init.MessageRAMOffset = 128;
   hfdcan2.Init.StdFiltersNbr = 1;
   hfdcan2.Init.ExtFiltersNbr = 0;
   hfdcan2.Init.RxFifo0ElmtsNbr = 8;

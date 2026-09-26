@@ -2,9 +2,9 @@
  * @file DJIMotorCtrlSTM32.h
  * @brief DJI C620/C610 motor control for STM32 (ESP-style cascade PID).
  *
- * CHASSIS: M3508+P19, CAN ID 1~4 = Front/Left/Rear/Right
+ * CHASSIS: M3508+C620 on FDCAN1, CAN ID 1~4 = Front/Left/Rear/Right
  *   SetCommand / Update(Vx,Vy,W): +Y forward, +X right, +W clockwise.
- * M2006Motor: M2006+P36, default CAN ID 5
+ * M2006Motor: M2006+C610 on FDCAN2, P36, default CAN ID 1
  *   ctrlAngle(deg) / ctrlAngle(deg, time_s): time>0 uses trapezoid accel-cruise-decel.
  *   update() runs pos/speed loop (call from armTask).
  */
@@ -39,7 +39,7 @@ private:
 
 class M2006Motor {
 public:
-  M2006Motor(FDCAN_HandleTypeDef* hfdcan, uint8_t id = 5, float gear_ratio = 36.f);
+  M2006Motor(FDCAN_HandleTypeDef* hfdcan, uint8_t id = 1, float gear_ratio = 36.f);
 
   /** Init bus + set control frequency. Default 1000 Hz. */
   void begin(uint16_t frq_hz = 1000);
@@ -64,6 +64,9 @@ public:
   /** Current output-shaft angle estimate (deg). */
   float getAngleDeg();
 
+  /** True while fresh C610 feedback is being received. */
+  bool online();
+
 private:
   void planTrapezoid(float start_deg, float final_deg, float time_s);
   float trajEval(float t) const;
@@ -81,7 +84,7 @@ private:
 
   /* Trapezoid trajectory (output-shaft degrees, seconds) */
   bool traj_active_;
-  uint32_t traj_t0_us_;
+  uint32_t traj_t0_tick_;
   float traj_T_;
   float traj_start_;
   float traj_final_;
@@ -119,6 +122,12 @@ void DJI_Arm_CtrlAngle(float deg);
 
 /** Trapezoid move to deg in time_s seconds. */
 void DJI_Arm_CtrlAngleTimed(float deg, float time_s);
+
+/** Current M2006 output-shaft angle estimate (deg). */
+float DJI_Arm_GetAngleDeg(void);
+
+/** Non-zero while fresh C610 feedback is being received. */
+uint8_t DJI_Arm_IsOnline(void);
 
 #ifdef __cplusplus
 }
