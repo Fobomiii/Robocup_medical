@@ -26,7 +26,7 @@ class ConeFootprintCompensator(Node):
         super().__init__("cone_footprint_compensator")
         self.declare_parameter("input_topic", "/livox/lidar_filtered")
         self.declare_parameter("output_topic", "/livox/lidar_nav")
-        self.declare_parameter("base_radius", 0.165)
+        self.declare_parameter("base_radius", 0.18)
         self.declare_parameter("physical_base_radius", 0.155)
         self.declare_parameter("cone_height", 0.65)
         self.declare_parameter("min_z", 0.08)
@@ -36,7 +36,7 @@ class ConeFootprintCompensator(Node):
         self.declare_parameter("min_points", 3)
         self.declare_parameter("max_span", 0.32)
         self.declare_parameter("min_vertical_span", 0.06)
-        self.declare_parameter("disk_spacing", 0.05)
+        self.declare_parameter("disk_spacing", 0.04)
         self.declare_parameter("disk_height", 0.12)
         # A cone always has returns at ground level.  A compact cluster whose
         # lowest return is above this is not a cone -- the mounted arm at
@@ -45,7 +45,7 @@ class ConeFootprintCompensator(Node):
         self.declare_parameter("min_base_z", 0.35)
         # Keep only the synthetic cone-base disk briefly.  The full cloud is
         # still cleared every frame so moving people do not leave a trail.
-        self.declare_parameter("persistence_s", 0.20)
+        self.declare_parameter("persistence_s", 0.60)
         self.declare_parameter("persistence_frame", "odom")
         self.declare_parameter("persistence_match_distance", 0.40)
 

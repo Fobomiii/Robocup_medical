@@ -167,10 +167,14 @@ def generate_launch_description():
                         "input_topic": "/livox/lidar_filtered",
                         "output_topic": "/livox/lidar_nav",
                         # Estimate the axis from the lidar-facing cone surface,
-                        # then keep only 10 mm beyond the measured 0.155 m base.
+                        # then keep 25 mm beyond the measured 0.155 m base to
+                        # absorb sparse-scan axis error near a wheel.
                         "cone_height": 0.65,
                         "physical_base_radius": 0.155,
-                        "base_radius": 0.165,
+                        "base_radius": 0.18,
+                        # Densify only the synthetic disk so Collision Monitor
+                        # reliably reaches its point threshold at the rim.
+                        "disk_spacing": 0.04,
                         "min_z": 0.08,
                         # Reject compact clusters that never reach the ground.
                         # The mounted arm sits at 0.64-0.70 m and fits the
@@ -183,7 +187,7 @@ def generate_launch_description():
                         # Hold only synthetic cone-base disks briefly. The
                         # source cloud remains frame-by-frame so people do
                         # not leave persistence trails.
-                        "persistence_s": 0.35,
+                        "persistence_s": 0.60,
                         "persistence_frame": "odom",
                         "persistence_match_distance": 0.40,
                     }
@@ -335,7 +339,7 @@ def generate_launch_description():
                         "output_topic": "/speed_limit",
                         "status_topic": "/medical_nav/corner_speed_status",
                         "max_speed_m_s": 2.0,
-                        "min_corner_speed_m_s": 0.65,
+                        "min_corner_speed_m_s": 1.0,
                         "lateral_accel_m_s2": 1.40,
                         "braking_decel_m_s2": 1.30,
                         "lookahead_distance_m": 1.50,

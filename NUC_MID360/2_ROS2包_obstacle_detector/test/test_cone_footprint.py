@@ -30,7 +30,7 @@ class ConeFootprintTest(unittest.TestCase):
             synthetic[:, 0] - center_x,
             synthetic[:, 1] - center_y,
         )
-        self.assertAlmostEqual(float(radii.max()), 0.165, places=3)
+        self.assertAlmostEqual(float(radii.max()), 0.18, places=3)
         np.testing.assert_allclose(synthetic[:, 2], 0.12, atol=1e-6)
 
     def test_visible_surface_is_shifted_back_to_known_cone_axis(self):

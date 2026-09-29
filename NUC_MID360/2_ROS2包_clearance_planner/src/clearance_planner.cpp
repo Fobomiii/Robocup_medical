@@ -630,6 +630,100 @@ bool directSegmentCost(
   return true;
 }
 
+struct RouteMetrics
+{
+  bool valid{false};
+  double elapsed{kInfinity};
+  double risk{kInfinity};
+};
+
+RouteMetrics routeMetrics(
+  const GridSnapshot & grid, const std::vector<int> & cells,
+  const std::vector<double> & risk, double travel_yaw,
+  const ClearancePlanner::Parameters & params)
+{
+  RouteMetrics metrics;
+  if (cells.empty() || !std::isfinite(risk[cells.front()])) {
+    return metrics;
+  }
+  metrics.elapsed = 0.0;
+  metrics.risk = 0.0;
+  for (std::size_t index = 1; index < cells.size(); ++index) {
+    double segment_risk = 0.0;
+    double segment_maximum = 0.0;
+    if (!directSegmentCost(
+        grid, cells[index - 1], cells[index], risk,
+        segment_risk, segment_maximum))
+    {
+      return RouteMetrics{};
+    }
+    const auto [previous_x, previous_y] = grid.coordinates(cells[index - 1]);
+    const auto [current_x, current_y] = grid.coordinates(cells[index]);
+    metrics.elapsed += moveTime(
+      grid, previous_x, previous_y, current_x, current_y, travel_yaw, params);
+    metrics.risk += segment_risk * grid.resolution;
+  }
+  metrics.valid = true;
+  return metrics;
+}
+
+std::vector<int> reconnectPreviousRoute(
+  const GridSnapshot & grid,
+  const std::vector<std::pair<double, double>> & previous_route,
+  double start_x, double start_y, int start_index, int goal_index,
+  double max_join_distance)
+{
+  if (previous_route.empty()) {
+    return {};
+  }
+  std::size_t nearest = 0;
+  double nearest_distance = kInfinity;
+  for (std::size_t index = 0; index < previous_route.size(); ++index) {
+    const double distance = distanceBetween(
+      start_x, start_y, previous_route[index].first, previous_route[index].second);
+    if (distance < nearest_distance) {
+      nearest = index;
+      nearest_distance = distance;
+    }
+  }
+  if (nearest_distance > max_join_distance) {
+    return {};
+  }
+
+  std::vector<int> cells{start_index};
+  for (std::size_t index = nearest; index < previous_route.size(); ++index) {
+    int x = 0;
+    int y = 0;
+    if (!grid.worldToMap(
+        previous_route[index].first, previous_route[index].second, x, y))
+    {
+      return {};
+    }
+    const int cell = grid.index(x, y);
+    if (cell != cells.back()) {
+      cells.push_back(cell);
+    }
+  }
+  if (cells.back() != goal_index) {
+    return {};
+  }
+  return cells;
+}
+
+bool goalsMatch(
+  const geometry_msgs::msg::PoseStamped & previous,
+  const geometry_msgs::msg::PoseStamped & current,
+  double position_tolerance)
+{
+  const double position_difference = distanceBetween(
+    previous.pose.position.x, previous.pose.position.y,
+    current.pose.position.x, current.pose.position.y);
+  const double yaw_difference = std::abs(std::atan2(
+      std::sin(poseYaw(previous.pose.orientation) - poseYaw(current.pose.orientation)),
+      std::cos(poseYaw(previous.pose.orientation) - poseYaw(current.pose.orientation))));
+  return position_difference <= position_tolerance && yaw_difference <= 1.0e-3;
+}
+
 std::vector<int> simplifyPath(
   const GridSnapshot & grid, const std::vector<int> & cells,
   const std::vector<double> & multiplier, double cost_tolerance,
@@ -715,6 +809,9 @@ void ClearancePlanner::configure(
   declare("start_exemption_radius", 0.45);
   declare("simplification_cost_tolerance", 1.03);
   declare("simplification_time_tolerance", 1.01);
+  declare("route_switch_risk_improvement", 0.05);
+  declare("route_switch_time_improvement", 1.0);
+  declare("route_reuse_max_distance", 0.50);
 
   RCLCPP_INFO(
     logger_, "Configured %s: bounded-time clearance planning enabled",
@@ -724,6 +821,8 @@ void ClearancePlanner::configure(
 void ClearancePlanner::cleanup()
 {
   RCLCPP_INFO(logger_, "Cleaning up %s", name_.c_str());
+  has_previous_route_ = false;
+  previous_route_.clear();
   costmap_ = nullptr;
   costmap_ros_.reset();
   tf_.reset();
@@ -737,6 +836,8 @@ void ClearancePlanner::activate()
 void ClearancePlanner::deactivate()
 {
   RCLCPP_INFO(logger_, "Deactivating %s", name_.c_str());
+  has_previous_route_ = false;
+  previous_route_.clear();
 }
 
 ClearancePlanner::Parameters ClearancePlanner::readParameters() const
@@ -769,6 +870,9 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   read("start_exemption_radius", params.start_exemption_radius);
   read("simplification_cost_tolerance", params.simplification_cost_tolerance);
   read("simplification_time_tolerance", params.simplification_time_tolerance);
+  read("route_switch_risk_improvement", params.route_switch_risk_improvement);
+  read("route_switch_time_improvement", params.route_switch_time_improvement);
+  read("route_reuse_max_distance", params.route_reuse_max_distance);
 
   params.tolerance = std::max(0.0, params.tolerance);
   params.max_planning_time = std::max(0.0, params.max_planning_time);
@@ -791,6 +895,11 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
     1.0, params.simplification_cost_tolerance);
   params.simplification_time_tolerance = std::max(
     1.0, params.simplification_time_tolerance);
+  params.route_switch_risk_improvement = std::max(
+    0.0, params.route_switch_risk_improvement);
+  params.route_switch_time_improvement = std::max(
+    0.0, params.route_switch_time_improvement);
+  params.route_reuse_max_distance = std::max(0.0, params.route_reuse_max_distance);
   return params;
 }
 
@@ -886,6 +995,51 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
       logger_, "%s safety search timed out; using %.2f s fastest route",
       name_.c_str(), fastest_time);
   }
+
+  const RouteMetrics new_metrics = routeMetrics(
+    grid, cells, risk, travel_yaw, params);
+  if (has_previous_route_ &&
+    goalsMatch(previous_goal_, goal, std::max(params.tolerance, grid.resolution)))
+  {
+    std::vector<int> previous_cells = reconnectPreviousRoute(
+      grid, previous_route_, start.pose.position.x, start.pose.position.y,
+      start_index, goal_index, params.route_reuse_max_distance);
+    const RouteMetrics previous_metrics = routeMetrics(
+      grid, previous_cells, risk, travel_yaw, params);
+    if (previous_metrics.valid && new_metrics.valid) {
+      const double risk_improvement = previous_metrics.risk > 1.0e-9 ?
+        (previous_metrics.risk - new_metrics.risk) / previous_metrics.risk : 0.0;
+      const double time_improvement = previous_metrics.elapsed - new_metrics.elapsed;
+      const bool switch_route =
+        risk_improvement >= params.route_switch_risk_improvement ||
+        time_improvement >= params.route_switch_time_improvement;
+      if (!switch_route) {
+        cells = std::move(previous_cells);
+        RCLCPP_DEBUG(
+          logger_,
+          "%s retained route: risk improvement %.1f%%, time improvement %.2f s",
+          name_.c_str(), risk_improvement * 100.0, time_improvement);
+      } else {
+        RCLCPP_INFO(
+          logger_,
+          "%s switched route: risk improvement %.1f%%, time improvement %.2f s",
+          name_.c_str(), risk_improvement * 100.0, time_improvement);
+      }
+    } else if (!previous_cells.empty() && !previous_metrics.valid) {
+      RCLCPP_INFO(
+        logger_, "%s switched route because the retained route is blocked", name_.c_str());
+    }
+  }
+
+  previous_route_.clear();
+  previous_route_.reserve(cells.size());
+  for (const int cell : cells) {
+    const auto [x, y] = grid.coordinates(cell);
+    previous_route_.push_back(grid.mapToWorld(x, y));
+  }
+  previous_goal_ = goal;
+  has_previous_route_ = true;
+
   cells = simplifyPath(
     grid, cells, risk, params.simplification_cost_tolerance,
     params.simplification_time_tolerance, travel_yaw, params);

@@ -113,7 +113,7 @@ def corner_speed_limit(
     robot_y_m: float,
     *,
     max_speed_m_s: float = 2.0,
-    min_corner_speed_m_s: float = 0.65,
+    min_corner_speed_m_s: float = 1.0,
     lateral_accel_m_s2: float = 1.40,
     braking_decel_m_s2: float = 1.30,
     lookahead_distance_m: float = 1.50,

@@ -104,6 +104,7 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"output_topic": "/speed_limit"', launch_source)
         self.assertIn('"lookahead_distance_m": 1.50', launch_source)
         self.assertIn('"braking_decel_m_s2": 1.30', launch_source)
+        self.assertIn('"min_corner_speed_m_s": 1.0', launch_source)
         self.assertIn('"min_turn_angle_deg": 25.0', launch_source)
         self.assertIn('"input_topic": "/cmd_vel"', launch_source)
         self.assertIn('"output_topic": "/cmd_vel_home_limited"', launch_source)
@@ -284,9 +285,10 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('executable="cone_footprint_compensator"', launch_source)
         self.assertIn('"cone_height": 0.65', launch_source)
         self.assertIn('"physical_base_radius": 0.155', launch_source)
-        self.assertIn('"base_radius": 0.165', launch_source)
+        self.assertIn('"base_radius": 0.18', launch_source)
+        self.assertIn('"disk_spacing": 0.04', launch_source)
         self.assertIn('"max_range": 6.0', launch_source)
-        self.assertIn('"persistence_s": 0.35', launch_source)
+        self.assertIn('"persistence_s": 0.60', launch_source)
         self.assertIn('"persistence_frame": "odom"', launch_source)
 
     def test_goal_handoff_has_independent_stop_guards(self):

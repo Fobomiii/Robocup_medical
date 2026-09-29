@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -42,6 +43,9 @@ public:
     double start_exemption_radius{0.45};
     double simplification_cost_tolerance{1.03};
     double simplification_time_tolerance{1.01};
+    double route_switch_risk_improvement{0.05};
+    double route_switch_time_improvement{1.0};
+    double route_reuse_max_distance{0.50};
   };
 
   ClearancePlanner() = default;
@@ -70,6 +74,9 @@ private:
   std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros_;
   nav2_costmap_2d::Costmap2D * costmap_{nullptr};
   rclcpp::Logger logger_{rclcpp::get_logger("medical_clearance_planner")};
+  bool has_previous_route_{false};
+  geometry_msgs::msg::PoseStamped previous_goal_;
+  std::vector<std::pair<double, double>> previous_route_;
 };
 
 }  // namespace medical_clearance_planner

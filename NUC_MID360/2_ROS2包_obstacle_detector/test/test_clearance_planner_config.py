@@ -65,6 +65,9 @@ class ClearancePlannerConfigTest(unittest.TestCase):
         self.assertLessEqual(planner["max_time_ratio"], 1.25)
         self.assertGreaterEqual(planner["min_time_slack"], 0.0)
         self.assertLessEqual(planner["min_time_slack"], 1.0)
+        self.assertAlmostEqual(planner["route_switch_risk_improvement"], 0.05)
+        self.assertAlmostEqual(planner["route_switch_time_improvement"], 1.0)
+        self.assertAlmostEqual(planner["route_reuse_max_distance"], 0.50)
 
     def test_bounded_time_clearance_model_is_active(self) -> None:
         config = yaml.safe_load(
@@ -97,6 +100,11 @@ class ClearancePlannerConfigTest(unittest.TestCase):
         self.assertIn("max_wheel_speed", source)
         self.assertIn("polylineTime", source)
         self.assertIn("simplification_time_tolerance", source)
+        self.assertIn("route_switch_risk_improvement", source)
+        self.assertIn("route_switch_time_improvement", source)
+        self.assertIn("has_previous_route_", source)
+        self.assertIn("risk_improvement >= params.route_switch_risk_improvement ||", source)
+        self.assertIn("time_improvement >= params.route_switch_time_improvement", source)
         self.assertNotIn("1.0 + costmap_penalty", source)
         self.assertNotIn("traversalTimes", source)
 

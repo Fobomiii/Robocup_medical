@@ -46,7 +46,7 @@ class CornerSpeedLimiter(Node):
             self.declare_parameter("max_speed_m_s", 2.0).value
         )
         self.min_corner_speed_m_s = float(
-            self.declare_parameter("min_corner_speed_m_s", 0.65).value
+            self.declare_parameter("min_corner_speed_m_s", 1.0).value
         )
         self.lateral_accel_m_s2 = float(
             self.declare_parameter("lateral_accel_m_s2", 1.40).value

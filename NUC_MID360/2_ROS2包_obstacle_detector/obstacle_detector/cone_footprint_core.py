@@ -129,7 +129,7 @@ def cone_axis_center(
 
 def expand_cone_footprints(
     xyz: np.ndarray,
-    base_radius: float = 0.165,
+    base_radius: float = 0.18,
     physical_base_radius: float = 0.155,
     cone_height: float = 0.65,
     min_z: float = 0.08,
@@ -139,7 +139,7 @@ def expand_cone_footprints(
     min_points: int = 3,
     max_span: float = 0.32,
     min_vertical_span: float = 0.06,
-    disk_spacing: float = 0.05,
+    disk_spacing: float = 0.04,
     disk_height: float = 0.12,
     min_base_z: float = 0.35,
 ) -> tuple[np.ndarray, list[tuple[float, float]]]:
