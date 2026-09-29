@@ -298,12 +298,13 @@ planner_server:
       allow_unknown: false
       max_planning_time: 1.5
 
-      # Stage 1 estimates the fastest holonomic route from the real axis
-      # limits. Stage 2 chooses the safest route that remains within the
-      # fastest time plus max(10%, 0.5 s).
+      # Model the real 45-degree four-wheel feasible set. Diagonal travel is
+      # allowed whenever it is genuinely faster, but |Vx|+|Vy| may not exceed
+      # the same 2.0 m/s wheel-space limit enforced by stm32_bridge.
       forward_speed: 2.00
       reverse_speed: 2.00
       lateral_speed: 1.50
+      max_wheel_speed: 2.00
       max_time_ratio: 1.10
       min_time_slack: 0.50
 
@@ -322,6 +323,9 @@ planner_server:
       goal_exemption_radius: 0.75
       start_exemption_radius: 0.45
       simplification_cost_tolerance: 1.06
+      # Accept a simplified diagonal when its wheel-feasible travel time is no
+      # slower than the source polyline; reject only physically slower cuts.
+      simplification_time_tolerance: 1.01
 
 smoother_server:
   ros__parameters:

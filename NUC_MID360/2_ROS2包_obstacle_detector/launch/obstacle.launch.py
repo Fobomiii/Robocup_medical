@@ -210,6 +210,9 @@ def generate_launch_description():
                         "gate_release_wheel_accel_m_s2": 2.5,
                         "gate_release_yaw_radius_m": 0.25,
                         "gate_release_rearm_drop_m_s": 0.25,
+                        # Preserve Vx/Vy/W direction while keeping every
+                        # 45-degree omni wheel inside the proven 2.0 m/s cap.
+                        "max_wheel_speed_m_s": 2.0,
                         "nurse_scan_stop_linear_m_s": 0.03,
                         "nurse_scan_stop_angular_rad_s": 0.05,
                         "nurse_scan_stop_settle_s": 0.15,
@@ -234,8 +237,8 @@ def generate_launch_description():
                         "tts_lead_silence_s": 0.0,
                         "tts_tail_silence_s": 0.0,
                         "tts_timeout_s": 8.0,
-                        # NUC-side linear clamp: 2.00 m/s per body-axis
-                        # component. STM32 keeps a separate 4.00 m/s cap.
+                        # Per-axis protocol guard after common wheel-space
+                        # normalization. STM32 keeps a separate hard cap.
                         "max_speed_mm_s": 2000.0,
                         "dry_run": ParameterValue(dry_run, value_type=bool),
                         "enforce_task_gate": ParameterValue(

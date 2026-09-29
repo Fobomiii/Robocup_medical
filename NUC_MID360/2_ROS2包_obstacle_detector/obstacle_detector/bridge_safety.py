@@ -14,6 +14,38 @@ from .nav_protocol import (
 NAVIGATION_TASK_STATES = frozenset((1, 3, 6, 9))
 
 
+def omni_wheel_speeds(vx: float, vy: float, wz: float, yaw_radius_m: float):
+    yaw_speed = float(yaw_radius_m) * float(wz)
+    return (
+        float(vx) - float(vy) - yaw_speed,
+        float(vx) + float(vy) - yaw_speed,
+        -float(vx) + float(vy) - yaw_speed,
+        -float(vx) - float(vy) - yaw_speed,
+    )
+
+
+def normalize_omni_command(
+    vx: float,
+    vy: float,
+    wz: float,
+    max_wheel_speed_m_s: float,
+    yaw_radius_m: float,
+):
+    requested_wheels = omni_wheel_speeds(vx, vy, wz, yaw_radius_m)
+    requested_peak = max(abs(speed) for speed in requested_wheels)
+    wheel_limit = max(0.0, float(max_wheel_speed_m_s))
+    if wheel_limit <= 0.0 or requested_peak <= wheel_limit:
+        return float(vx), float(vy), float(wz), 1.0, requested_peak
+    scale = wheel_limit / requested_peak
+    return (
+        float(vx) * scale,
+        float(vy) * scale,
+        float(wz) * scale,
+        scale,
+        requested_peak,
+    )
+
+
 class GateReleaseLimiter:
     """Limit gate release and re-acceleration after a safety slowdown."""
 
@@ -41,13 +73,7 @@ class GateReleaseLimiter:
 
     def _wheel_speeds(self, command):
         vx, vy, wz = command
-        yaw_speed = self.yaw_radius_m * wz
-        return (
-            vx - vy - yaw_speed,
-            vx + vy - yaw_speed,
-            -vx + vy - yaw_speed,
-            -vx - vy - yaw_speed,
-        )
+        return omni_wheel_speeds(vx, vy, wz, self.yaw_radius_m)
 
     def update(self, vx: float, vy: float, wz: float, now_s: float):
         desired = (float(vx), float(vy), float(wz))

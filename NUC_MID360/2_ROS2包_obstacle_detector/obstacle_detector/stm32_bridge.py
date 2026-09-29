@@ -79,6 +79,7 @@ from .bridge_safety import (
     SettledStopDetector,
     medical_mission_restarted,
     navigation_motion_is_authorized,
+    normalize_omni_command,
 )
 from .field_goals import load_field_goals
 from .nuc_tts import NucTtsPlayer, TtsPlaybackResult
@@ -132,6 +133,7 @@ class Stm32Bridge(Node):
         self.declare_parameter("gate_release_wheel_accel_m_s2", 2.5)
         self.declare_parameter("gate_release_yaw_radius_m", 0.25)
         self.declare_parameter("gate_release_rearm_drop_m_s", 0.25)
+        self.declare_parameter("max_wheel_speed_m_s", 2.0)
         self.declare_parameter("nurse_scan_stop_linear_m_s", 0.03)
         self.declare_parameter("nurse_scan_stop_angular_rad_s", 0.05)
         self.declare_parameter("nurse_scan_stop_settle_s", 0.15)
@@ -156,8 +158,7 @@ class Stm32Bridge(Node):
         self.declare_parameter("tts_tail_silence_s", 0.0)
         self.declare_parameter("tts_keepalive_enabled", True)
         self.declare_parameter("tts_timeout_s", 8.0)
-        # NUC-side linear clamp: 2.00 m/s per body-axis component. The
-        # STM32 applies its own independent 4.00 m/s hard cap.
+        # A common wheel-space cap is applied before these protocol guards.
         self.declare_parameter("max_speed_mm_s", 2000.0)
         self.declare_parameter("max_yaw_cdeg_s", 9000.0)
         # Competition mode also applies when this node is launched directly.
@@ -180,6 +181,7 @@ class Stm32Bridge(Node):
         self.cmd_timeout_s = float(get("cmd_timeout_s"))
         self.max_speed_mm_s = float(get("max_speed_mm_s"))
         self.max_yaw_cdeg_s = float(get("max_yaw_cdeg_s"))
+        self.max_wheel_speed_m_s = max(0.0, float(get("max_wheel_speed_m_s")))
         self.twist_filter_alpha = max(0.0, min(1.0, float(get("twist_filter_alpha"))))
         self.wheel_odom_timeout_s = max(
             0.05, float(get("wheel_odom_timeout_s"))
@@ -262,6 +264,8 @@ class Stm32Bridge(Node):
         self.last_pose_s = 0.0
         self.last_cmd_s = 0.0
         self.last_sent = (0.0, 0.0, 0.0)
+        self.last_wheel_normalization_scale = 1.0
+        self.last_requested_wheel_peak_m_s = 0.0
         self.last_safe_cmd = (0.0, 0.0, 0.0)
         self.nurse_scan_soft_stop = False
         self.tx_seq = 0
@@ -1039,6 +1043,15 @@ class Stm32Bridge(Node):
     def _send_velocity(self, vx: float, vy: float, wz: float, source: str) -> None:
         # Keep ROS body signs on the wire. The STM32 is the only layer that
         # knows motor mounting signs and converts these values to wheel RPM.
+        vx, vy, wz, wheel_scale, requested_wheel_peak = normalize_omni_command(
+            vx,
+            vy,
+            wz,
+            self.max_wheel_speed_m_s,
+            self.gate_release_limiter.yaw_radius_m,
+        )
+        self.last_wheel_normalization_scale = wheel_scale
+        self.last_requested_wheel_peak_m_s = requested_wheel_peak
         vx_mm = vx * 1000.0
         vy_mm = vy * 1000.0
         wz_cdeg = wz * 18000.0 / math.pi
@@ -1178,6 +1191,14 @@ class Stm32Bridge(Node):
                     "vy": round(self.gate_release_limiter.output[1], 3),
                     "wz": round(self.gate_release_limiter.output[2], 3),
                 },
+            },
+            "wheel_normalization": {
+                "enabled": self.max_wheel_speed_m_s > 0.0,
+                "max_wheel_speed_m_s": self.max_wheel_speed_m_s,
+                "requested_peak_m_s": round(
+                    self.last_requested_wheel_peak_m_s, 3
+                ),
+                "scale": round(self.last_wheel_normalization_scale, 3),
             },
             "last_safe_cmd": {
                 "vx": round(self.last_safe_cmd[0], 3),

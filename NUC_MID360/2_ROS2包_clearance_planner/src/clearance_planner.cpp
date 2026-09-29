@@ -307,7 +307,10 @@ double moveTime(
   const double x_speed = body_x >= 0.0 ? params.forward_speed : params.reverse_speed;
   const double x_time = std::abs(body_x) / std::max(0.01, x_speed);
   const double y_time = std::abs(body_y) / std::max(0.01, params.lateral_speed);
-  return std::max(x_time, y_time);
+  const double wheel_time =
+    (std::abs(body_x) + std::abs(body_y)) /
+    std::max(0.01, params.max_wheel_speed);
+  return std::max({x_time, y_time, wheel_time});
 }
 
 double poseYaw(const geometry_msgs::msg::Quaternion & orientation)
@@ -573,6 +576,21 @@ double polylineCost(
   return cost;
 }
 
+double polylineTime(
+  const GridSnapshot & grid, const std::vector<int> & cells,
+  std::size_t first, std::size_t last, double travel_yaw,
+  const ClearancePlanner::Parameters & params)
+{
+  double elapsed = 0.0;
+  for (std::size_t index = first + 1; index <= last; ++index) {
+    const auto [previous_x, previous_y] = grid.coordinates(cells[index - 1]);
+    const auto [current_x, current_y] = grid.coordinates(cells[index]);
+    elapsed += moveTime(
+      grid, previous_x, previous_y, current_x, current_y, travel_yaw, params);
+  }
+  return elapsed;
+}
+
 bool directSegmentCost(
   const GridSnapshot & grid, int first, int last,
   const std::vector<double> & multiplier,
@@ -614,7 +632,9 @@ bool directSegmentCost(
 
 std::vector<int> simplifyPath(
   const GridSnapshot & grid, const std::vector<int> & cells,
-  const std::vector<double> & multiplier, double tolerance)
+  const std::vector<double> & multiplier, double cost_tolerance,
+  double time_tolerance, double travel_yaw,
+  const ClearancePlanner::Parameters & params)
 {
   if (cells.size() < 3) {
     return cells;
@@ -628,12 +648,19 @@ std::vector<int> simplifyPath(
       double original_max = 0.0;
       const double original = polylineCost(
         grid, cells, anchor, candidate, multiplier, original_max);
+      const double original_time = polylineTime(
+        grid, cells, anchor, candidate, travel_yaw, params);
       double direct = 0.0;
       double direct_max = 0.0;
+      const auto [anchor_x, anchor_y] = grid.coordinates(cells[anchor]);
+      const auto [candidate_x, candidate_y] = grid.coordinates(cells[candidate]);
+      const double direct_time = moveTime(
+        grid, anchor_x, anchor_y, candidate_x, candidate_y, travel_yaw, params);
       if (directSegmentCost(
           grid, cells[anchor], cells[candidate], multiplier, direct, direct_max) &&
-        direct <= original * tolerance &&
-        direct_max <= original_max * tolerance + 0.05)
+        direct <= original * cost_tolerance &&
+        direct_max <= original_max * cost_tolerance + 0.05 &&
+        direct_time <= original_time * time_tolerance + 1.0e-9)
       {
         accepted = candidate;
         break;
@@ -674,6 +701,7 @@ void ClearancePlanner::configure(
   declare("forward_speed", 2.00);
   declare("reverse_speed", 1.20);
   declare("lateral_speed", 1.50);
+  declare("max_wheel_speed", 2.00);
   declare("max_time_ratio", 1.10);
   declare("min_time_slack", 0.50);
   declare("costmap_weight", 3.0);
@@ -686,6 +714,7 @@ void ClearancePlanner::configure(
   declare("goal_exemption_radius", 0.75);
   declare("start_exemption_radius", 0.45);
   declare("simplification_cost_tolerance", 1.03);
+  declare("simplification_time_tolerance", 1.01);
 
   RCLCPP_INFO(
     logger_, "Configured %s: bounded-time clearance planning enabled",
@@ -726,6 +755,7 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   read("forward_speed", params.forward_speed);
   read("reverse_speed", params.reverse_speed);
   read("lateral_speed", params.lateral_speed);
+  read("max_wheel_speed", params.max_wheel_speed);
   read("max_time_ratio", params.max_time_ratio);
   read("min_time_slack", params.min_time_slack);
   read("costmap_weight", params.costmap_weight);
@@ -738,12 +768,14 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   read("goal_exemption_radius", params.goal_exemption_radius);
   read("start_exemption_radius", params.start_exemption_radius);
   read("simplification_cost_tolerance", params.simplification_cost_tolerance);
+  read("simplification_time_tolerance", params.simplification_time_tolerance);
 
   params.tolerance = std::max(0.0, params.tolerance);
   params.max_planning_time = std::max(0.0, params.max_planning_time);
   params.forward_speed = std::max(0.05, params.forward_speed);
   params.reverse_speed = std::max(0.05, params.reverse_speed);
   params.lateral_speed = std::max(0.05, params.lateral_speed);
+  params.max_wheel_speed = std::max(0.05, params.max_wheel_speed);
   params.max_time_ratio = std::max(1.0, params.max_time_ratio);
   params.min_time_slack = std::max(0.0, params.min_time_slack);
   params.costmap_weight = std::max(0.0, params.costmap_weight);
@@ -757,6 +789,8 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   params.start_exemption_radius = std::max(0.0, params.start_exemption_radius);
   params.simplification_cost_tolerance = std::max(
     1.0, params.simplification_cost_tolerance);
+  params.simplification_time_tolerance = std::max(
+    1.0, params.simplification_time_tolerance);
   return params;
 }
 
@@ -853,7 +887,8 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
       name_.c_str(), fastest_time);
   }
   cells = simplifyPath(
-    grid, cells, risk, params.simplification_cost_tolerance);
+    grid, cells, risk, params.simplification_cost_tolerance,
+    params.simplification_time_tolerance, travel_yaw, params);
 
   std::vector<std::pair<double, double>> controls;
   controls.emplace_back(start.pose.position.x, start.pose.position.y);

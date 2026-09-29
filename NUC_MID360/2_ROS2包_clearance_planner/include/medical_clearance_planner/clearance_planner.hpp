@@ -28,6 +28,7 @@ public:
     double forward_speed{2.00};
     double reverse_speed{1.20};
     double lateral_speed{1.50};
+    double max_wheel_speed{2.00};
     double max_time_ratio{1.10};
     double min_time_slack{0.50};
     double costmap_weight{3.0};
@@ -40,6 +41,7 @@ public:
     double goal_exemption_radius{0.75};
     double start_exemption_radius{0.45};
     double simplification_cost_tolerance{1.03};
+    double simplification_time_tolerance{1.01};
   };
 
   ClearancePlanner() = default;

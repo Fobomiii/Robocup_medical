@@ -121,6 +121,7 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"pose_timeout_s": 0.5', launch_source)
         self.assertIn('"gate_release_wheel_accel_m_s2": 2.5', launch_source)
         self.assertIn('"gate_release_yaw_radius_m": 0.25', launch_source)
+        self.assertIn('"max_wheel_speed_m_s": 2.0', launch_source)
         self.assertIn(
             '"gate_release_rearm_drop_m_s": 0.25', launch_source
         )

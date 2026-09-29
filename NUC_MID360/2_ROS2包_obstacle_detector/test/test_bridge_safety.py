@@ -5,6 +5,8 @@ from obstacle_detector.bridge_safety import (
     SettledStopDetector,
     medical_mission_restarted,
     navigation_motion_is_authorized,
+    normalize_omni_command,
+    omni_wheel_speeds,
 )
 from obstacle_detector.nav_protocol import (
     GOAL_BED1,
@@ -17,6 +19,39 @@ from obstacle_detector.nav_protocol import (
 
 
 class BridgeSafetyTest(unittest.TestCase):
+    def test_wheel_normalization_leaves_single_axis_motion_unchanged(self):
+        output = normalize_omni_command(2.0, 0.0, 0.0, 2.0, 0.25)
+        self.assertEqual(output[:4], (2.0, 0.0, 0.0, 1.0))
+        self.assertEqual(
+            max(
+                abs(value)
+                for value in omni_wheel_speeds(*output[:3], 0.25)
+            ),
+            2.0,
+        )
+
+    def test_wheel_normalization_scales_diagonal_motion_together(self):
+        vx, vy, wz, scale, requested_peak = normalize_omni_command(
+            2.0, 1.5, 0.0, 2.0, 0.25
+        )
+        self.assertAlmostEqual(requested_peak, 3.5)
+        self.assertAlmostEqual(scale, 2.0 / 3.5)
+        self.assertAlmostEqual(vx / vy, 2.0 / 1.5)
+        self.assertAlmostEqual(
+            max(abs(value) for value in omni_wheel_speeds(vx, vy, wz, 0.25)),
+            2.0,
+        )
+
+    def test_wheel_normalization_includes_yaw_load(self):
+        vx, vy, wz, scale, _ = normalize_omni_command(
+            1.5, 0.5, 2.0, 2.0, 0.25
+        )
+        self.assertLess(scale, 1.0)
+        self.assertAlmostEqual(
+            max(abs(value) for value in omni_wheel_speeds(vx, vy, wz, 0.25)),
+            2.0,
+        )
+
     def test_gate_release_limiter_uses_common_wheel_space_scale(self):
         limiter = GateReleaseLimiter(2.0, 0.25)
         limiter.reset(1.0)
