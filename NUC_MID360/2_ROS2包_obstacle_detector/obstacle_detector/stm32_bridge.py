@@ -2,9 +2,9 @@
 """STM32 <-> Nav2 bridge.
 
 Outbound (STM32 -> Nav2)
-    MSG_POSE becomes odom->base_link plus Odometry. Position comes only from
-    OPS9 and yaw only from HWT101CT; twist is differentiated from consecutive
-    telemetry samples for the Nav2 controller.
+    MSG_POSE supplies OPS9 position and HWT101CT yaw. MSG_WHEEL_ODOM supplies
+    encoder-derived body velocity. A planar EKF fuses both into odom->base_link
+    and Odometry, with pose differentiation retained as a firmware fallback.
 
 Inbound (Nav2 -> STM32)
     /cmd_vel_safe from Collision Monitor becomes MSG_VEL_CMD frames. A watchdog sends an explicit zero
@@ -22,6 +22,7 @@ import os
 import struct
 import time
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from typing import Deque
 
@@ -44,27 +45,43 @@ from .nav_protocol import (
     MSG_SCAN_ACK,
     MSG_SCAN_RESULT,
     MSG_STP23L,
+    MSG_TTS_REQUEST,
+    MSG_TTS_STATUS,
     MSG_VEL_CMD,
+    MSG_WHEEL_ODOM,
     NAV_FOLLOWING,
     NAV_IDLE,
     NAV_WAIT_PATH,
     SCAN_ACK_ACCEPTED,
     SCAN_CONTEXT_BED1,
     SCAN_CONTEXT_BED3,
+    SCAN_CONTEXT_ORDER,
+    START_WAIT_TASK_STATES,
+    TTS_STATUS_COMPLETED,
+    TTS_STATUS_ERROR,
     decode_goal_request,
     decode_pose,
     decode_scan_ack,
     decode_stp23l,
+    decode_tts_request,
+    decode_wheel_odom,
     encode_frame,
     encode_heartbeat,
     encode_nav_status,
     encode_scan_result,
+    encode_tts_status,
     encode_velocity,
 )
-from .bridge_safety import navigation_motion_is_authorized
+from .bridge_safety import (
+    SettledStopDetector,
+    medical_mission_restarted,
+    navigation_motion_is_authorized,
+)
 from .field_goals import load_field_goals
+from .nuc_tts import NucTtsPlayer, TtsPlaybackResult
 from .scanner_core import (
     TASK_NAV_NURSE,
+    TASK_WAIT_START,
     scan_matches_task,
     scan_position_is_allowed,
 )
@@ -73,6 +90,10 @@ from .stp23l_calibration import (
     CalibrationConfig,
     OpsRangeCalibrator,
     load_calibration_config,
+)
+from .wheel_odometry_ekf import (
+    PlanarWheelOdometryEkf,
+    WheelOdometryEkfConfig,
 )
 
 
@@ -105,7 +126,30 @@ class Stm32Bridge(Node):
         self.declare_parameter("goal_handoff_hold_s", 0.5)
         self.declare_parameter("navigator_following_hold_s", 0.3)
         self.declare_parameter("navigator_status_timeout_s", 1.2)
+        self.declare_parameter("nurse_scan_stop_linear_m_s", 0.03)
+        self.declare_parameter("nurse_scan_stop_angular_rad_s", 0.05)
+        self.declare_parameter("nurse_scan_stop_settle_s", 0.15)
         self.declare_parameter("twist_filter_alpha", 0.35)
+        self.declare_parameter("wheel_odom_timeout_s", 0.15)
+        self.declare_parameter("ekf_ops_position_std_m", 0.02)
+        self.declare_parameter("ekf_hwt_yaw_std_rad", 0.015)
+        self.declare_parameter("ekf_wheel_forward_std_m_s", 0.08)
+        self.declare_parameter("ekf_wheel_lateral_std_m_s", 0.16)
+        self.declare_parameter("ekf_wheel_yaw_std_rad_s", 0.12)
+        self.declare_parameter("ekf_linear_accel_std_m_s2", 1.5)
+        self.declare_parameter("ekf_yaw_accel_std_rad_s2", 1.5)
+        self.declare_parameter(
+            "tts_bed1_audio_file", "/home/fzurobot/Downloads/1_.mp3"
+        )
+        self.declare_parameter(
+            "tts_bed3_audio_file", "/home/fzurobot/Downloads/3_.mp3"
+        )
+        self.declare_parameter("tts_volume_percent", 100)
+        self.declare_parameter("tts_audio_device", "pulse")
+        self.declare_parameter("tts_lead_silence_s", 0.0)
+        self.declare_parameter("tts_tail_silence_s", 0.0)
+        self.declare_parameter("tts_keepalive_enabled", True)
+        self.declare_parameter("tts_timeout_s", 8.0)
         # NUC-side linear clamp: 2.00 m/s per body-axis component. The
         # STM32 applies its own independent 4.00 m/s hard cap.
         self.declare_parameter("max_speed_mm_s", 2000.0)
@@ -131,6 +175,9 @@ class Stm32Bridge(Node):
         self.max_speed_mm_s = float(get("max_speed_mm_s"))
         self.max_yaw_cdeg_s = float(get("max_yaw_cdeg_s"))
         self.twist_filter_alpha = max(0.0, min(1.0, float(get("twist_filter_alpha"))))
+        self.wheel_odom_timeout_s = max(
+            0.05, float(get("wheel_odom_timeout_s"))
+        )
         self.scan_retry_s = max(0.05, float(get("scan_retry_s")))
         self.bed_scan_activation_distance_mm = max(
             0.1, float(get("bed_scan_activation_distance_m"))
@@ -141,6 +188,11 @@ class Stm32Bridge(Node):
         )
         self.navigator_status_timeout_s = max(
             0.5, float(get("navigator_status_timeout_s"))
+        )
+        self.nurse_scan_stop_detector = SettledStopDetector(
+            float(get("nurse_scan_stop_linear_m_s")),
+            float(get("nurse_scan_stop_angular_rad_s")),
+            float(get("nurse_scan_stop_settle_s")),
         )
         self.dry_run = bool(get("dry_run"))
         self.enforce_task_gate = bool(get("enforce_task_gate"))
@@ -167,6 +219,31 @@ class Stm32Bridge(Node):
             )
         self.calibrator = OpsRangeCalibrator(calibration_config)
         self.sensor_radius_m = calibration_config.sensor_radius_mm / 1000.0
+        self.odom_ekf = PlanarWheelOdometryEkf(
+            WheelOdometryEkfConfig(
+                ops_position_std_m=max(
+                    0.001, float(get("ekf_ops_position_std_m"))
+                ),
+                hwt_yaw_std_rad=max(
+                    0.001, float(get("ekf_hwt_yaw_std_rad"))
+                ),
+                wheel_forward_std_m_s=max(
+                    0.001, float(get("ekf_wheel_forward_std_m_s"))
+                ),
+                wheel_lateral_std_m_s=max(
+                    0.001, float(get("ekf_wheel_lateral_std_m_s"))
+                ),
+                wheel_yaw_std_rad_s=max(
+                    0.001, float(get("ekf_wheel_yaw_std_rad_s"))
+                ),
+                linear_accel_std_m_s2=max(
+                    0.01, float(get("ekf_linear_accel_std_m_s2"))
+                ),
+                yaw_accel_std_rad_s2=max(
+                    0.01, float(get("ekf_yaw_accel_std_rad_s2"))
+                ),
+            )
+        )
 
         self.pose = None
         self.previous_ros_pose = None
@@ -174,6 +251,8 @@ class Stm32Bridge(Node):
         self.last_pose_s = 0.0
         self.last_cmd_s = 0.0
         self.last_sent = (0.0, 0.0, 0.0)
+        self.last_safe_cmd = (0.0, 0.0, 0.0)
+        self.nurse_scan_soft_stop = False
         self.tx_seq = 0
         self.heartbeat_counter = 0
         self.stopped = False
@@ -181,6 +260,8 @@ class Stm32Bridge(Node):
         self.rx_queue: Deque[Frame] = deque()
         self.started_s = time.monotonic()
         self.stp23l = None
+        self.wheel_odom = None
+        self.last_wheel_odom_s = 0.0
         self.last_calibration_event = None
         self.next_scan_id = 0
         self.pending_scan = None
@@ -190,9 +271,32 @@ class Stm32Bridge(Node):
         self.navigator_request_id = 0
         self.navigator_goal_id = GOAL_NONE
         self.navigator_state = NAV_IDLE
+        self.navigator_plan_ready = False
         self.goal_request_s = 0.0
         self.last_navigator_status_s = 0.0
         self.navigator_following_s = 0.0
+        self.mission_epoch = 0
+        self.tts_player = NucTtsPlayer(
+            bed1_audio_file=str(get("tts_bed1_audio_file")),
+            bed3_audio_file=str(get("tts_bed3_audio_file")),
+            volume_percent=int(get("tts_volume_percent")),
+            audio_device=str(get("tts_audio_device")),
+            lead_silence_s=float(get("tts_lead_silence_s")),
+            tail_silence_s=float(get("tts_tail_silence_s")),
+            keepalive_enabled=bool(get("tts_keepalive_enabled")),
+            timeout_s=float(get("tts_timeout_s")),
+        )
+        self.tts_keepalive_timer = self.create_timer(
+            5.0, self._maintain_tts_keepalive
+        )
+        self._maintain_tts_keepalive()
+        self.tts_executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="nuc-tts"
+        )
+        self.tts_future = None
+        self.tts_active_key = None
+        self.tts_results = {}
+        self.last_tts_status = None
 
         self.tf_broadcaster = TransformBroadcaster(self)
         self.static_tf_broadcaster = StaticTransformBroadcaster(self)
@@ -200,6 +304,9 @@ class Stm32Bridge(Node):
         self.pose_pub = self.create_publisher(PoseStamped, "/medical_nav/robot_pose", 10)
         self.raw_pose_pub = self.create_publisher(
             PoseStamped, "/medical_nav/ops_raw_pose", 10
+        )
+        self.wheel_odom_pub = self.create_publisher(
+            Odometry, "/medical_nav/wheel_odom", 10
         )
         self.status_pub = self.create_publisher(String, "/medical_nav/bridge_status", 10)
         self.goal_pub = self.create_publisher(String, "/medical_nav/goal_request", 10)
@@ -262,8 +369,12 @@ class Stm32Bridge(Node):
                     self._handle_goal_request(frame)
                 elif frame.msg_type == MSG_STP23L:
                     self._handle_stp23l(frame)
+                elif frame.msg_type == MSG_WHEEL_ODOM:
+                    self._handle_wheel_odom(frame)
                 elif frame.msg_type == MSG_SCAN_ACK:
                     self._handle_scan_ack(frame)
+                elif frame.msg_type == MSG_TTS_REQUEST:
+                    self._handle_tts_request(frame)
             except (ValueError, struct.error) as exc:
                 self.get_logger().warn(
                     f"Rejected frame 0x{frame.msg_type:02X}: {exc}", throttle_duration_sec=2.0
@@ -271,18 +382,57 @@ class Stm32Bridge(Node):
 
     def _handle_pose(self, frame: Frame) -> None:
         previous_task_state = self.pose.task_state if self.pose is not None else None
+        previous_nav_status = self.pose.nav_status if self.pose is not None else None
         pose = decode_pose(frame.payload)
         received_s = time.monotonic()
-        if (
-            pose.task_state == TASK_NAV_NURSE
-            and previous_task_state != TASK_NAV_NURSE
-        ):
+        pose_gap_s = (
+            received_s - self.last_pose_s
+            if self.last_pose_s > 0.0
+            else float("inf")
+        )
+        mission_restarted = medical_mission_restarted(
+            previous_task_state,
+            previous_nav_status,
+            pose.task_state,
+            pose.nav_status,
+            pose_gap_s,
+            self.pose_timeout_s,
+        )
+        if mission_restarted:
+            self.mission_epoch = (self.mission_epoch + 1) & 0xFFFFFFFF
+            if self.mission_epoch == 0:
+                self.mission_epoch = 1
+            self.requested_request_id = 0
+            self.requested_goal_id = GOAL_NONE
+            self.navigator_request_id = 0
+            self.navigator_goal_id = GOAL_NONE
+            self.navigator_state = NAV_IDLE
+            self.navigator_plan_ready = False
+            self.goal_request_s = 0.0
+            self.last_navigator_status_s = 0.0
+            self.navigator_following_s = 0.0
+            self.pending_scan = None
+            self.last_scan_ack = None
+            self.tts_results.clear()
+            self.last_tts_status = None
+            self.nurse_scan_soft_stop = False
+            self.nurse_scan_stop_detector.reset()
             self.calibrator.reset()
+            self.odom_ekf.reset()
             self.previous_ros_pose = None
             self.twist = (0.0, 0.0, 0.0)
             self.get_logger().info(
-                "New medical mission: cleared STP23L OPS calibration offset"
+                f"New medical mission epoch={self.mission_epoch}: "
+                "cleared stale navigation, scan and calibration state"
             )
+        elif (
+            pose.task_state in (TASK_WAIT_START, TASK_NAV_NURSE)
+            and previous_task_state not in (TASK_WAIT_START, TASK_NAV_NURSE)
+        ):
+            self.calibrator.reset()
+            self.odom_ekf.reset()
+            self.previous_ros_pose = None
+            self.twist = (0.0, 0.0, 0.0)
         x, y, yaw = self._as_ros(pose.x_mm, pose.y_mm, pose.yaw_cdeg)
 
         if self.previous_ros_pose is not None:
@@ -309,6 +459,9 @@ class Stm32Bridge(Node):
                 self.twist = (0.0, 0.0, 0.0)
 
         self.previous_ros_pose = (x, y, yaw, received_s)
+        self.odom_ekf.update_pose(x, y, yaw)
+        if self._wheel_odom_is_fresh():
+            self.twist = self.odom_ekf.twist
         self.pose = pose
         self.last_pose_s = received_s
         if previous_task_state is not None and previous_task_state != pose.task_state:
@@ -326,6 +479,8 @@ class Stm32Bridge(Node):
                 pending["value"],
             ):
                 self.pending_scan = None
+                self.nurse_scan_soft_stop = False
+                self.nurse_scan_stop_detector.reset()
 
     def _handle_goal_request(self, frame: Frame) -> None:
         request = decode_goal_request(frame.payload)
@@ -342,6 +497,7 @@ class Stm32Bridge(Node):
             self.goal_request_s = time.monotonic()
             self.navigator_request_id = 0
             self.navigator_goal_id = GOAL_NONE
+            self.navigator_plan_ready = False
             self.last_navigator_status_s = 0.0
             self.navigator_following_s = 0.0
             self.stopped = True
@@ -355,6 +511,53 @@ class Stm32Bridge(Node):
         self.get_logger().info(
             f"STM32 goal request #{request.request_id} -> {name}", throttle_duration_sec=1.0
         )
+
+    def _handle_wheel_odom(self, frame: Frame) -> None:
+        telemetry = decode_wheel_odom(frame.payload)
+        received_s = time.monotonic()
+        forward_m_s = telemetry.forward_mm_s / 1000.0
+        left_m_s = telemetry.left_mm_s / 1000.0
+        yaw_ccw_rad_s = math.radians(telemetry.yaw_ccw_cdeg_s / 100.0)
+        accepted = self.odom_ekf.update_wheel(
+            forward_m_s,
+            left_m_s,
+            yaw_ccw_rad_s,
+            telemetry.online_mask,
+            telemetry.stamp_cs,
+        )
+        self.wheel_odom = telemetry
+        self.last_wheel_odom_s = received_s
+        if accepted and self.odom_ekf.initialized:
+            self.twist = self.odom_ekf.twist
+
+        message = Odometry()
+        message.header.stamp = self.get_clock().now().to_msg()
+        message.header.frame_id = self.odom_frame
+        message.child_frame_id = self.base_frame
+        message.twist.twist.linear.x = forward_m_s
+        message.twist.twist.linear.y = left_m_s
+        message.twist.twist.angular.z = yaw_ccw_rad_s
+        valid = telemetry.online_mask == 0x0F
+        invalid_variance = 1.0e6
+        message.pose.covariance[0] = invalid_variance
+        message.pose.covariance[7] = invalid_variance
+        message.pose.covariance[35] = invalid_variance
+        message.twist.covariance[0] = (
+            self.odom_ekf.config.wheel_forward_std_m_s**2
+            if valid
+            else invalid_variance
+        )
+        message.twist.covariance[7] = (
+            self.odom_ekf.config.wheel_lateral_std_m_s**2
+            if valid
+            else invalid_variance
+        )
+        message.twist.covariance[35] = (
+            self.odom_ekf.config.wheel_yaw_std_rad_s**2
+            if valid
+            else invalid_variance
+        )
+        self.wheel_odom_pub.publish(message)
 
     def _handle_stp23l(self, frame: Frame) -> None:
         telemetry = decode_stp23l(frame.payload)
@@ -413,6 +616,13 @@ class Stm32Bridge(Node):
             # one-cycle velocity spike.
             self.previous_ros_pose = None
             self.twist = (0.0, 0.0, 0.0)
+            self.odom_ekf.reset()
+            corrected_x, corrected_y, corrected_yaw = self._as_ros(
+                self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg
+            )
+            self.odom_ekf.update_pose(
+                corrected_x, corrected_y, corrected_yaw
+            )
             self.get_logger().info(
                 f"STP23L calibrated at {event.bed}: "
                 f"OPS offset=({event.offset_x_mm:.1f}, {event.offset_y_mm:.1f}) mm, "
@@ -436,6 +646,88 @@ class Stm32Bridge(Node):
                 f"STM32 rejected scan #{ack.scan_id} with status {ack.status}"
             )
         self.pending_scan = None
+        self.nurse_scan_soft_stop = False
+        self.nurse_scan_stop_detector.reset()
+
+    def _handle_tts_request(self, frame: Frame) -> None:
+        request = decode_tts_request(frame.payload)
+        key = (self.mission_epoch, request.request_id, request.bed)
+
+        self._poll_tts()
+        cached_status = self.tts_results.get(key)
+        if cached_status is not None:
+            self._send_tts_status(request.request_id, cached_status)
+            return
+
+        if self.tts_future is not None:
+            if self.tts_active_key != key:
+                self.get_logger().warn(
+                    "Deferred TTS request while another announcement is playing",
+                    throttle_duration_sec=1.0,
+                )
+            return
+
+        self.tts_active_key = key
+        self.tts_future = self.tts_executor.submit(
+            self.tts_player.speak_bed, request.bed
+        )
+        self.get_logger().info(
+            f"Started NUC TTS request={request.request_id} bed={request.bed}"
+        )
+
+    def _maintain_tts_keepalive(self) -> None:
+        was_active = self.tts_player.keepalive_active
+        result = self.tts_player.start_keepalive()
+        is_active = self.tts_player.keepalive_active
+        if is_active and not was_active:
+            self.get_logger().info(result.detail)
+        elif not result.success:
+            self.get_logger().warn(
+                f"NUC audio keepalive failed: {result.detail}",
+                throttle_duration_sec=5.0,
+            )
+
+    def _poll_tts(self) -> None:
+        if self.tts_future is None or not self.tts_future.done():
+            return
+
+        key = self.tts_active_key
+        try:
+            result = self.tts_future.result()
+        except Exception as exc:
+            result = TtsPlaybackResult(False, str(exc))
+        self.tts_future = None
+        self.tts_active_key = None
+        if key is None or key[0] != self.mission_epoch:
+            return
+
+        _, request_id, bed = key
+        status = TTS_STATUS_COMPLETED if result.success else TTS_STATUS_ERROR
+        self.tts_results[key] = status
+        while len(self.tts_results) > 8:
+            self.tts_results.pop(next(iter(self.tts_results)))
+        self.last_tts_status = {
+            "request_id": request_id,
+            "bed": bed,
+            "status": status,
+            "detail": result.detail,
+        }
+        self._send_tts_status(request_id, status)
+        if result.success:
+            self.get_logger().info(
+                f"Completed NUC TTS request={request_id} bed={bed}: "
+                f"{result.detail}"
+            )
+        else:
+            self.get_logger().error(
+                f"NUC TTS failed request={request_id} bed={bed}: {result.detail}"
+            )
+
+    def _send_tts_status(self, request_id: int, status: int) -> None:
+        payload = encode_tts_status(request_id, status)
+        frame = encode_frame(MSG_TTS_STATUS, self.tx_seq, payload)
+        if self.transport.send(frame):
+            self.tx_seq = (self.tx_seq + 1) & 0xFF
 
     def _scanner_result(self, message: String) -> None:
         try:
@@ -486,13 +778,27 @@ class Stm32Bridge(Node):
             "payload": payload,
             "last_sent_s": 0.0,
             "attempts": 0,
+            "defer_until_stopped": context == SCAN_CONTEXT_ORDER
+            and self.pose.task_state == TASK_NAV_NURSE,
         }
-        self._send_pending_scan(force=True)
+        if self.pending_scan["defer_until_stopped"]:
+            self.nurse_scan_soft_stop = True
+            self.nurse_scan_stop_detector.reset()
+            self.get_logger().info(
+                "Nurse QR latched; waiting for /cmd_vel_safe to settle before STM32 ACK"
+            )
+        else:
+            self._send_pending_scan(force=True)
 
     def _send_pending_scan(self, force=False) -> None:
         if self.pending_scan is None:
             return
         now = time.monotonic()
+        deferred = bool(self.pending_scan.get("defer_until_stopped", False))
+        if deferred and not self.nurse_scan_stop_detector.update(
+            *self.last_safe_cmd, now
+        ):
+            return
         if not force and now - self.pending_scan["last_sent_s"] < self.scan_retry_s:
             return
         frame = encode_frame(MSG_SCAN_RESULT, self.tx_seq, self.pending_scan["payload"])
@@ -500,6 +806,12 @@ class Stm32Bridge(Node):
             self.tx_seq = (self.tx_seq + 1) & 0xFF
             self.pending_scan["last_sent_s"] = now
             self.pending_scan["attempts"] += 1
+            if deferred:
+                self.pending_scan["defer_until_stopped"] = False
+                self.nurse_scan_soft_stop = False
+                self.get_logger().info(
+                    "Nurse soft stop settled; forwarding QR result to STM32"
+                )
 
     # ------------------------------------------------------------------
     # Pose out
@@ -509,6 +821,15 @@ class Stm32Bridge(Node):
         return (
             self.pose is not None
             and time.monotonic() - self.last_pose_s <= self.pose_timeout_s
+        )
+
+    def _wheel_odom_is_fresh(self) -> bool:
+        return (
+            self.wheel_odom is not None
+            and self.wheel_odom.online_mask == 0x0F
+            and self.odom_ekf.wheel_valid
+            and time.monotonic() - self.last_wheel_odom_s
+            <= self.wheel_odom_timeout_s
         )
 
     def _as_ros(self, x_mm: float, y_mm: float, yaw_cdeg: float, corrected=True):
@@ -546,15 +867,21 @@ class Stm32Bridge(Node):
 
     def _tick(self) -> None:
         self._drain_frames()
+        self._poll_tts()
         self._send_pending_scan()
         if self._pose_is_fresh():
             self._publish_pose()
         self._command_watchdog()
 
     def _publish_pose(self) -> None:
-        x, y, yaw = self._as_ros(
-            self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg
-        )
+        fused = self._wheel_odom_is_fresh() and self.odom_ekf.initialized
+        if fused:
+            x, y, yaw = self.odom_ekf.pose
+            self.twist = self.odom_ekf.twist
+        else:
+            x, y, yaw = self._as_ros(
+                self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg
+            )
         stamp = self.get_clock().now().to_msg()
         half = yaw * 0.5
         qz, qw = math.sin(half), math.cos(half)
@@ -580,6 +907,14 @@ class Stm32Bridge(Node):
         odometry.twist.twist.linear.x = self.twist[0]
         odometry.twist.twist.linear.y = self.twist[1]
         odometry.twist.twist.angular.z = self.twist[2]
+        if fused:
+            covariance = self.odom_ekf.covariance
+            odometry.pose.covariance[0] = float(covariance[0, 0])
+            odometry.pose.covariance[7] = float(covariance[1, 1])
+            odometry.pose.covariance[35] = float(covariance[2, 2])
+            odometry.twist.covariance[0] = float(covariance[3, 3])
+            odometry.twist.covariance[7] = float(covariance[4, 4])
+            odometry.twist.covariance[35] = float(covariance[5, 5])
         self.odom_pub.publish(odometry)
 
         pose_message = PoseStamped()
@@ -604,6 +939,20 @@ class Stm32Bridge(Node):
 
     def _cmd_vel(self, msg: Twist) -> None:
         self.last_cmd_s = time.monotonic()
+        self.last_safe_cmd = (msg.linear.x, msg.linear.y, msg.angular.z)
+        if (
+            self.nurse_scan_soft_stop
+            and self._pose_is_fresh()
+            and self.pose.task_state == TASK_NAV_NURSE
+        ):
+            self.stopped = False
+            self._send_velocity(
+                msg.linear.x,
+                msg.linear.y,
+                msg.angular.z,
+                source="nurse_scan_soft_stop",
+            )
+            return
         if not self._motion_is_authorized():
             self.stopped = True
             self._send_velocity(0.0, 0.0, 0.0, source="task_gate")
@@ -665,6 +1014,7 @@ class Stm32Bridge(Node):
             request_id = int(status.get("request_id", 0)) & 0xFFFF
             goal_id = int(status.get("goal_id", 0)) & 0xFF
             nav_state = int(status.get("state", 0))
+            plan_ready = bool(status.get("plan_ready", False))
             if not 0 <= nav_state <= 4:
                 raise ValueError(f"invalid navigation state {nav_state}")
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
@@ -686,9 +1036,15 @@ class Stm32Bridge(Node):
             )
             self.navigator_request_id = request_id
             self.navigator_goal_id = goal_id
-            self.navigator_state = nav_state
+            effective_nav_state = (
+                NAV_WAIT_PATH
+                if nav_state == NAV_FOLLOWING and not plan_ready
+                else nav_state
+            )
+            self.navigator_state = effective_nav_state
+            self.navigator_plan_ready = plan_ready
             self.last_navigator_status_s = received_s
-            if nav_state == NAV_FOLLOWING:
+            if effective_nav_state == NAV_FOLLOWING:
                 if not was_following:
                     self.navigator_following_s = self.last_navigator_status_s
                     self.stopped = True
@@ -697,9 +1053,10 @@ class Stm32Bridge(Node):
                     )
             else:
                 self.navigator_following_s = 0.0
-                self.stopped = True
-                self._send_velocity(0.0, 0.0, 0.0, source="navigator_state")
-            payload = encode_nav_status(request_id, goal_id, nav_state)
+                if not self.nurse_scan_soft_stop:
+                    self.stopped = True
+                    self._send_velocity(0.0, 0.0, 0.0, source="navigator_state")
+            payload = encode_nav_status(request_id, goal_id, effective_nav_state)
             frame = encode_frame(MSG_NAV_STATUS, self.tx_seq, payload)
             if self.transport.send(frame):
                 self.tx_seq = (self.tx_seq + 1) & 0xFF
@@ -717,6 +1074,7 @@ class Stm32Bridge(Node):
         if silent_for <= self.cmd_timeout_s or self.stopped:
             return
         self.stopped = True
+        self.last_safe_cmd = (0.0, 0.0, 0.0)
         self._send_velocity(0.0, 0.0, 0.0, source="watchdog")
         self.get_logger().warn(
             f"No {self.cmd_vel_topic} for {silent_for:.2f}s - sending stop",
@@ -735,17 +1093,31 @@ class Stm32Bridge(Node):
         status = {
             "serial": self.transport.connected,
             "pose": self._pose_is_fresh(),
+            "wheel_odom": self._wheel_odom_is_fresh(),
+            "odom_source": (
+                "ops_hwt_wheel_ekf"
+                if self._wheel_odom_is_fresh()
+                else "ops_hwt_fallback"
+            ),
+            "mission_epoch": self.mission_epoch,
             "cmd_count": self.cmd_count,
             "stopped": self.stopped,
             "dry_run": self.dry_run,
             "task_gate": self.enforce_task_gate,
             "motion_authorized": self._motion_is_authorized(),
+            "nurse_scan_soft_stop": self.nurse_scan_soft_stop,
+            "last_safe_cmd": {
+                "vx": round(self.last_safe_cmd[0], 3),
+                "vy": round(self.last_safe_cmd[1], 3),
+                "wz": round(self.last_safe_cmd[2], 3),
+            },
             "goal_gate": {
                 "requested_request_id": self.requested_request_id,
                 "requested_goal_id": self.requested_goal_id,
                 "navigator_request_id": self.navigator_request_id,
                 "navigator_goal_id": self.navigator_goal_id,
                 "navigator_state": self.navigator_state,
+                "plan_ready": self.navigator_plan_ready,
                 "navigator_fresh": self.last_navigator_status_s > 0.0
                 and time.monotonic() - self.last_navigator_status_s
                 <= self.navigator_status_timeout_s,
@@ -767,12 +1139,27 @@ class Stm32Bridge(Node):
             },
         }
         if self.pose is not None:
+            waiting_for_start = self.pose.task_state in START_WAIT_TASK_STATES
+            path_ready = (
+                waiting_for_start and self.pose.nav_status == NAV_FOLLOWING
+            )
+            status["start_gate"] = {
+                "waiting_for_button": waiting_for_start,
+                "path_ready": path_ready,
+                "can_start": path_ready,
+            }
             status["stm32"] = {
                 "x_mm": self.pose.x_mm,
                 "y_mm": self.pose.y_mm,
                 "yaw_cdeg": self.pose.yaw_cdeg,
                 "task_state": self.pose.task_state,
                 "nav_status": self.pose.nav_status,
+            }
+        else:
+            status["start_gate"] = {
+                "waiting_for_button": False,
+                "path_ready": False,
+                "can_start": False,
             }
         if self.stp23l is not None:
             status["stp23l"] = {
@@ -781,17 +1168,35 @@ class Stm32Bridge(Node):
                 "c_left_mm": self.stp23l.c_mm,
                 "valid_mask": self.stp23l.valid_mask,
             }
+        if self.wheel_odom is not None:
+            status["wheel"] = {
+                "forward_mm_s": self.wheel_odom.forward_mm_s,
+                "left_mm_s": self.wheel_odom.left_mm_s,
+                "yaw_ccw_cdeg_s": self.wheel_odom.yaw_ccw_cdeg_s,
+                "online_mask": self.wheel_odom.online_mask,
+                "stamp_cs": self.wheel_odom.stamp_cs,
+            }
         status["scanner_transport"] = {
             "pending": self.pending_scan is not None,
             "attempts": self.pending_scan["attempts"] if self.pending_scan else 0,
             "value": self.pending_scan["value"] if self.pending_scan else None,
             "last_ack": self.last_scan_ack,
         }
+        status["tts"] = {
+            "playing": self.tts_future is not None,
+            "keepalive": self.tts_player.keepalive_active,
+            "last_status": self.last_tts_status,
+            "bed1_audio_file": self.tts_player.audio_files[1],
+            "bed3_audio_file": self.tts_player.audio_files[3],
+            "volume_percent": self.tts_player.volume_percent,
+        }
         message = String()
         message.data = json.dumps(status, ensure_ascii=False)
         self.status_pub.publish(message)
 
     def destroy_node(self):
+        self.tts_executor.shutdown(wait=False, cancel_futures=True)
+        self.tts_player.stop_keepalive()
         self.transport.stop()
         super().destroy_node()
 

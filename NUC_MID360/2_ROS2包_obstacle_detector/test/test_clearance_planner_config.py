@@ -46,6 +46,53 @@ class ClearancePlannerConfigTest(unittest.TestCase):
         self.assertGreater(planner["clearance_weight"], 0.0)
         self.assertGreater(planner["density_weight"], 0.0)
         self.assertGreater(planner["goal_exemption_radius"], 0.0)
+        self.assertGreaterEqual(planner["costmap_weight"], 0.0)
+
+    def test_time_budget_uses_real_axis_speed_limits(self) -> None:
+        config = yaml.safe_load(
+            (OBSTACLE_PACKAGE / "config" / "nav2_params.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        planner = config["planner_server"]["ros__parameters"]["GridBased"]
+        controller = config["controller_server"]["ros__parameters"]["FollowPath"]
+        self.assertEqual(planner["forward_speed"], controller["vx_max"])
+        self.assertEqual(planner["reverse_speed"], abs(controller["vx_min"]))
+        self.assertEqual(planner["lateral_speed"], controller["vy_max"])
+        self.assertGreaterEqual(planner["max_time_ratio"], 1.0)
+        self.assertLessEqual(planner["max_time_ratio"], 1.25)
+        self.assertGreaterEqual(planner["min_time_slack"], 0.0)
+        self.assertLessEqual(planner["min_time_slack"], 1.0)
+
+    def test_bounded_time_clearance_model_is_active(self) -> None:
+        config = yaml.safe_load(
+            (OBSTACLE_PACKAGE / "config" / "nav2_params.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        planner = config["planner_server"]["ros__parameters"]["GridBased"]
+        for parameter in (
+            "preferred_clearance",
+            "clearance_weight",
+            "clearance_power",
+            "density_radius",
+            "density_weight",
+            "density_normalization",
+            "goal_exemption_radius",
+            "start_exemption_radius",
+        ):
+            self.assertIn(parameter, planner)
+        source = (
+            PLANNER_PACKAGE / "src" / "clearance_planner.cpp"
+        ).read_text(encoding="utf-8")
+        self.assertIn("traversalRisks", source)
+        self.assertIn("preferred_clearance", source)
+        self.assertIn("density_weight", source)
+        self.assertIn("fastestTimeField", source)
+        self.assertIn("constrainedSafePath", source)
+        self.assertIn("time_budget", source)
+        self.assertNotIn("1.0 + costmap_penalty", source)
+        self.assertNotIn("traversalTimes", source)
 
     def test_plugin_source_and_manifest_are_present(self) -> None:
         manifest = ET.parse(PLANNER_PACKAGE / "package.xml").getroot()
@@ -54,6 +101,16 @@ class ClearancePlannerConfigTest(unittest.TestCase):
             (PLANNER_PACKAGE / "src" / "clearance_planner.cpp").is_file()
         )
         self.assertTrue((PLANNER_PACKAGE / "CMakeLists.txt").is_file())
+
+    def test_all_path_poses_keep_requested_goal_orientation(self) -> None:
+        source = (
+            PLANNER_PACKAGE / "src" / "clearance_planner.cpp"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "pose.pose.orientation = goal.pose.orientation;",
+            source,
+        )
+        self.assertNotIn("yawQuaternion", source)
 
 
 if __name__ == "__main__":

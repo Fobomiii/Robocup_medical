@@ -1,6 +1,6 @@
 <!--
-  Nav2 Humble's navigate-to-pose recovery flow with bounded 1 Hz live global
-  replanning. This leaves CPU time for lidar filtering and collision safety.
+  Nav2 Humble's navigate-to-pose recovery flow with bounded 2 Hz live global
+  replanning so newly visible competition cones are avoided before braking.
 -->
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -8,7 +8,7 @@
       <PipelineSequence name="NavigateWithReplanning">
         <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
         <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
-        <RateController hz="1.0">
+        <RateController hz="2.0">
           <RecoveryNode number_of_retries="1" name="ComputePathToPose">
             <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}"/>
             <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>

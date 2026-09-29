@@ -21,4 +21,7 @@ mkdir -p "$HOME/.cache"
 exec 9>"$HOME/.cache/medical-scan-dashboard.lock"
 flock -n 9 || exit 0
 
+PID_FILE="$HOME/.cache/medical-scan-dashboard.pid"
+echo "$$" > "$PID_FILE"
+
 exec ros2 run obstacle_detector scan_dashboard

@@ -138,35 +138,58 @@ source ~/livox_ws/install/setup.bash
 车模顶部红色短块及 `Robot Body Axes` 的红色 X 轴表示真实车头方向。由于场地前方被
 映射为 ROS `+X`，默认俯视画面中车头显示在屏幕右侧是正常坐标表现，不代表偏航 90°。
 
-## 净空优先规划
+## 通行时间优先规划
 
 全局规划器使用 `medical_clearance_planner/ClearancePlanner`。它读取实时 Global
-Costmap，但在规划器内部另外计算障碍距离场和局部障碍密度，因此不会扩大 RViz 中的
-红色/青色代价区，也不会改变 `robot_radius=0.225 m` 和 `inflation_radius=0.25 m`。
-起点和目标附近只渐进取消净空偏好，致命障碍与车体碰撞检查始终有效。
+Costmap，并在规划器内部另外计算障碍距离场，因此不会扩大 RViz 中的红色/青色代价区，
+也不会改变 `robot_radius=0.23 m` 和 `inflation_radius=0.25 m`。
+
+边的权重就是**通过该格的真实秒数** `resolution / speed`，所以 A\* 最小化的是时间，
+而不是一个没有量纲的惩罚值。这是本规划器与旧版本最大的区别：过去净空、密度、原始
+代价三项是**相加**的，上限可达 `1 + 3.0 + 8.0 + 5.0 = 17` 倍，于是只要绕路不超过
+17 倍长度，A\* 就一定会绕开窄缝；而实际车速比只有 `2.00 / 0.35 ≈ 5.7` 倍，多出来的
+部分全部变成了无意义的绕行。现在最慢的格也只贵 5.7 倍，绕行自然消失。
+
+速度用与靠站同一套包络（同 `home_approach_core.approach_speed_limit`）：
+
+```
+gap   = max(0, 障碍中心距 - body_clearance)
+speed = clamp(sqrt(crawl_speed² + 2 · soft_decel · gap), crawl_speed, max_speed)
+```
+
+`crawl_speed` 是**爬行地板**，不是可选项：没有它，零净空格的通行时间就是无穷大，
+任何能过但要贴边的门都会被当成墙，规划器又会退回原来的绕行行为。地板保证门永远
+可通行，只是“贵一些”。
 
 主要参数位于 `config/nav2_params.yaml` 的 `planner_server.GridBased`：
 
-- `preferred_clearance`：希望路径保持的障碍净空范围；增大后影响距离更远。
-- `clearance_weight`：为了更大净空可以接受多少绕路；增大后更愿意绕远。
-- `density_radius`：统计周围障碍密度的邻域半径。
-- `density_weight`：避开多障碍区域和双障碍夹缝的强度。
-- `goal_exemption_radius`：精确靠站区；增大后更早允许接近目标旁固定设施。
-- `start_exemption_radius`：从床位、护士台旁离开时的渐进恢复范围。
-- `costmap_weight`：保留对 Nav2 原始膨胀代价的权重。
+- `max_speed`：速度上限，必须与 MPPI 的 `vx_max` 和 `safety_velocity_smoother` 的
+  `max_velocity[0]` 一致；它同时决定启发式，取值过大将使启发式不再可采纳。
+- `crawl_speed`：爬行地板，当前 `0.35 m/s`。`ApproachPolygon` 相对 0.23 m 车体
+  只留 50 mm 余量，而碰撞监测按 2 s 前瞻，所以地板不宜再抬高。
+- `soft_decel`：速度包络的减速度余量，与靠站限速保持一致。
+- `body_clearance`：障碍中心距等于它就表示车体已经贴上，等于 `robot_radius`。
+- `costmap_weight`：原始代价作为**时间倍率**保留，它在两个方向上对称，因此只影响
+  路径贴哪一侧走，不会再制造绕行。设为 `0` 即为纯时间模型。
+- `simplification_cost_tolerance`：路径简化时允许的秒数比例上限。
 
 这些参数由插件在每次规划时读取，可以在 SSH 中动态试验，无需清空 Costmap：
 
 ```bash
-ros2 param set /planner_server GridBased.preferred_clearance 0.70
-ros2 param set /planner_server GridBased.clearance_weight 14.0
-ros2 param set /planner_server GridBased.density_radius 0.80
-ros2 param set /planner_server GridBased.density_weight 10.0
+ros2 param set /planner_server GridBased.crawl_speed 0.25
+ros2 param set /planner_server GridBased.costmap_weight 1.0
 ```
 
 参数修改后必须重新发送目标，才会生成新路径。先在 `dry_run=true` 下确认所有任务目标
-均能生成路径，再把最终数值写回 YAML。若目标最后一段过早贴近设施，应减小
-`goal_exemption_radius`；若目标无法平顺靠近，应适当增大该值，而不是扩大 Costmap。
+均能生成路径，再把最终数值写回 YAML。
+
+### 验证方法
+
+- 看 `/plan` 的点数：改前改后同样起终点，点数应明显下降（长绕行消失）。
+- 对比 `/cmd_vel` 与 `/cmd_vel_safe` 的速度分布：正常赛道中不应长期停留在 `crawl_speed`，
+  若长期在爬行说明 `body_clearance` 偏大或地图比实际窄。
+- 若窄缝仍被绕开，先确认该处栅格未被 `isBlocked` 判为不可通行，再考虑下调
+  `crawl_speed`；不要用提高 `costmap_weight` 的方式“压”路径，那会重新引入绕行。
 
 ## 部署
 
@@ -189,10 +212,12 @@ ROS_DOMAIN_ID=77
 ROS_LOCALHOST_ONLY=1
 MEDICAL_SCANNER_ENABLED=true
 MEDICAL_SCAN_CAMERA=/dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0
+MEDICAL_TELE_SCAN_CAMERA=/dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0
 ```
 
 部署脚本会安装 OpenCV、ZBar、v4l-utils 和 ZXing，并把用户加入 `video` 组。相机参数或
-设备路径需要修改时，可先在 PowerShell 设置 `MEDICAL_SCAN_CAMERA` 或直接编辑
+设备路径需要修改时，可先在 PowerShell 设置 `MEDICAL_SCAN_CAMERA`、
+`MEDICAL_TELE_SCAN_CAMERA`，或直接编辑
 `config/scanner.yaml`，再执行同一个 `deploy_nuc.py`。部署后可用以下命令检查链路：
 
 ```bash

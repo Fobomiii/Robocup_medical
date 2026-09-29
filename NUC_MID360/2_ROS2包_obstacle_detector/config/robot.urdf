@@ -47,6 +47,30 @@
     <origin xyz="0.205 0 0.32" rpy="0 0 0"/>
   </joint>
 
+  <!-- Arm motion-sweep filter volume. It includes the measured payload plus
+       margins for motion and lidar jitter while preserving returns below
+       z=0.45 m. This visual is the volume lidar_self_filter removes, so it
+       and arm_x_min/arm_x_max/
+       arm_half_width/arm_min_z/arm_max_z in obstacle.launch.py must be
+       changed together: the two are deliberately the same box. -->
+  <link name="arm">
+    <visual>
+      <geometry>
+        <box size="0.30 0.28 0.37"/>
+      </geometry>
+      <origin xyz="0.25 0 0.635" rpy="0 0 0"/>
+      <material name="arm_grey">
+        <color rgba="0.35 0.35 0.40 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="arm_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
   <link name="livox_frame"/>
 
   <joint name="livox_joint" type="fixed">

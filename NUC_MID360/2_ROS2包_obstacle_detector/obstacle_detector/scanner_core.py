@@ -10,6 +10,8 @@ from .nav_protocol import (
     SCAN_CONTEXT_ORDER,
     SCAN_FORMAT_CODE128,
     SCAN_FORMAT_QR,
+    START_WAIT_TASK_STATES,
+    TASK_WAIT_START,
 )
 
 
@@ -34,13 +36,25 @@ CODE128_VALUES = frozenset(
 
 
 def expected_scan(task_state: int) -> Optional[Tuple[int, int]]:
-    if task_state in (TASK_NAV_NURSE, TASK_SCAN_ORDER):
+    if task_state in (TASK_WAIT_START, TASK_NAV_NURSE, TASK_SCAN_ORDER):
         return SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR
     if task_state in (TASK_NAV_BED1, TASK_SCAN_BED1):
         return SCAN_CONTEXT_BED1, SCAN_FORMAT_CODE128
     if task_state in (TASK_NAV_BED3, TASK_SCAN_BED3):
         return SCAN_CONTEXT_BED3, SCAN_FORMAT_CODE128
     return None
+
+
+def tele_camera_assists(task_state: int, format: int) -> bool:
+    """Use the long-focus camera only for the pre-start nurse QR scan."""
+
+    return task_state == TASK_WAIT_START and format == SCAN_FORMAT_QR
+
+
+def tele_camera_should_capture(task_state: int) -> bool:
+    """Keep the long-focus camera live until the start button is accepted."""
+
+    return task_state in START_WAIT_TASK_STATES
 
 
 def value_is_allowed(format: int, value: str) -> bool:

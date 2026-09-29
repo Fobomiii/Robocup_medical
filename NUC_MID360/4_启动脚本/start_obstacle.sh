@@ -18,6 +18,7 @@ export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 SERIAL_PORT=${1:-/dev/medical_stm32}
 DRY_RUN=${2:-${MEDICAL_NAV_DRY_RUN:-false}}
 SCAN_CAMERA=${MEDICAL_SCAN_CAMERA:-/dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0}
+TELE_SCAN_CAMERA=${MEDICAL_TELE_SCAN_CAMERA:-/dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0}
 SCANNER_ENABLED=${MEDICAL_SCANNER_ENABLED:-true}
 
 case "$DRY_RUN" in
@@ -36,7 +37,8 @@ case "$SCANNER_ENABLED" in
         ;;
 esac
 
-echo "Starting Nav2: serial=$SERIAL_PORT dry_run=$DRY_RUN scanner=$SCANNER_ENABLED camera=$SCAN_CAMERA"
+echo "Starting Nav2: serial=$SERIAL_PORT dry_run=$DRY_RUN scanner=$SCANNER_ENABLED camera=$SCAN_CAMERA tele_camera=$TELE_SCAN_CAMERA"
 exec ros2 launch obstacle_detector obstacle.launch.py \
     serial_port:="$SERIAL_PORT" dry_run:="$DRY_RUN" \
-    scanner_enabled:="$SCANNER_ENABLED" scan_camera:="$SCAN_CAMERA"
+    scanner_enabled:="$SCANNER_ENABLED" scan_camera:="$SCAN_CAMERA" \
+    tele_scan_camera:="$TELE_SCAN_CAMERA"

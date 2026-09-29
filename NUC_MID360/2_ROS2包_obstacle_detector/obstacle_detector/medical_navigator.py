@@ -108,6 +108,7 @@ class MedicalNavigator(Node):
         self.nurse_cancel_attempt = 0
         self.nurse_next_goal = None
         self.nurse_qr_seen = False
+        self.plan_ready = False
         self.lock = threading.Lock()
 
         self.nav_client = ActionClient(self, NavigateToPose, "navigate_to_pose")
@@ -211,12 +212,14 @@ class MedicalNavigator(Node):
             self.nurse_next_goal = None
             self.nurse_dwell_deadline_s = 0.0
             self.nurse_action_started_s = 0.0
-            self.nav_status = NAV_WAIT_PATH
             self.last_result = "nurse_qr_seen_waiting_for_stm32"
             stop_handle = self.active_goal_handle
             generation = self.goal_generation
             self.nurse_scan_mode = (
                 "stopping_for_qr" if stop_handle is not None else "qr_hold"
+            )
+            self.nav_status = (
+                NAV_FOLLOWING if stop_handle is not None else NAV_WAIT_PATH
             )
         self._publish_status()
         if stop_handle is not None:
@@ -286,7 +289,7 @@ class MedicalNavigator(Node):
             self.pending_goal = None
             self.nurse_scan_mode = "qr_hold"
             self.nurse_cancel_started_s = 0.0
-            self.nav_status = NAV_WAIT_PATH
+            self.nav_status = NAV_FOLLOWING
             self.last_result = "nurse_qr_seen_waiting_for_stm32"
         self._publish_status()
 
@@ -418,6 +421,7 @@ class MedicalNavigator(Node):
                 self.rejection_retry_count = 0
                 self.busy = True
                 self.pending_goal = goal
+                self.plan_ready = False
                 self.last_request_s = time.monotonic()
                 self.nav_status = NAV_WAIT_PATH
                 self.waiting_for_cancel = previous_handle is not None
@@ -533,6 +537,7 @@ class MedicalNavigator(Node):
         with self.lock:
             if generation != self.goal_generation or self.waiting_for_cancel:
                 return
+            self.plan_ready = False
         if not self.nav_client.server_is_ready():
             with self.lock:
                 if generation != self.goal_generation:
@@ -717,14 +722,15 @@ class MedicalNavigator(Node):
                 handle.cancel_goal_async()
                 return
             self.active_goal_handle = handle
-            self.nav_status = NAV_WAIT_PATH
             if (
                 self.active_goal_id == self.nurse_goal_id and self.nurse_qr_seen
             ):
+                self.nav_status = NAV_FOLLOWING
                 self.nurse_scan_mode = "stopping_for_qr"
                 self.last_result = "nurse_qr_seen_stopping"
                 stop_for_qr = True
             else:
+                self.nav_status = NAV_WAIT_PATH
                 if (
                     self.active_goal_id == self.nurse_goal_id
                     and self.nurse_scan_mode == "moving_to_viewpoint"
@@ -829,6 +835,19 @@ class MedicalNavigator(Node):
 
     def _nav2_plan(self, msg: Path) -> None:
         self.plan_pub.publish(msg)
+        publish_status = False
+        with self.lock:
+            if (
+                self.busy
+                and self.active_goal_handle is not None
+                and not self.waiting_for_cancel
+                and len(msg.poses) > 0
+                and not self.plan_ready
+            ):
+                self.plan_ready = True
+                publish_status = True
+        if publish_status:
+            self._publish_status()
 
     def _publish_plan(self, path: Path) -> None:
         self.plan_pub.publish(path)
@@ -851,6 +870,7 @@ class MedicalNavigator(Node):
                 "nurse_scan_mode": self.nurse_scan_mode,
                 "nurse_viewpoint_index": self.nurse_viewpoint_index,
                 "nav2_ready": self.nav_client.server_is_ready(),
+                "plan_ready": self.plan_ready,
             },
             ensure_ascii=False,
         )

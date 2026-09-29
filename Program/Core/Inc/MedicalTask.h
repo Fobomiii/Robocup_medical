@@ -32,7 +32,11 @@ typedef enum {
   MEDICAL_TASK_NAV_ERROR = 11,
   /* Final centimetre-scale docking, controlled from the STM32 STP23L data. */
   MEDICAL_TASK_DOCK_BED1 = 12,
-  MEDICAL_TASK_DOCK_BED3 = 13
+  MEDICAL_TASK_DOCK_BED3 = 13,
+  /* Nav2 plans while the chassis waits at the origin for button C. */
+  MEDICAL_TASK_WAIT_START = 14,
+  MEDICAL_TASK_WAIT_BED1_START = 15,
+  MEDICAL_TASK_WAIT_BED3_START = 16
 } MedicalTaskState;
 
 /** Reset the delivery sequence and request the nurse-station Nav2 goal. */

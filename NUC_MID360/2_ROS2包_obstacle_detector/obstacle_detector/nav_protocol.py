@@ -23,6 +23,8 @@ MSG_GOAL_REQUEST = 0x11
 MSG_NAV_STATUS = 0x12
 MSG_STP23L = 0x13
 MSG_SCAN_ACK = 0x14
+MSG_WHEEL_ODOM = 0x15
+MSG_TTS_REQUEST = 0x16
 MSG_PATH_BEGIN = 0x20
 MSG_WAYPOINT = 0x21
 MSG_PATH_COMMIT = 0x22
@@ -30,6 +32,7 @@ MSG_PATH_CANCEL = 0x23
 MSG_HEARTBEAT = 0x30
 MSG_VEL_CMD = 0x40
 MSG_SCAN_RESULT = 0x41
+MSG_TTS_STATUS = 0x42
 
 SCAN_CONTEXT_ORDER = 1
 SCAN_CONTEXT_BED1 = 2
@@ -43,6 +46,9 @@ SCAN_ACK_WRONG_STATE = 2
 SCAN_ACK_INVALID_CODE = 3
 SCAN_CODE_MAX = 32
 
+TTS_STATUS_COMPLETED = 1
+TTS_STATUS_ERROR = 2
+
 GOAL_NONE = 0
 GOAL_HOME = 1
 GOAL_NURSE = 2
@@ -54,6 +60,51 @@ NAV_WAIT_PATH = 1
 NAV_FOLLOWING = 2
 NAV_REACHED = 3
 NAV_ERROR = 4
+
+# Task states mirrored from Program/Core/Inc/MedicalTask.h.  The numbers must
+# stay in step with the C enum: they travel inside the POSE frame and drive
+# both the motion gate and the dashboard status word.
+TASK_INIT = 0
+TASK_NAV_NURSE = 1
+TASK_SCAN_ORDER = 2
+TASK_NAV_BED1 = 3
+TASK_SCAN_BED1 = 4
+TASK_DISPENSE_BED1 = 5
+TASK_NAV_BED3 = 6
+TASK_SCAN_BED3 = 7
+TASK_DISPENSE_BED3 = 8
+TASK_NAV_HOME = 9
+TASK_COMPLETE = 10
+TASK_NAV_ERROR = 11
+TASK_DOCK_BED1 = 12
+TASK_DOCK_BED3 = 13
+
+# STM32 holds these task states at the origin while Nav2 plans the first
+# route.  They deliberately remain outside the normal navigation states so
+# the bridge cannot authorize chassis motion before button C is pressed.
+TASK_WAIT_START = 14
+TASK_WAIT_BED1_START = 15
+TASK_WAIT_BED3_START = 16
+START_WAIT_TASK_STATES = frozenset(
+    (TASK_WAIT_START, TASK_WAIT_BED1_START, TASK_WAIT_BED3_START)
+)
+
+# The run is under way: driving, docking, scanning or dispensing a box.
+TASK_ACTIVE_STATES = frozenset(
+    (
+        TASK_NAV_NURSE,
+        TASK_SCAN_ORDER,
+        TASK_NAV_BED1,
+        TASK_SCAN_BED1,
+        TASK_DISPENSE_BED1,
+        TASK_NAV_BED3,
+        TASK_SCAN_BED3,
+        TASK_DISPENSE_BED3,
+        TASK_NAV_HOME,
+        TASK_DOCK_BED1,
+        TASK_DOCK_BED3,
+    )
+)
 
 
 @dataclass(frozen=True)
@@ -95,6 +146,17 @@ class Stp23lTelemetry:
 
 
 @dataclass(frozen=True)
+class WheelOdomTelemetry:
+    """Encoder-derived ROS body velocity from the four chassis motors."""
+
+    forward_mm_s: int
+    left_mm_s: int
+    yaw_ccw_cdeg_s: int
+    online_mask: int
+    stamp_cs: int
+
+
+@dataclass(frozen=True)
 class ScanResult:
     scan_id: int
     context: int
@@ -105,6 +167,18 @@ class ScanResult:
 @dataclass(frozen=True)
 class ScanAck:
     scan_id: int
+    status: int
+
+
+@dataclass(frozen=True)
+class TtsRequest:
+    request_id: int
+    bed: int
+
+
+@dataclass(frozen=True)
+class TtsStatus:
+    request_id: int
     status: int
 
 
@@ -192,6 +266,12 @@ def decode_pose(payload: bytes) -> PoseTelemetry:
     return PoseTelemetry(*struct.unpack(">iihBBHB", payload))
 
 
+def decode_wheel_odom(payload: bytes) -> WheelOdomTelemetry:
+    if len(payload) != 9:
+        raise ValueError(f"WHEEL_ODOM payload length is {len(payload)}, expected 9")
+    return WheelOdomTelemetry(*struct.unpack(">hhhBH", payload))
+
+
 def decode_goal_request(payload: bytes) -> GoalRequest:
     if len(payload) != 3:
         raise ValueError(f"GOAL_REQUEST payload length is {len(payload)}, expected 3")
@@ -246,6 +326,36 @@ def decode_scan_ack(payload: bytes) -> ScanAck:
     if ack.status not in {SCAN_ACK_ACCEPTED, SCAN_ACK_WRONG_STATE, SCAN_ACK_INVALID_CODE}:
         raise ValueError(f"invalid scan ACK status: {ack.status}")
     return ack
+
+
+def encode_tts_request(request_id: int, bed: int) -> bytes:
+    if bed not in {1, 3}:
+        raise ValueError(f"invalid TTS bed: {bed}")
+    return struct.pack(">HB", request_id & 0xFFFF, bed)
+
+
+def decode_tts_request(payload: bytes) -> TtsRequest:
+    if len(payload) != 3:
+        raise ValueError(f"TTS_REQUEST payload length is {len(payload)}, expected 3")
+    request = TtsRequest(*struct.unpack(">HB", payload))
+    if request.bed not in {1, 3}:
+        raise ValueError(f"invalid TTS bed: {request.bed}")
+    return request
+
+
+def encode_tts_status(request_id: int, status: int) -> bytes:
+    if status not in {TTS_STATUS_COMPLETED, TTS_STATUS_ERROR}:
+        raise ValueError(f"invalid TTS status: {status}")
+    return struct.pack(">HB", request_id & 0xFFFF, status)
+
+
+def decode_tts_status(payload: bytes) -> TtsStatus:
+    if len(payload) != 3:
+        raise ValueError(f"TTS_STATUS payload length is {len(payload)}, expected 3")
+    status = TtsStatus(*struct.unpack(">HB", payload))
+    if status.status not in {TTS_STATUS_COMPLETED, TTS_STATUS_ERROR}:
+        raise ValueError(f"invalid TTS status: {status.status}")
+    return status
 
 
 def encode_path_begin(path_id: int, request_id: int, goal_id: int, count: int) -> bytes:

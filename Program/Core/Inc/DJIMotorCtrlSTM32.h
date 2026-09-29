@@ -117,6 +117,14 @@ void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
                                     float left_mm_s,
                                     float yaw_ccw_cdeg_s);
 
+/**
+ * Read encoder-derived ROS body velocity from the four C620 feedback frames.
+ * Returns a bit mask for motor IDs 1..4; 0x0F means all wheels are online.
+ */
+uint8_t DJI_Chassis_GetMeasuredVelocity(float *forward_mm_s,
+                                        float *left_mm_s,
+                                        float *yaw_ccw_cdeg_s);
+
 /** Immediate angle (deg). */
 void DJI_Arm_CtrlAngle(float deg);
 

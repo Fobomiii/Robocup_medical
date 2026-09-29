@@ -15,8 +15,16 @@ def compact_clusters(
     min_points: int,
     max_span: float,
     min_vertical_span: float,
+    min_base_z: float = 0.0,
 ) -> list[np.ndarray]:
-    """Return compact XY components that have measurable vertical extent."""
+    """Return compact XY components that have measurable vertical extent.
+
+    min_base_z drops clusters whose lowest return is above it.  A cone always
+    has returns at ground level, so a cluster that starts higher up is
+    something else -- most importantly the mounted arm, which sits at
+    0.64-0.70 m and would otherwise be stamped as a 0.18 m disk at z=0.12 m,
+    i.e. a phantom wall right at the robot's front edge.
+    """
     if xyz.size == 0:
         return []
 
@@ -59,6 +67,8 @@ def compact_clusters(
         if len(indices) < min_points:
             continue
         points = candidates[indices]
+        if min_base_z > 0.0 and float(np.min(points[:, 2])) > min_base_z:
+            continue
         span_x = float(np.ptp(points[:, 0]))
         span_y = float(np.ptp(points[:, 1]))
         span_z = float(np.ptp(points[:, 2]))
@@ -95,9 +105,32 @@ def footprint_disk(
     return np.asarray(points, dtype=np.float32)
 
 
+def cone_axis_center(
+    cluster: np.ndarray,
+    physical_base_radius: float,
+    cone_height: float,
+) -> tuple[float, float]:
+    """Estimate the cone axis from returns on its lidar-facing surface."""
+    xy = cluster[:, :2].astype(np.float64, copy=False)
+    ranges = np.linalg.norm(xy, axis=1)
+    surface_radii = physical_base_radius * np.clip(
+        1.0 - cluster[:, 2].astype(np.float64, copy=False) / cone_height,
+        0.0,
+        1.0,
+    )
+    candidates = xy.copy()
+    valid = ranges > 1.0e-6
+    candidates[valid] += (
+        xy[valid] / ranges[valid, np.newaxis]
+    ) * surface_radii[valid, np.newaxis]
+    center = np.median(candidates, axis=0)
+    return float(center[0]), float(center[1])
+
+
 def expand_cone_footprints(
     xyz: np.ndarray,
-    base_radius: float = 0.155,
+    base_radius: float = 0.165,
+    physical_base_radius: float = 0.155,
     cone_height: float = 0.65,
     min_z: float = 0.08,
     min_range: float = 0.30,
@@ -108,6 +141,7 @@ def expand_cone_footprints(
     min_vertical_span: float = 0.06,
     disk_spacing: float = 0.05,
     disk_height: float = 0.12,
+    min_base_z: float = 0.35,
 ) -> tuple[np.ndarray, list[tuple[float, float]]]:
     """Append known cone-base disks while preserving the filtered cloud."""
     clusters = compact_clusters(
@@ -120,6 +154,7 @@ def expand_cone_footprints(
         min_points,
         max_span,
         min_vertical_span,
+        min_base_z,
     )
     if not clusters:
         return np.ascontiguousarray(xyz, dtype=np.float32), []
@@ -127,8 +162,11 @@ def expand_cone_footprints(
     disks = []
     centers = []
     for cluster in clusters:
-        center_x = float(np.median(cluster[:, 0]))
-        center_y = float(np.median(cluster[:, 1]))
+        center_x, center_y = cone_axis_center(
+            cluster,
+            physical_base_radius,
+            cone_height,
+        )
         centers.append((center_x, center_y))
         disks.append(
             footprint_disk(

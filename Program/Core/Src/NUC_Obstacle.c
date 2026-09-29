@@ -24,10 +24,27 @@
 #define NAV_MAX_PAYLOAD      48U
 #define NAV_FRAME_MAX_LEN    (2U + 4U + NAV_MAX_PAYLOAD + 2U)
 #define NAV_ONLINE_MS        500U
-#define NAV_VELOCITY_TIMEOUT_MS 250U
+/* This gate zeroes the chassis target the instant it trips, with no ramp of
+ * any kind downstream, so the timeout has to outlast every gap the NUC can
+ * produce while the robot is still moving deliberately.
+ *
+ * Measured on the live topic chain: the collision monitor runs its point
+ * cloud work inline and stalls /cmd_vel_safe for up to 0.462 s, then bursts
+ * at 83 Hz to catch up. At 250 ms this gate fired mid-brake and stepped a
+ * 1.2 m/s reverse command to zero in one 10 ms main-loop tick -- roughly
+ * 90 m/s^2, about 70x the -1.3 m/s^2 the NUC's velocity smoother had planned,
+ * and enough to tip the raised arm's centre of gravity over backwards.
+ *
+ * 600 ms clears the worst measured gap by 138 ms and still sits above the
+ * 500 ms NAV_ONLINE_MS link check, which is the real deadman: NUC_Nav_Service
+ * clears the velocity itself once the link is genuinely gone, so this value
+ * only has to absorb scheduler jitter, not detect a dead link. */
+#define NAV_VELOCITY_TIMEOUT_MS 600U
 #define NAV_STM32_MAX_LINEAR_MM_S 4000
 #define NAV_POSE_PERIOD_MS   20U
+#define NAV_WHEEL_ODOM_PERIOD_MS 20U
 #define NAV_GOAL_PERIOD_MS   250U
+#define NAV_TTS_PERIOD_MS    250U
 #define NAV_STP23L_PERIOD_MS 100U
 
 #define NAV_MSG_POSE         0x10U
@@ -35,6 +52,8 @@
 #define NAV_MSG_NAV_STATUS   0x12U
 #define NAV_MSG_STP23L       0x13U
 #define NAV_MSG_SCAN_ACK     0x14U
+#define NAV_MSG_WHEEL_ODOM   0x15U
+#define NAV_MSG_TTS_REQUEST  0x16U
 #define NAV_MSG_PATH_BEGIN   0x20U
 #define NAV_MSG_WAYPOINT     0x21U
 #define NAV_MSG_PATH_COMMIT  0x22U
@@ -42,6 +61,7 @@
 #define NAV_MSG_HEARTBEAT    0x30U
 #define NAV_MSG_VEL_CMD      0x40U
 #define NAV_MSG_SCAN_RESULT  0x41U
+#define NAV_MSG_TTS_STATUS   0x42U
 
 static uint8_t s_it_byte;
 static uint8_t s_buf[NUC_FRAME_LEN];
@@ -92,8 +112,13 @@ static uint8_t s_nav_tx_seq;
 static uint32_t s_nav_last_pose_tx_ms;
 static uint32_t s_nav_last_goal_tx_ms;
 static uint32_t s_nav_last_stp23l_tx_ms;
+static uint32_t s_nav_last_wheel_odom_tx_ms;
+static uint32_t s_nav_last_tts_tx_ms;
 static NUC_NavGoal s_nav_requested_goal;
 static uint16_t s_nav_request_id;
+static uint16_t s_nav_tts_request_id;
+static uint8_t s_nav_tts_bed;
+static volatile NUC_TtsStatus s_nav_tts_status;
 static volatile int16_t s_nav_forward_mm_s;
 static volatile int16_t s_nav_left_mm_s;
 static volatile int16_t s_nav_yaw_ccw_cdeg_s;
@@ -117,6 +142,19 @@ static int16_t clamp_nav_linear_speed(int16_t speed_mm_s)
     return -NAV_STM32_MAX_LINEAR_MM_S;
   }
   return speed_mm_s;
+}
+
+static int16_t clamp_float_to_i16(float value)
+{
+  if (value > 32767.0f)
+  {
+    return 32767;
+  }
+  if (value < -32768.0f)
+  {
+    return -32768;
+  }
+  return (int16_t)((value >= 0.0f) ? (value + 0.5f) : (value - 0.5f));
 }
 
 static uint16_t read_u16_be(const uint8_t *data)
@@ -329,6 +367,18 @@ static void nav_parse_frame(void)
     s_nav_scan_result.value[code_len] = '\0';
     s_nav_scan_pending = 1U;
   }
+  else if (type == NAV_MSG_TTS_STATUS && payload_len == 3U)
+  {
+    uint16_t request_id = read_u16_be(&payload[0]);
+    uint8_t status = payload[2];
+    if (s_nav_tts_status == NUC_TTS_PENDING &&
+        request_id == s_nav_tts_request_id &&
+        (status == (uint8_t)NUC_TTS_COMPLETED ||
+         status == (uint8_t)NUC_TTS_ERROR))
+    {
+      s_nav_tts_status = (NUC_TtsStatus)status;
+    }
+  }
 }
 
 static void nav_feed_byte(uint8_t value)
@@ -525,8 +575,13 @@ void NUC_Obstacle_Init(void)
   s_nav_last_pose_tx_ms = 0U;
   s_nav_last_goal_tx_ms = 0U;
   s_nav_last_stp23l_tx_ms = 0U;
+  s_nav_last_wheel_odom_tx_ms = 0U;
+  s_nav_last_tts_tx_ms = 0U;
   s_nav_requested_goal = NUC_NAV_GOAL_NONE;
   s_nav_request_id = 0U;
+  s_nav_tts_request_id = 0U;
+  s_nav_tts_bed = 0U;
+  s_nav_tts_status = NUC_TTS_IDLE;
   s_nav_forward_mm_s = 0;
   s_nav_left_mm_s = 0;
   s_nav_yaw_ccw_cdeg_s = 0;
@@ -660,6 +715,43 @@ void NUC_Nav_RequestGoal(NUC_NavGoal goal)
   }
 }
 
+HAL_StatusTypeDef NUC_Nav_RequestTTS(uint8_t bed)
+{
+  if (bed != 1U && bed != 3U)
+  {
+    return HAL_ERROR;
+  }
+
+  s_nav_tts_request_id++;
+  if (s_nav_tts_request_id == 0U)
+  {
+    s_nav_tts_request_id = 1U;
+  }
+  s_nav_tts_bed = bed;
+  s_nav_tts_status = NUC_TTS_PENDING;
+  s_nav_last_tts_tx_ms = 0U;
+  return HAL_OK;
+}
+
+NUC_TtsStatus NUC_Nav_GetTTSStatus(void)
+{
+  return s_nav_tts_status;
+}
+
+void NUC_Nav_ClearTTS(void)
+{
+  uint32_t primask = __get_PRIMASK();
+
+  __disable_irq();
+  s_nav_tts_bed = 0U;
+  s_nav_tts_status = NUC_TTS_IDLE;
+  s_nav_last_tts_tx_ms = 0U;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+}
+
 void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
                      uint8_t task_state, NUC_NavStatus nav_status,
                      uint16_t path_id, uint8_t waypoint_index)
@@ -703,6 +795,17 @@ void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
     (void)nav_send_frame(NAV_MSG_GOAL_REQUEST, payload, sizeof(payload));
     s_nav_last_goal_tx_ms = now;
   }
+
+  if (s_nav_tts_status == NUC_TTS_PENDING &&
+      (s_nav_last_tts_tx_ms == 0U ||
+       (now - s_nav_last_tts_tx_ms) >= NAV_TTS_PERIOD_MS))
+  {
+    uint8_t payload[3];
+    write_u16_be(&payload[0], s_nav_tts_request_id);
+    payload[2] = s_nav_tts_bed;
+    (void)nav_send_frame(NAV_MSG_TTS_REQUEST, payload, sizeof(payload));
+    s_nav_last_tts_tx_ms = now;
+  }
 }
 
 void NUC_Nav_ServiceSTP23L(void)
@@ -736,6 +839,28 @@ void NUC_Nav_ServiceSTP23L(void)
   payload[6] = valid_mask;
   (void)nav_send_frame(NAV_MSG_STP23L, payload, sizeof(payload));
   s_nav_last_stp23l_tx_ms = now;
+}
+
+void NUC_Nav_ServiceWheelOdom(float forward_mm_s,
+                              float left_mm_s,
+                              float yaw_ccw_cdeg_s,
+                              uint8_t online_mask)
+{
+  uint32_t now = HAL_GetTick();
+  uint8_t payload[9];
+
+  if ((now - s_nav_last_wheel_odom_tx_ms) < NAV_WHEEL_ODOM_PERIOD_MS)
+  {
+    return;
+  }
+
+  write_i16_be(&payload[0], clamp_float_to_i16(forward_mm_s));
+  write_i16_be(&payload[2], clamp_float_to_i16(left_mm_s));
+  write_i16_be(&payload[4], clamp_float_to_i16(yaw_ccw_cdeg_s));
+  payload[6] = online_mask & 0x0FU;
+  write_u16_be(&payload[7], (uint16_t)(now / 10U));
+  (void)nav_send_frame(NAV_MSG_WHEEL_ODOM, payload, sizeof(payload));
+  s_nav_last_wheel_odom_tx_ms = now;
 }
 
 uint8_t NUC_Nav_HasRequestedPath(void)

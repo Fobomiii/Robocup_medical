@@ -188,7 +188,7 @@ double distanceBetween(double ax, double ay, double bx, double by)
   return std::hypot(ax - bx, ay - by);
 }
 
-std::vector<double> traversalMultipliers(
+std::vector<double> traversalRisks(
   const GridSnapshot & grid,
   const std::vector<double> & clearance,
   const std::vector<int> & density_integral,
@@ -196,7 +196,7 @@ std::vector<double> traversalMultipliers(
   double start_x, double start_y,
   double goal_x, double goal_y)
 {
-  std::vector<double> multiplier(grid.size(), 1.0);
+  std::vector<double> risk(grid.size(), 0.0);
   const int density_cells = std::max(
     1, static_cast<int>(std::ceil(params.density_radius / grid.resolution)));
 
@@ -204,7 +204,7 @@ std::vector<double> traversalMultipliers(
     for (unsigned int x = 0; x < grid.width; ++x) {
       const int index_value = grid.index(static_cast<int>(x), static_cast<int>(y));
       if (isBlocked(grid.costs[index_value], params.allow_unknown)) {
-        multiplier[index_value] = kInfinity;
+        risk[index_value] = kInfinity;
         continue;
       }
 
@@ -244,30 +244,30 @@ std::vector<double> traversalMultipliers(
       // field. The original Nav2 costmap penalty stays active everywhere, so
       // a newly observed obstacle near a target is never made artificially
       // attractive by the precision-approach exemption.
-      multiplier[index_value] = 1.0 + costmap_penalty + preference_scale *
+      risk[index_value] = costmap_penalty + preference_scale *
         (clearance_penalty + density_penalty);
     }
   }
-  return multiplier;
+  return risk;
 }
 
 bool diagonalMoveIsClear(
   const GridSnapshot & grid, int x, int y, int nx, int ny,
-  const std::vector<double> & multiplier)
+  const std::vector<double> & risk)
 {
   if (x == nx || y == ny) {
     return true;
   }
-  return std::isfinite(multiplier[grid.index(nx, y)]) &&
-         std::isfinite(multiplier[grid.index(x, ny)]);
+  return std::isfinite(risk[grid.index(nx, y)]) &&
+         std::isfinite(risk[grid.index(x, ny)]);
 }
 
 int nearestTraversableGoal(
   const GridSnapshot & grid, int requested_x, int requested_y,
-  const std::vector<double> & multiplier, double tolerance)
+  const std::vector<double> & risk, double tolerance)
 {
   const int requested = grid.index(requested_x, requested_y);
-  if (std::isfinite(multiplier[requested])) {
+  if (std::isfinite(risk[requested])) {
     return requested;
   }
   const int radius = std::max(0, static_cast<int>(std::ceil(tolerance / grid.resolution)));
@@ -283,7 +283,7 @@ int nearestTraversableGoal(
       const double distance = std::hypot(dx, dy) * grid.resolution;
       const int candidate = grid.index(x, y);
       if (distance <= tolerance && distance < best_distance &&
-        std::isfinite(multiplier[candidate]))
+        std::isfinite(risk[candidate]))
       {
         best = candidate;
         best_distance = distance;
@@ -293,45 +293,109 @@ int nearestTraversableGoal(
   return best;
 }
 
-std::vector<int> aStar(
-  const GridSnapshot & grid, int start, int goal,
-  const std::vector<double> & multiplier,
-  double max_planning_time, std::size_t & expanded)
+double moveTime(
+  const GridSnapshot & grid, int x, int y, int nx, int ny,
+  double travel_yaw,
+  const ClearancePlanner::Parameters & params)
 {
-  std::vector<double> score(grid.size(), kInfinity);
-  std::vector<int> parent(grid.size(), -1);
-  std::vector<std::uint8_t> closed(grid.size(), 0);
-  std::priority_queue<QueueEntry, std::vector<QueueEntry>, std::greater<QueueEntry>> open;
-  const auto [goal_x, goal_y] = grid.coordinates(goal);
-  const auto started = std::chrono::steady_clock::now();
+  const double world_x = static_cast<double>(nx - x) * grid.resolution;
+  const double world_y = static_cast<double>(ny - y) * grid.resolution;
+  const double cosine = std::cos(travel_yaw);
+  const double sine = std::sin(travel_yaw);
+  const double body_x = cosine * world_x + sine * world_y;
+  const double body_y = -sine * world_x + cosine * world_y;
+  const double x_speed = body_x >= 0.0 ? params.forward_speed : params.reverse_speed;
+  const double x_time = std::abs(body_x) / std::max(0.01, x_speed);
+  const double y_time = std::abs(body_y) / std::max(0.01, params.lateral_speed);
+  return std::max(x_time, y_time);
+}
 
-  score[start] = 0.0;
-  const auto [start_x, start_y] = grid.coordinates(start);
-  open.push({std::hypot(start_x - goal_x, start_y - goal_y), start});
+double poseYaw(const geometry_msgs::msg::Quaternion & orientation)
+{
+  return std::atan2(
+    2.0 * (orientation.w * orientation.z + orientation.x * orientation.y),
+    1.0 - 2.0 * (
+      orientation.y * orientation.y + orientation.z * orientation.z));
+}
+
+bool planningTimedOut(
+  const std::chrono::steady_clock::time_point & started,
+  double max_planning_time)
+{
+  return max_planning_time > 0.0 &&
+         std::chrono::duration<double>(
+    std::chrono::steady_clock::now() - started).count() > max_planning_time;
+}
+
+std::vector<double> fastestTimeField(
+  const GridSnapshot & grid, int goal,
+  const std::vector<double> & risk,
+  double travel_yaw,
+  const ClearancePlanner::Parameters & params,
+  const std::chrono::steady_clock::time_point & started,
+  std::size_t & expanded)
+{
+  std::vector<double> time_to_goal(grid.size(), kInfinity);
+  std::priority_queue<QueueEntry, std::vector<QueueEntry>, std::greater<QueueEntry>> open;
+  time_to_goal[goal] = 0.0;
+  open.push({0.0, goal});
 
   static constexpr int kDx[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
   static constexpr int kDy[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
-  expanded = 0;
   while (!open.empty()) {
-    const int current = open.top().index;
+    const QueueEntry current = open.top();
     open.pop();
-    if (closed[current]) {
+    if (current.priority > time_to_goal[current.index]) {
       continue;
     }
-    closed[current] = 1;
     ++expanded;
-    if (current == goal) {
-      break;
-    }
-    if ((expanded & 0xFFU) == 0U && max_planning_time > 0.0) {
-      const double elapsed = std::chrono::duration<double>(
-        std::chrono::steady_clock::now() - started).count();
-      if (elapsed > max_planning_time) {
-        return {};
-      }
+    if ((expanded & 0xFFU) == 0U && planningTimedOut(started, params.max_planning_time)) {
+      return {};
     }
 
+    const auto [x, y] = grid.coordinates(current.index);
+    for (int direction = 0; direction < 8; ++direction) {
+      const int px = x + kDx[direction];
+      const int py = y + kDy[direction];
+      if (!grid.contains(px, py)) {
+        continue;
+      }
+      const int predecessor = grid.index(px, py);
+      if (!std::isfinite(risk[predecessor]) ||
+        !diagonalMoveIsClear(grid, px, py, x, y, risk))
+      {
+        continue;
+      }
+      const double candidate = current.priority +
+        moveTime(grid, px, py, x, y, travel_yaw, params);
+      if (candidate < time_to_goal[predecessor]) {
+        time_to_goal[predecessor] = candidate;
+        open.push({candidate, predecessor});
+      }
+    }
+  }
+  return time_to_goal;
+}
+
+std::vector<int> reconstructFastestPath(
+  const GridSnapshot & grid, int start, int goal,
+  const std::vector<double> & risk,
+  const std::vector<double> & time_to_goal,
+  double travel_yaw,
+  const ClearancePlanner::Parameters & params)
+{
+  if (!std::isfinite(time_to_goal[start])) {
+    return {};
+  }
+  std::vector<int> path{start};
+  int current = start;
+  static constexpr int kDx[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
+  static constexpr int kDy[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
+  for (std::size_t step_count = 0; current != goal && step_count < grid.size(); ++step_count) {
     const auto [x, y] = grid.coordinates(current);
+    int best = -1;
+    double best_time = kInfinity;
+    double best_risk = kInfinity;
     for (int direction = 0; direction < 8; ++direction) {
       const int nx = x + kDx[direction];
       const int ny = y + kDy[direction];
@@ -339,40 +403,154 @@ std::vector<int> aStar(
         continue;
       }
       const int neighbor = grid.index(nx, ny);
-      if (closed[neighbor] || !std::isfinite(multiplier[neighbor]) ||
-        !diagonalMoveIsClear(grid, x, y, nx, ny, multiplier))
+      if (!std::isfinite(risk[neighbor]) || !std::isfinite(time_to_goal[neighbor]) ||
+        !diagonalMoveIsClear(grid, x, y, nx, ny, risk))
       {
         continue;
       }
-      const double step = (kDx[direction] != 0 && kDy[direction] != 0) ?
-        kSqrtTwo : 1.0;
-      const double transition = step * 0.5 *
-        (multiplier[current] + multiplier[neighbor]);
-      const double candidate = score[current] + transition;
-      if (candidate < score[neighbor]) {
-        score[neighbor] = candidate;
-        parent[neighbor] = current;
-        const double heuristic = std::hypot(nx - goal_x, ny - goal_y);
-        open.push({candidate + heuristic, neighbor});
+      const double candidate = moveTime(grid, x, y, nx, ny, travel_yaw, params) +
+        time_to_goal[neighbor];
+      if (candidate < best_time - 1.0e-9 ||
+        (std::abs(candidate - best_time) <= 1.0e-9 && risk[neighbor] < best_risk))
+      {
+        best = neighbor;
+        best_time = candidate;
+        best_risk = risk[neighbor];
       }
     }
-  }
-
-  if (start != goal && parent[goal] < 0) {
-    return {};
-  }
-  std::vector<int> path;
-  for (int current = goal; current >= 0; current = parent[current]) {
+    if (best < 0 || best_time > time_to_goal[current] + 1.0e-6) {
+      return {};
+    }
+    current = best;
     path.push_back(current);
-    if (current == start) {
-      break;
+  }
+  return current == goal ? path : std::vector<int>{};
+}
+
+struct SafeLabel
+{
+  int cell;
+  int parent;
+  double elapsed;
+  double risk;
+  bool active;
+};
+
+struct SafeQueueEntry
+{
+  double risk;
+  double elapsed;
+  int label;
+
+  bool operator>(const SafeQueueEntry & other) const
+  {
+    if (risk != other.risk) {
+      return risk > other.risk;
+    }
+    return elapsed > other.elapsed;
+  }
+};
+
+std::vector<int> constrainedSafePath(
+  const GridSnapshot & grid, int start, int goal,
+  const std::vector<double> & risk,
+  const std::vector<double> & time_to_goal,
+  double time_budget,
+  double travel_yaw,
+  const ClearancePlanner::Parameters & params,
+  const std::chrono::steady_clock::time_point & started,
+  std::size_t & expanded)
+{
+  std::vector<SafeLabel> labels;
+  labels.reserve(grid.size() * 2);
+  std::vector<std::vector<int>> pareto(grid.size());
+  std::priority_queue<
+    SafeQueueEntry, std::vector<SafeQueueEntry>, std::greater<SafeQueueEntry>> open;
+
+  labels.push_back({start, -1, 0.0, 0.0, true});
+  pareto[start].push_back(0);
+  open.push({0.0, 0.0, 0});
+
+  static constexpr int kDx[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
+  static constexpr int kDy[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
+  while (!open.empty()) {
+    const int label_index = open.top().label;
+    open.pop();
+    if (!labels[label_index].active) {
+      continue;
+    }
+    const SafeLabel current = labels[label_index];
+    ++expanded;
+    if (current.cell == goal) {
+      std::vector<int> path;
+      for (int index = label_index; index >= 0; index = labels[index].parent) {
+        path.push_back(labels[index].cell);
+      }
+      std::reverse(path.begin(), path.end());
+      return path;
+    }
+    if ((expanded & 0xFFU) == 0U && planningTimedOut(started, params.max_planning_time)) {
+      return {};
+    }
+
+    const auto [x, y] = grid.coordinates(current.cell);
+    for (int direction = 0; direction < 8; ++direction) {
+      const int nx = x + kDx[direction];
+      const int ny = y + kDy[direction];
+      if (!grid.contains(nx, ny)) {
+        continue;
+      }
+      const int neighbor = grid.index(nx, ny);
+      if (!std::isfinite(risk[neighbor]) || !std::isfinite(time_to_goal[neighbor]) ||
+        !diagonalMoveIsClear(grid, x, y, nx, ny, risk))
+      {
+        continue;
+      }
+      const double next_elapsed = current.elapsed +
+        moveTime(grid, x, y, nx, ny, travel_yaw, params);
+      if (next_elapsed + time_to_goal[neighbor] > time_budget + 1.0e-9) {
+        continue;
+      }
+      const double step_distance = std::hypot(nx - x, ny - y) * grid.resolution;
+      const double next_risk = current.risk + step_distance * 0.5 *
+        (risk[current.cell] + risk[neighbor]);
+
+      bool dominated = false;
+      auto & frontier = pareto[neighbor];
+      for (const int existing_index : frontier) {
+        const SafeLabel & existing = labels[existing_index];
+        if (existing.active &&
+          existing.elapsed <= next_elapsed + 1.0e-9 &&
+          existing.risk <= next_risk + 1.0e-9)
+        {
+          dominated = true;
+          break;
+        }
+      }
+      if (dominated) {
+        continue;
+      }
+      for (const int existing_index : frontier) {
+        SafeLabel & existing = labels[existing_index];
+        if (existing.active &&
+          next_elapsed <= existing.elapsed + 1.0e-9 &&
+          next_risk <= existing.risk + 1.0e-9)
+        {
+          existing.active = false;
+        }
+      }
+      frontier.erase(
+        std::remove_if(
+          frontier.begin(), frontier.end(),
+          [&labels](int index) {return !labels[index].active;}),
+        frontier.end());
+      const int next_index = static_cast<int>(labels.size());
+      labels.push_back({neighbor, label_index, next_elapsed, next_risk, true});
+      frontier.push_back(next_index);
+      open.push({next_risk, next_elapsed, next_index});
     }
   }
-  if (path.empty() || path.back() != start) {
-    return {};
-  }
-  std::reverse(path.begin(), path.end());
-  return path;
+  return {};
 }
 
 double polylineCost(
@@ -467,14 +645,6 @@ std::vector<int> simplifyPath(
   return simplified;
 }
 
-geometry_msgs::msg::Quaternion yawQuaternion(double yaw)
-{
-  geometry_msgs::msg::Quaternion orientation;
-  orientation.z = std::sin(yaw * 0.5);
-  orientation.w = std::cos(yaw * 0.5);
-  return orientation;
-}
-
 }  // namespace
 
 void ClearancePlanner::configure(
@@ -501,6 +671,11 @@ void ClearancePlanner::configure(
   declare("allow_unknown", false);
   declare("tolerance", 0.10);
   declare("max_planning_time", 1.5);
+  declare("forward_speed", 2.00);
+  declare("reverse_speed", 1.20);
+  declare("lateral_speed", 1.50);
+  declare("max_time_ratio", 1.10);
+  declare("min_time_slack", 0.50);
   declare("costmap_weight", 3.0);
   declare("preferred_clearance", 0.65);
   declare("clearance_weight", 12.0);
@@ -513,7 +688,7 @@ void ClearancePlanner::configure(
   declare("simplification_cost_tolerance", 1.03);
 
   RCLCPP_INFO(
-    logger_, "Configured %s: live clearance and obstacle-density planning enabled",
+    logger_, "Configured %s: bounded-time clearance planning enabled",
     name_.c_str());
 }
 
@@ -548,6 +723,11 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   read("allow_unknown", params.allow_unknown);
   read("tolerance", params.tolerance);
   read("max_planning_time", params.max_planning_time);
+  read("forward_speed", params.forward_speed);
+  read("reverse_speed", params.reverse_speed);
+  read("lateral_speed", params.lateral_speed);
+  read("max_time_ratio", params.max_time_ratio);
+  read("min_time_slack", params.min_time_slack);
   read("costmap_weight", params.costmap_weight);
   read("preferred_clearance", params.preferred_clearance);
   read("clearance_weight", params.clearance_weight);
@@ -561,6 +741,11 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
 
   params.tolerance = std::max(0.0, params.tolerance);
   params.max_planning_time = std::max(0.0, params.max_planning_time);
+  params.forward_speed = std::max(0.05, params.forward_speed);
+  params.reverse_speed = std::max(0.05, params.reverse_speed);
+  params.lateral_speed = std::max(0.05, params.lateral_speed);
+  params.max_time_ratio = std::max(1.0, params.max_time_ratio);
+  params.min_time_slack = std::max(0.0, params.min_time_slack);
   params.costmap_weight = std::max(0.0, params.costmap_weight);
   params.preferred_clearance = std::max(0.0, params.preferred_clearance);
   params.clearance_weight = std::max(0.0, params.clearance_weight);
@@ -619,35 +804,56 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
   }
 
   const Parameters params = readParameters();
+  const auto planning_started = std::chrono::steady_clock::now();
   const std::vector<double> clearance = distanceField(grid, params.allow_unknown);
   const std::vector<int> density_integral = obstacleIntegralImage(grid, params.allow_unknown);
-  const std::vector<double> multiplier = traversalMultipliers(
+  const std::vector<double> risk = traversalRisks(
     grid, clearance, density_integral, params,
     start.pose.position.x, start.pose.position.y,
     goal.pose.position.x, goal.pose.position.y);
 
   const int start_index = grid.index(start_x, start_y);
-  if (!std::isfinite(multiplier[start_index])) {
+  if (!std::isfinite(risk[start_index])) {
     RCLCPP_ERROR(logger_, "%s start pose is in a collision cell", name_.c_str());
     return path;
   }
   const int requested_goal = grid.index(goal_x, goal_y);
   const int goal_index = nearestTraversableGoal(
-    grid, goal_x, goal_y, multiplier, params.tolerance);
+    grid, goal_x, goal_y, risk, params.tolerance);
   if (goal_index < 0) {
     RCLCPP_ERROR(logger_, "%s goal is blocked within %.2f m tolerance", name_.c_str(), params.tolerance);
     return path;
   }
 
   std::size_t expanded = 0;
-  std::vector<int> cells = aStar(
-    grid, start_index, goal_index, multiplier, params.max_planning_time, expanded);
-  if (cells.empty()) {
-    RCLCPP_WARN(logger_, "%s found no clearance-aware route", name_.c_str());
+  const double travel_yaw = poseYaw(goal.pose.orientation);
+  const std::vector<double> time_to_goal = fastestTimeField(
+    grid, goal_index, risk, travel_yaw, params, planning_started, expanded);
+  if (time_to_goal.empty() || !std::isfinite(time_to_goal[start_index])) {
+    RCLCPP_WARN(logger_, "%s found no time-feasible route", name_.c_str());
     return path;
   }
+  const std::vector<int> fastest_cells = reconstructFastestPath(
+    grid, start_index, goal_index, risk, time_to_goal, travel_yaw, params);
+  if (fastest_cells.empty()) {
+    RCLCPP_WARN(logger_, "%s could not reconstruct its fastest route", name_.c_str());
+    return path;
+  }
+  const double fastest_time = time_to_goal[start_index];
+  const double time_budget = fastest_time + std::max(
+    params.min_time_slack,
+    fastest_time * (params.max_time_ratio - 1.0));
+  std::vector<int> cells = constrainedSafePath(
+    grid, start_index, goal_index, risk, time_to_goal, time_budget,
+    travel_yaw, params, planning_started, expanded);
+  if (cells.empty()) {
+    cells = fastest_cells;
+    RCLCPP_WARN(
+      logger_, "%s safety search timed out; using %.2f s fastest route",
+      name_.c_str(), fastest_time);
+  }
   cells = simplifyPath(
-    grid, cells, multiplier, params.simplification_cost_tolerance);
+    grid, cells, risk, params.simplification_cost_tolerance);
 
   std::vector<std::pair<double, double>> controls;
   controls.emplace_back(start.pose.position.x, start.pose.position.y);
@@ -682,19 +888,16 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
     pose.header = path.header;
     pose.pose.position.x = points[i].first;
     pose.pose.position.y = points[i].second;
-    if (i + 1 < points.size()) {
-      pose.pose.orientation = yawQuaternion(std::atan2(
-        points[i + 1].second - points[i].second,
-        points[i + 1].first - points[i].first));
-    } else {
-      pose.pose.orientation = goal.pose.orientation;
-    }
+    // Omni translation is independent of task yaw. Copy it onto every pose so
+    // an MPPI-pruned path cannot expose a segment tangent as the goal heading.
+    pose.pose.orientation = goal.pose.orientation;
     path.poses.push_back(std::move(pose));
   }
 
   RCLCPP_DEBUG(
-    logger_, "%s planned %zu poses via %zu controls after expanding %zu cells",
-    name_.c_str(), path.poses.size(), controls.size(), expanded);
+    logger_,
+    "%s planned %zu poses via %zu controls: fastest=%.2f s budget=%.2f s expanded=%zu",
+    name_.c_str(), path.poses.size(), controls.size(), fastest_time, time_budget, expanded);
   return path;
 }
 

@@ -27,6 +27,9 @@ extern volatile uint8_t hwt_online;
 
 void HWT101_Init(void);
 
+/** Internal USART1 error-recovery hook. */
+void HWT101_OnUartError(void);
+
 uint8_t  HWT101_IsOnline(void);
 float    HWT101_GetYaw(void);
 float    HWT101_GetWz(void);

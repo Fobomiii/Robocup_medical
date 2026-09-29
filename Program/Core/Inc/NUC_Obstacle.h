@@ -69,6 +69,13 @@ typedef enum {
   NUC_SCAN_ACK_INVALID_CODE = 3
 } NUC_ScanAckStatus;
 
+typedef enum {
+  NUC_TTS_IDLE = 0,
+  NUC_TTS_COMPLETED = 1,
+  NUC_TTS_ERROR = 2,
+  NUC_TTS_PENDING = 3
+} NUC_TtsStatus;
+
 typedef struct {
   int32_t x_mm;
   int32_t y_mm;
@@ -120,6 +127,15 @@ uint8_t NUC_IsObstacleValid(void);
 /** Start or maintain a navigation request. A new goal increments request_id. */
 void NUC_Nav_RequestGoal(NUC_NavGoal goal);
 
+/** Ask the NUC to play the bed announcement; valid beds are 1 and 3. */
+HAL_StatusTypeDef NUC_Nav_RequestTTS(uint8_t bed);
+
+/** Current result of the active NUC speech request. */
+NUC_TtsStatus NUC_Nav_GetTTSStatus(void);
+
+/** Cancel retransmission and discard the current speech result. */
+void NUC_Nav_ClearTTS(void);
+
 /** Periodic bidirectional telemetry service; call from the 100 Hz nav task. */
 void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
                      uint8_t task_state, NUC_NavStatus nav_status,
@@ -127,6 +143,12 @@ void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
 
 /** Send the three STP23L ranges at 10 Hz on the navigation UART. */
 void NUC_Nav_ServiceSTP23L(void);
+
+/** Send encoder-derived body velocity and wheel online mask at 50 Hz. */
+void NUC_Nav_ServiceWheelOdom(float forward_mm_s,
+                              float left_mm_s,
+                              float yaw_ccw_cdeg_s,
+                              uint8_t online_mask);
 
 /** Access the most recently committed path for the active request. */
 uint8_t NUC_Nav_HasRequestedPath(void);
@@ -138,7 +160,10 @@ uint8_t NUC_Nav_GetWaypoint(uint8_t index, NUC_NavWaypoint *waypoint);
 /**
  * Read the latest fresh Nav2 body velocity command.
  * Units/signs follow ROS: forward mm/s, left mm/s, counter-clockwise cdeg/s.
- * Returns 0 and writes zeros when no valid command arrived in the last 250 ms.
+ * Returns 0 and writes zeros when no valid command arrived in the last 600 ms.
+ * The caller acts on a 0 by stepping the chassis straight to zero, so this
+ * window must stay wider than the longest stall the NUC publishes through
+ * (0.462 s measured); see NAV_VELOCITY_TIMEOUT_MS in NUC_Obstacle.c.
  */
 uint8_t NUC_Nav_GetVelocityCommand(int16_t *forward_mm_s,
                                    int16_t *left_mm_s,

@@ -19,6 +19,10 @@ SCAN_CAMERA = os.environ.get(
     "MEDICAL_SCAN_CAMERA",
     "/dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0",
 )
+TELE_SCAN_CAMERA = os.environ.get(
+    "MEDICAL_TELE_SCAN_CAMERA",
+    "/dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0",
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
@@ -57,6 +61,9 @@ def main() -> int:
         return 2
     if not SCAN_CAMERA.startswith("/dev/"):
         print("MEDICAL_SCAN_CAMERA must be an absolute /dev path.")
+        return 2
+    if not TELE_SCAN_CAMERA.startswith("/dev/"):
+        print("MEDICAL_TELE_SCAN_CAMERA must be an absolute /dev path.")
         return 2
     for package_root in (PKG, PLANNER_PKG):
         manifest = os.path.join(package_root, "package.xml")
@@ -135,11 +142,11 @@ def main() -> int:
 
     run(f"chmod +x {remote_home}/start_*.sh {remote_home}/check_nuc.sh")
 
-    print("Installing scanner runtime dependencies...")
+    print("Installing scanner and NUC TTS runtime dependencies...")
     rc, out, err = run(
         f"{sudo} env DEBIAN_FRONTEND=noninteractive apt-get install -y "
         "python3-opencv python3-numpy python3-pyqt5 python3-pyzbar "
-        "libzbar0 v4l-utils python3-pip",
+        "libzbar0 v4l-utils python3-pip ffmpeg alsa-utils",
         timeout=600,
     )
     print(out.strip() or err.strip())
@@ -157,7 +164,7 @@ def main() -> int:
         client.close()
         return rc
 
-    rc, out, err = run(f"{sudo} usermod -aG video {shlex.quote(USER)}")
+    rc, out, err = run(f"{sudo} usermod -aG video,audio {shlex.quote(USER)}")
     if rc != 0:
         print(err or out)
         client.close()
@@ -204,6 +211,7 @@ def main() -> int:
     rc, out, err = run(
         f"cd {remote_pkg} && /usr/bin/python3 -m py_compile "
         "obstacle_detector/nav_protocol.py obstacle_detector/serial_transport.py "
+        "obstacle_detector/nuc_tts.py "
         "obstacle_detector/bridge_safety.py "
         "obstacle_detector/field_goals.py obstacle_detector/stm32_bridge.py "
         "obstacle_detector/medical_navigator.py obstacle_detector/lidar_transform.py "
@@ -239,6 +247,7 @@ def main() -> int:
         "ROS_LOCALHOST_ONLY=1\n"
         f"MEDICAL_SCANNER_ENABLED={SCANNER_ENABLED}\n"
         f"MEDICAL_SCAN_CAMERA={SCAN_CAMERA}\n"
+        f"MEDICAL_TELE_SCAN_CAMERA={TELE_SCAN_CAMERA}\n"
     )
     rc, out, err = run(
         f"mkdir -p {shlex.quote(remote_home + '/.config')} && "
@@ -262,22 +271,40 @@ def main() -> int:
     print(out.strip() or err.strip())
     if rc == 0:
         dashboard_log = f"{remote_home}/.cache/medical-scan-dashboard.log"
+        dashboard_pid = f"{remote_home}/.cache/medical-scan-dashboard.pid"
         dashboard_rc, dashboard_out, dashboard_err = run(
-            "pkill -f '[s]can_dashboard' 2>/dev/null || true; "
+            f"pid_file={shlex.quote(dashboard_pid)}; "
+            "if [ -r \"$pid_file\" ]; then "
+            "old_pid=$(cat \"$pid_file\"); "
+            "case \"$old_pid\" in (*[!0-9]*|'') ;; "
+            "(*) if [ -r \"/proc/$old_pid/cmdline\" ] && "
+            "tr '\\0' ' ' < \"/proc/$old_pid/cmdline\" | "
+            "grep -Eq '(/scan_dashboard|ros2 run obstacle_detector scan_dashboard)'; "
+            "then kill \"$old_pid\" 2>/dev/null || true; fi ;; esac; fi; "
+            "pkill -f '[/]scan_dashboard$' 2>/dev/null || true; "
             "sleep 1; "
             f"mkdir -p {shlex.quote(remote_home + '/.cache')}; "
             "user_bus=/run/user/$(id -u)/bus; "
             f"nohup env DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=$user_bus "
             f"{shlex.quote(remote_home + '/start_scan_dashboard.sh')} "
-            f"</dev/null >{shlex.quote(dashboard_log)} 2>&1 &",
+            f"</dev/null >{shlex.quote(dashboard_log)} 2>&1 & "
+            "sleep 2; "
+            "new_pid=$(cat \"$pid_file\" 2>/dev/null || true); "
+            "case \"$new_pid\" in (*[!0-9]*|'') exit 1 ;; "
+            "(*) kill -0 \"$new_pid\" 2>/dev/null ;; esac",
             timeout=20,
         )
         if dashboard_rc != 0:
+            print("Scan dashboard failed to restart after deployment.")
             print(dashboard_err or dashboard_out)
+            rc = dashboard_rc
     client.close()
     if rc == 0:
         print("Deployment complete in AUTORUN mode (DRY-RUN=false).")
-        print(f"Scanner: enabled={SCANNER_ENABLED} camera={SCAN_CAMERA}")
+        print(
+            f"Scanner: enabled={SCANNER_ENABLED} camera={SCAN_CAMERA} "
+            f"tele_camera={TELE_SCAN_CAMERA}"
+        )
         print("Scan dashboard: desktop launcher installed and login autostart enabled.")
         print("WARNING: powering or rebooting the robot may start chassis motion automatically.")
         print("RViz autostart is disabled; run ~/start_rviz.sh when needed.")

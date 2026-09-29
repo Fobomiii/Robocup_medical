@@ -1,5 +1,80 @@
 # RoboCup 医疗机器人 — 下一对话交接 Prompt
 
+> 2026-09-26 更新：当前优先任务为“原点提前限速和刹车”。该功能已在工作区实现，下一次对话应先审查、部署和实车验证，避免重复添加；旧的 STM32 交接资料继续保留在后文。
+
+## 当前优先任务（请先处理）
+
+将下面整段复制到新对话开头：
+
+```text
+你正在继续维护 RoboCup 医疗机器人导航工程，工作目录为：
+C:\\Users\\ASUS\\Desktop\\Robocup医疗
+
+请先检查 git 状态和现有文件，保留工作区中已有的用户修改。请用中文回复，修改代码前先阅读相关源码。
+
+当前要解决的问题：机器人返回原点时速度较高，任务完成或安全门控触发后可能急刹，造成高重心机械臂车辆抬轮、倾倒或越过场地后边界。要求只在“返回原点”阶段提前、连续地限速；其他路线继续保持 2.0 m/s。
+
+当前实现状态：`home_approach_core.py`、`home_approach_limiter.py`、`test/test_home_approach_core.py` 已加入；`setup.py` 和 `launch/obstacle.launch.py` 已完成注册与接线。请先检查这些文件和 git diff，再进行构建、部署和实车验证。
+
+已确认事实：
+- 原点目标：field x=0，field y=0，yaw=0。
+- 回原点方向为 field Y 减小方向；后方边界约为 field y=-500 mm。
+- 车体半径为 0.23 m。
+- MEDICAL_TASK_NAV_HOME 的任务状态值为 9。
+- /medical_nav/robot_pose 的坐标转换：ROS x=field_y_mm/1000，ROS y=-field_x_mm/1000。
+- 正常底盘限制保持：max_accel=[1.5,1.5,1.8]，max_decel=[-1.3,-1.3,-2.0]。
+- 不要靠增大刹车加速度解决，机械臂会使急刹更容易抬轮或倾倒。
+
+现有速度安全链路必须保持：
+MPPI -> primary velocity smoother -> predictive collision monitor -> safety velocity smoother -> final emergency collision monitor -> STM32 bridge
+
+请核对以下实现是否完整；缺失时再补充，已有实现不要重复添加：
+
+1. 新增 obstacle_detector/home_approach_core.py：
+   - 提供纯 Python、可单元测试的原点距离计算、连续速度上限和速度缩放函数。
+   - 使用公式：v_limit=sqrt(terminal_speed^2 + 2*soft_decel*max(distance-terminal_distance,0))。
+   - 默认 max_speed_m_s=2.0、soft_decel_m_s2=1.425、terminal_speed_m_s=0.10、terminal_distance_m=0.10；对应距原点 1.5m 开始限速。
+   - 保持 vx/vy 方向，只按平面速度大小缩放；angular.z 保持原值。
+
+2. 新增 obstacle_detector/home_approach_limiter.py：
+   - ROS2 节点，订阅 /cmd_vel、/medical_nav/robot_pose、/medical_nav/task_state。
+   - 发布 /cmd_vel_home_limited。
+   - task_state==9 时启用原点限速，床位导航状态启用床位限速；其他状态原样转发速度。
+   - 位姿超过 0.5 秒未更新时发布零速度，再交给最终碰撞监视器。
+   - 原点坐标从 field_map.yaml 加载，不要硬编码地图尺寸。
+   - 节点不纳入 lifecycle 管理。
+
+3. 修改 launch/obstacle.launch.py：
+   - 在单个 collision_monitor 前启动 home_approach_limiter。
+   - limiter 输入使用 /cmd_vel，输出使用 /cmd_vel_home_limited。
+   - collision_monitor 输入 /cmd_vel_home_limited，使用 Git 验证过的 0.8 秒 ApproachPolygon 与 StopPolygon，输出 /cmd_vel_safe。
+   - 参数包括 input_topic、output_topic、pose_topic、task_state_topic、field_config、home_task_state=9、max_speed_m_s=2.0、soft_decel_m_s2=1.425、terminal_speed_m_s=0.10、terminal_distance_m=0.10、pose_timeout_s=0.5。
+
+4. 修改 setup.py，加入 console entry：
+   home_approach_limiter = obstacle_detector.home_approach_limiter:main
+
+5. 新增 test/test_home_approach_core.py，并更新 test/test_navigation_safety_config.py，覆盖：
+   - 非回原点状态不改变速度；
+   - 越接近原点速度上限连续降低；
+   - 到达 0.10 m 内速度上限约为 0.10 m/s；
+   - 位姿超时安全输出为零；
+   - launch 接线和参数正确。
+
+6. 不要回退已有功能，包括医疗扫码、护士台候选点往复、锥桶补偿、预测碰撞监测、路径时间代价规划和 TTS。
+
+完成后运行并报告结果：
+python test/test_home_approach_core.py
+python test/test_navigation_safety_config.py
+python test/test_bridge_safety.py
+python test/test_clearance_planner_config.py
+python -m py_compile obstacle_detector/home_approach_core.py obstacle_detector/home_approach_limiter.py launch/obstacle.launch.py
+git diff --check
+
+不要执行 git commit 或 push，除非我明确要求。
+```
+
+---
+
 将下面整段复制到新对话开头，便于 AI 快速接手本工程。
 
 ---

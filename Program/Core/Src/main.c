@@ -31,7 +31,6 @@
 #include "Board.h"
 #include "MedicalTask.h"
 #include "STP23L.h"
-#include "CN_TTS.h"
 #include "PID.h"
 
 /* USER CODE END Includes */
@@ -198,8 +197,6 @@ int main(void)
   MX_UART8_Init();
   MX_LPUART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
-  CN_TTS_Init();
 
   SERVO_Init();
   STP23L_Init();
@@ -702,6 +699,7 @@ static void MX_UART8_Init(void)
 
   /* USER CODE BEGIN UART8_Init 0 */
 
+
   /* USER CODE END UART8_Init 0 */
 
   /* USER CODE BEGIN UART8_Init 1 */
@@ -1080,6 +1078,10 @@ void StartCanHostTask(void *argument)
   int16_t forward_mm_s;
   int16_t left_mm_s;
   int16_t yaw_ccw_cdeg_s;
+  float measured_forward_mm_s;
+  float measured_left_mm_s;
+  float measured_yaw_ccw_cdeg_s;
+  uint8_t wheel_online_mask;
   uint8_t dock_override;
 
   (void)argument;
@@ -1099,6 +1101,15 @@ void StartCanHostTask(void *argument)
 
     /* STP23L A/B/C telemetry is independent of OPS/HWT availability. */
     NUC_Nav_ServiceSTP23L();
+
+    wheel_online_mask = DJI_Chassis_GetMeasuredVelocity(
+        &measured_forward_mm_s,
+        &measured_left_mm_s,
+        &measured_yaw_ccw_cdeg_s);
+    NUC_Nav_ServiceWheelOdom(measured_forward_mm_s,
+                             measured_left_mm_s,
+                             measured_yaw_ccw_cdeg_s,
+                             wheel_online_mask);
 
     if (ops_ok && hwt_ok)
     {

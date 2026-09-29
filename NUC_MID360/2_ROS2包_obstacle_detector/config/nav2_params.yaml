@@ -148,16 +148,19 @@ controller_server:
       # Explore enough of the 2.0 m/s command range. The previous narrow
       # distribution converged around 0.2-0.3 m/s even on an open path.
       vx_std: 0.30
-      # The chassis is a 4-wheel omni base. Allow bounded lateral samples so
-      # it can sidestep around the fixed beds/cabinets instead of first making
-      # a full heading correction. The bridge limits each linear component to
-      # 2.00 m/s; the STM32 keeps an independent 4.00 m/s hard cap.
+      # Keep holonomic correction available, but sample lateral motion more
+      # conservatively so the raised chassis follows the safe global path
+      # instead of cutting across it with a large diagonal command.
       vy_std: 0.25
-      wz_std: 0.30
+      # Sample angular motion conservatively. The chassis should translate
+      # holonomically instead of rotating to exploit its faster body X axis.
+      wz_std: 0.15
 
       vx_max: 2.00
-      vx_min: -1.20
-      vy_max: 2.00
+      vx_min: -1.2
+      # Cap lateral motion below forward speed to reduce side-slip overshoot.
+      # Keep vy_std conservative so corrections remain progressive.
+      vy_max: 1.50
       wz_max: 0.80
 
       iteration_count: 1
@@ -188,7 +191,8 @@ controller_server:
 
       critics: [
         "ConstraintCritic", "CostCritic", "GoalCritic", "GoalAngleCritic",
-        "PathAlignCritic", "PathFollowCritic", "PathAngleCritic"
+        "PathAlignCritic", "PathFollowCritic", "PathAngleCritic",
+        "TwirlingCritic"
       ]
 
       ConstraintCritic:
@@ -196,13 +200,12 @@ controller_server:
         cost_power: 1
         cost_weight: 4.0
 
-      # The only critic that actually repels obstacles. Its weight is high
-      # relative to the path critics so the sampler would rather leave the
-      # planned line than shave a leg against a bed.
+      # Keep a strong local obstacle penalty so normal tracking error is
+      # corrected before the chassis enters an inflated-cost band.
       CostCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 10.0
+        cost_weight: 12.0
         critical_cost: 60.0
         # Check the robot centre here so MPPI can still command an escape when
         # the physical footprint starts inside an inflated/lethal region.
@@ -212,7 +215,7 @@ controller_server:
         # Match the clearance planner's goal exemption. A larger value lets
         # MPPI ignore obstacle preference too early and cut inside the safe
         # global route during the final metre.
-        near_goal_distance: 0.75
+        near_goal_distance: 0.50
 
       GoalCritic:
         enabled: true
@@ -223,20 +226,22 @@ controller_server:
       GoalAngleCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 3.0
-        # Start restoring the requested final yaw while the chassis is still
-        # approaching, instead of reaching the point and rotating in place.
-        threshold_to_consider: 1.2
+        # Keep the requested task yaw throughout the field. This lets the omni
+        # chassis follow diagonal paths with vx/vy while bed and home travel
+        # retain yaw=0 instead of rotating only after reaching the goal.
+        cost_weight: 10.0
+        threshold_to_consider: 10.0
 
       PathAlignCritic:
         enabled: true
         cost_power: 1
-        # Permit useful holonomic shortcuts without abandoning the safe path.
-        cost_weight: 8.0
+        # Align against a nearer portion of the global path. The previous
+        # one-metre look-ahead could cut inside a bend with an omni command.
+        cost_weight: 10.0
         max_path_occupancy_ratio: 0.05
         trajectory_point_step: 3
-        threshold_to_consider: 0.5
-        offset_from_furthest: 20
+        threshold_to_consider: 0.35
+        offset_from_furthest: 10
         use_path_orientations: false
 
       PathFollowCritic:
@@ -245,24 +250,33 @@ controller_server:
         # Reward useful progress over the 2 s prediction horizon. With the
         # 0.05 m path spacing, an offset of five biased the optimizer toward
         # the measured 0.2-0.3 m/s command range.
-        cost_weight: 8.0
-        offset_from_furthest: 10
-        threshold_to_consider: 1.4
+        cost_weight: 10.0
+        offset_from_furthest: 8
+        threshold_to_consider: 0.8
 
       PathAngleCritic:
-        enabled: true
+        # The omni chassis may translate in any direction while holding yaw.
+        # Leave path-position tracking to PathAlign/PathFollow; GoalAngleCritic
+        # holds the task-requested yaw independently of the path tangent.
+        enabled: false
         cost_power: 1
-        # Avoid spending excessive control authority matching path heading.
         cost_weight: 1.5
         offset_from_furthest: 4
         threshold_to_consider: 0.5
         max_angle_to_furthest: 1.0
         mode: 1
 
+      TwirlingCritic:
+        # Penalize unnecessary angular velocity without restricting diagonal
+        # translation. Keep wz available for drift correction and nurse views.
+        enabled: true
+        twirling_cost_power: 1
+        twirling_cost_weight: 10.0
+
 planner_server:
   ros__parameters:
     use_sim_time: false
-    expected_planner_frequency: 1.0
+    expected_planner_frequency: 2.0
     planner_plugins: ["GridBased"]
     GridBased:
       # This planner builds a private long-range preference field from the
@@ -273,12 +287,18 @@ planner_server:
       allow_unknown: false
       max_planning_time: 1.5
 
-      # Existing Nav2 cell costs remain a secondary input. Clearance and
-      # density are explicit terms, so zero-cost gaps are no longer treated
-      # as equally attractive open space.
+      # Stage 1 estimates the fastest holonomic route from the real axis
+      # limits. Stage 2 chooses the safest route that remains within the
+      # fastest time plus max(10%, 0.5 s).
+      forward_speed: 2.00
+      reverse_speed: 1.20
+      lateral_speed: 1.50
+      max_time_ratio: 1.10
+      min_time_slack: 0.50
+
+      # Safety risk is a secondary objective inside that bounded time budget;
+      # it never turns a short corridor into an unbounded 17x distance cost.
       costmap_weight: 3.0
-      # Prefer the shorter direct corridor when obstacles are well separated,
-      # while lethal and footprint-collision cells remain non-traversable.
       preferred_clearance: 0.55
       clearance_weight: 8.0
       clearance_power: 2.0
@@ -286,10 +306,8 @@ planner_server:
       density_weight: 5.0
       density_normalization: 0.18
 
-      # Fade only the private preference cost near start/goal. Lethal and
-      # footprint-collision cells are never exempted. This preserves exact
-      # access to the nurse station and bed targets with the real 0.23 m
-      # footprint and the existing 0.25 m visible inflation radius.
+      # Fade only the private preference near precision start/goal regions.
+      # Lethal and footprint-collision cells remain non-traversable.
       goal_exemption_radius: 0.75
       start_exemption_radius: 0.45
       simplification_cost_tolerance: 1.06
@@ -339,11 +357,10 @@ velocity_smoother:
     # hard cap, so any other command source still has a lower-level guard.
     max_velocity: [2.00, 2.00, 0.80]
     min_velocity: [-1.20, -2.00, -0.80]
-    # Raise XY acceleration to reach the 2.0 m/s command sooner on short runs.
-    # Keep the proven braking limits; 4.0/-4.5 m/s^2 caused chassis overshoot.
-    # Collision Monitor emergency stops still bypass this ramp and command zero.
-    max_accel: [2.5, 2.5, 3.6]
-    max_decel: [-1.8, -1.8, -4.5]
+    # Limit normal acceleration and braking for the raised arm's higher centre
+    # of gravity. Collision Monitor emergency stops still command zero.
+    max_accel: [1.5, 1.5, 1.8]
+    max_decel: [-1.3, -1.3, -2.0]
     odom_topic: /odom
     odom_duration: 0.1
 
@@ -352,24 +369,21 @@ collision_monitor:
     use_sim_time: false
     base_frame_id: base_link
     odom_frame_id: odom
-    # navigation_launch.py publishes the smoothed command on /cmd_vel.
-    # The STM32 bridge listens only to this monitor's safe output.
-    cmd_vel_in_topic: /cmd_vel
+    # Preserve the bed/home speed envelope, then apply the field-tested Git
+    # collision profile in one monitor before forwarding commands to STM32.
+    cmd_vel_in_topic: /cmd_vel_home_limited
     cmd_vel_out_topic: /cmd_vel_safe
     transform_tolerance: 0.2
     source_timeout: 0.3
     base_shift_correction: True
     stop_pub_timeout: 0.5
-    # Use predictive, speed-dependent limiting for normal obstacle approach.
-    # The smaller stop polygon is only the final independent emergency guard.
     polygons: ["ApproachPolygon", "StopPolygon"]
     observation_sources: ["livox"]
 
     ApproachPolygon:
       type: "polygon"
-      # 0.28 m octagon: chassis radius 0.23 m plus 50 mm allowance. Unlike
-      # a large fixed stop box, approach projects this shape along cmd_vel and
-      # continuously scales the command only when that motion would collide.
+      # Restore the field-tested short prediction horizon. It reacts near an
+      # obstacle without repeatedly throttling on distant sparse lidar points.
       points: [0.28, 0.0, 0.20, -0.20, 0.0, -0.28, -0.20, -0.20, -0.28, 0.0, -0.20, 0.20, 0.0, 0.28, 0.20, 0.20]
       action_type: "approach"
       time_before_collision: 0.8
@@ -391,11 +405,7 @@ collision_monitor:
 
     livox:
       type: "pointcloud"
-      # Navigation-only cloud includes the known 0.155 m competition-cone
-      # base; localisation continues to use the unexpanded filtered cloud.
       topic: /livox/lidar_nav
-      # Upright Mid360 optical centre is at z=0.33 m. Keep the band above
-      # that height so horizontal returns remain available to safety checks.
       max_height: 0.60
       min_height: 0.08
       enabled: True
@@ -460,9 +470,9 @@ local_costmap:
           marking: True
           data_type: "PointCloud2"
           observation_persistence: 0.0
-          raytrace_max_range: 2.9
+          raytrace_max_range: 3.5
           raytrace_min_range: 0.10
-          obstacle_max_range: 2.4
+          obstacle_max_range: 3.0
           obstacle_min_range: 0.10
 
       always_send_full_costmap: True
@@ -470,9 +480,9 @@ local_costmap:
 global_costmap:
   global_costmap:
     ros__parameters:
-      # Two updates per second match publication and avoid repeatedly
-      # raytracing several retained full Mid360 clouds between replans.
-      update_frequency: 2.0
+      # Update faster than publication so newly visible competition cones can
+      # affect the 2 Hz replanner before the chassis reaches the stop polygon.
+      update_frequency: 4.0
       publish_frequency: 2.0
       global_frame: map
       robot_base_frame: base_link
@@ -510,14 +520,15 @@ global_costmap:
           clearing: True
           marking: True
           data_type: "PointCloud2"
-          # Retain about three 10 Hz clouds so the non-repetitive Mid360 scan
-          # cannot make a stationary obstacle flicker between map updates.
-          # Keep this global-only: the local layer must clear people quickly.
-          observation_persistence: 0.3
+          # Keep two 10 Hz filtered clouds to bridge the Mid360's
+          # non-repetitive scan without restoring the old 0.3 s far-noise
+          # trail. Cone disks retain their independent validated persistence.
+          observation_persistence: 0.2
           raytrace_max_range: 5.0
           raytrace_min_range: 0.10
-          # Field testing showed intermittent marking near the old 4.0 m
-          # boundary. Leave a 0.5 m clearing-only band beyond marking range.
+          # Use the previously field-tested range and retain a 0.5 m
+          # clearing-only band. At 2.0 m/s, 4.5 m still gives over two seconds
+          # for the 2 Hz global replanner before the local safety layers act.
           obstacle_max_range: 4.5
           obstacle_min_range: 0.10
       inflation_layer:

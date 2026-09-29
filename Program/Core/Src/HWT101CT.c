@@ -11,12 +11,14 @@
 
 #define HWT_RX_BUF_SIZE  64U
 #define HWT_FRAME_LEN    11U
+#define HWT_RX_RESTART_INTERVAL_MS 50U
 
 static uint8_t s_rx_dma[HWT_RX_BUF_SIZE] __attribute__((aligned(32)));
 static volatile float    s_yaw;
 static volatile float    s_wz;
 static volatile uint16_t s_ver;
 static volatile uint32_t s_last_ms;
+static volatile uint32_t s_last_restart_ms;
 
 volatile float   hwt_zangle = 0.f;  /* Keil Debug: HWT101 航向角 (°) */
 volatile float pos_z = 0.f;
@@ -93,15 +95,36 @@ static void feed_bytes(const uint8_t *data, uint16_t len)
   }
 }
 
-static void hwt_start_rx(void)
+static HAL_StatusTypeDef hwt_start_rx(void)
 {
-  if (HAL_UARTEx_ReceiveToIdle_DMA(&huart1, s_rx_dma, HWT_RX_BUF_SIZE) == HAL_OK)
+  HAL_StatusTypeDef status =
+      HAL_UARTEx_ReceiveToIdle_DMA(&huart1, s_rx_dma, HWT_RX_BUF_SIZE);
+
+  if (status == HAL_OK)
   {
     if (huart1.hdmarx != NULL)
     {
       __HAL_DMA_DISABLE_IT(huart1.hdmarx, DMA_IT_HT);
     }
   }
+  return status;
+}
+
+static HAL_StatusTypeDef hwt_restart_rx(void)
+{
+  HAL_StatusTypeDef status;
+
+  HAL_NVIC_DisableIRQ(USART1_IRQn);
+  (void)HAL_UART_AbortReceive(&huart1);
+  __HAL_UART_CLEAR_FLAG(&huart1,
+                        UART_CLEAR_PEF | UART_CLEAR_FEF | UART_CLEAR_NEF |
+                            UART_CLEAR_OREF | UART_CLEAR_IDLEF);
+  __HAL_UART_SEND_REQ(&huart1, UART_RXDATA_FLUSH_REQUEST);
+  status = hwt_start_rx();
+  HAL_NVIC_ClearPendingIRQ(USART1_IRQn);
+  HAL_NVIC_EnableIRQ(USART1_IRQn);
+  s_last_restart_ms = HAL_GetTick();
+  return status;
 }
 
 void HWT101_Init(void)
@@ -110,11 +133,12 @@ void HWT101_Init(void)
   s_wz = 0.f;
   s_ver = 0;
   s_last_ms = 0;
+  s_last_restart_ms = 0U;
   hwt_zangle = 0.f;
   pos_z = 0.f;
   hwt_online = 0U;
   memset(s_rx_dma, 0, sizeof(s_rx_dma));
-  hwt_start_rx();
+  (void)hwt_restart_rx();
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
@@ -129,18 +153,38 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 #endif
       feed_bytes(s_rx_dma, Size);
     }
-    hwt_start_rx();
+    if (hwt_start_rx() != HAL_OK)
+    {
+      (void)hwt_restart_rx();
+    }
   }
+}
+
+void HWT101_OnUartError(void)
+{
+  hwt_online = 0U;
+  (void)hwt_restart_rx();
 }
 
 uint8_t HWT101_IsOnline(void)
 {
+  uint32_t now = HAL_GetTick();
+
   if (s_last_ms == 0U)
   {
     hwt_online = 0U;
+    if ((now - s_last_restart_ms) >= HWT_RX_RESTART_INTERVAL_MS)
+    {
+      (void)hwt_restart_rx();
+    }
     return 0U;
   }
-  hwt_online = ((HAL_GetTick() - s_last_ms) < 500U) ? 1U : 0U;
+  hwt_online = ((now - s_last_ms) < 500U) ? 1U : 0U;
+  if ((hwt_online == 0U) &&
+      ((now - s_last_restart_ms) >= HWT_RX_RESTART_INTERVAL_MS))
+  {
+    (void)hwt_restart_rx();
+  }
   return hwt_online;
 }
 

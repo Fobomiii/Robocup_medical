@@ -26,25 +26,35 @@ from .nav_protocol import (
     SCAN_CONTEXT_BED1,
     SCAN_CONTEXT_BED3,
     SCAN_CONTEXT_ORDER,
+    START_WAIT_TASK_STATES,
 )
-from .scan_dashboard_core import parse_scan_result, parse_scan_status
+from .scan_dashboard_core import (
+    describe_start_status,
+    parse_bridge_status,
+    parse_scan_result,
+    parse_scan_status,
+    parse_tele_scan_state,
+)
 
 
 class CameraView(QLabel):
-    ASPECT_RATIO = 16.0 / 10.0
-
-    def __init__(self) -> None:
-        super().__init__("等待摄像头画面…")
+    def __init__(
+        self,
+        aspect_ratio: float,
+        placeholder: str = "等待摄像头画面…",
+    ) -> None:
+        super().__init__(placeholder)
+        self.aspect_ratio = aspect_ratio
         self.setObjectName("cameraView")
         self.setAlignment(Qt.AlignCenter)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setMinimumWidth(260)
 
     def hasHeightForWidth(self) -> bool:
         return True
 
     def heightForWidth(self, width: int) -> int:
-        return max(160, round(width / self.ASPECT_RATIO))
+        return max(140, round(width / self.aspect_ratio))
 
     def sizeHint(self) -> QSize:
         width = max(320, super().sizeHint().width())
@@ -58,6 +68,9 @@ class ScanDashboardWindow(QMainWindow):
         self.setWindowTitle("医疗机器人扫码信息")
         self.setObjectName("medicalScanDashboard")
         self._camera_pixmap = None
+        self._tele_camera_pixmap = None
+        self._tele_scan_state = "standby"
+        self._hide_order_value = True
 
         root = QWidget()
         root.setObjectName("root")
@@ -67,6 +80,8 @@ class ScanDashboardWindow(QMainWindow):
 
         screen = QApplication.primaryScreen()
         screen_height = screen.geometry().height() if screen is not None else 720
+        screen_width = screen.geometry().width() if screen is not None else 1280
+        camera_width = max(260, round((screen_width - 92) / 4.0))
         title_size = max(16, min(22, round(screen_height * 0.020)))
         nurse_value_size = max(26, min(38, round(screen_height * 0.035)))
         bed_value_size = max(44, min(68, round(screen_height * 0.063)))
@@ -92,15 +107,41 @@ class ScanDashboardWindow(QMainWindow):
         camera_panel = QWidget()
         camera_layout = QVBoxLayout(camera_panel)
         camera_layout.setContentsMargins(0, 0, 0, 0)
-        camera_layout.setSpacing(12)
+        camera_layout.setSpacing(6)
+
+        self.start_value = QLabel("等待")
+        self.start_value.setObjectName("startStatus")
+        # Match the red 等待 that set_start_status applies, so the very first
+        # frames before any bridge status do not flash the grey stylesheet
+        # colour and then snap to red.
+        self.start_value.setStyleSheet("color: #e53935;")
+        self.start_value.setFont(
+            QFont("Noto Sans CJK SC", max(28, bed_value_size // 2), QFont.Bold)
+        )
+        self.start_value.setAlignment(Qt.AlignCenter)
 
         camera_title = QLabel("扫码摄像头")
         camera_title.setFont(QFont("Noto Sans CJK SC", title_size, QFont.Bold))
         camera_title.setAlignment(Qt.AlignCenter)
-        self.camera_view = CameraView()
-        camera_layout.addStretch(1)
+        self.camera_view = CameraView(16.0 / 10.0)
+        self.camera_view.setFixedHeight(self.camera_view.heightForWidth(camera_width))
+        tele_camera_title = QLabel("长焦辅助摄像头")
+        tele_camera_title.setFont(
+            QFont("Noto Sans CJK SC", title_size, QFont.Bold)
+        )
+        tele_camera_title.setAlignment(Qt.AlignCenter)
+        self.tele_camera_view = CameraView(
+            16.0 / 9.0,
+            "等待长焦摄像头画面…",
+        )
+        self.tele_camera_view.setFixedHeight(
+            self.tele_camera_view.heightForWidth(camera_width)
+        )
+        camera_layout.addWidget(self.start_value)
         camera_layout.addWidget(camera_title)
-        camera_layout.addWidget(self.camera_view)
+        camera_layout.addWidget(self.camera_view, 1)
+        camera_layout.addWidget(tele_camera_title)
+        camera_layout.addWidget(self.tele_camera_view, 1)
         camera_layout.addStretch(1)
 
         layout.addWidget(information, 3)
@@ -135,6 +176,9 @@ class ScanDashboardWindow(QMainWindow):
                 background: white;
                 border: 2px solid #d9e0eb;
                 border-radius: 14px;
+            }
+            QLabel#startStatus {
+                background: transparent;
             }
             QPushButton#exitButton {
                 color: white;
@@ -181,6 +225,8 @@ class ScanDashboardWindow(QMainWindow):
         return card, value_label
 
     def set_scan_value(self, context: int, value: str) -> None:
+        if context == SCAN_CONTEXT_ORDER and self._hide_order_value:
+            return
         labels = {
             SCAN_CONTEXT_ORDER: self.nurse_value,
             SCAN_CONTEXT_BED1: self.bed1_value,
@@ -190,25 +236,75 @@ class ScanDashboardWindow(QMainWindow):
         if label is not None:
             label.setText(value or "--")
 
+    def set_task_state(self, task_state: int) -> None:
+        self._hide_order_value = task_state in START_WAIT_TASK_STATES
+        if self._hide_order_value:
+            self.nurse_value.setText("--")
+
+    def set_start_status(self, payload: str) -> None:
+        status = parse_bridge_status(payload)
+        if status is not None:
+            self.set_task_state(status["task_state"])
+        # 等待 / 发车 / 运行 / 成功, all from the one task state the bridge
+        # forwards.  Before the first bridge status the C button cannot start
+        # the robot, so the label stays on the red 等待 placeholder.
+        _, text, color = describe_start_status(status)
+        self.start_value.setText(text)
+        self.start_value.setStyleSheet(f"color: {color};")
+
     def set_camera_frame(self, data: bytes) -> None:
         pixmap = QPixmap()
         if not pixmap.loadFromData(data, "JPEG"):
             return
         self._camera_pixmap = pixmap
-        self._refresh_camera()
+        self._refresh_camera_view(self.camera_view, self._camera_pixmap)
 
-    def _refresh_camera(self) -> None:
-        if self._camera_pixmap is None:
+    def set_tele_camera_frame(self, data: bytes) -> None:
+        if self._tele_scan_state == "failed":
             return
-        size = self.camera_view.contentsRect().size()
-        scaled = self._camera_pixmap.scaled(
+        pixmap = QPixmap()
+        if not pixmap.loadFromData(data, "JPEG"):
+            return
+        self._tele_camera_pixmap = pixmap
+        self._refresh_camera_view(self.tele_camera_view, self._tele_camera_pixmap)
+
+    def set_tele_scan_state(self, state: str) -> None:
+        self._tele_scan_state = state
+        if state == "failed":
+            self._tele_camera_pixmap = None
+            self.tele_camera_view.clear()
+            self.tele_camera_view.setText("失败")
+            self.tele_camera_view.setStyleSheet(
+                "color: #e53935; background: #fff1f0; "
+                "border: 4px solid #e53935; border-radius: 14px; "
+                "font-size: 48px; font-weight: 700;"
+            )
+            return
+        self.tele_camera_view.setStyleSheet("")
+        if state == "scanning" and self._tele_camera_pixmap is None:
+            self.tele_camera_view.setText("等待长焦摄像头画面…")
+        elif self._tele_camera_pixmap is not None:
+            self._refresh_camera_view(
+                self.tele_camera_view, self._tele_camera_pixmap
+            )
+
+    @staticmethod
+    def _refresh_camera_view(view: CameraView, pixmap: QPixmap) -> None:
+        if pixmap is None:
+            return
+        size = view.contentsRect().size()
+        if size.width() <= 0 or size.height() <= 0:
+            return
+        scaled = pixmap.scaled(
             size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
         )
         left = max(0, (scaled.width() - size.width()) // 2)
         top = max(0, (scaled.height() - size.height()) // 2)
-        self.camera_view.setPixmap(
-            scaled.copy(left, top, size.width(), size.height())
-        )
+        view.setPixmap(scaled.copy(left, top, size.width(), size.height()))
+
+    def _refresh_cameras(self) -> None:
+        self._refresh_camera_view(self.camera_view, self._camera_pixmap)
+        self._refresh_camera_view(self.tele_camera_view, self._tele_camera_pixmap)
 
     def enter_fullscreen(self) -> None:
         screen = self.screen() or QApplication.primaryScreen()
@@ -224,7 +320,7 @@ class ScanDashboardWindow(QMainWindow):
         if root is not None:
             self.exit_button.move(root.width() - self.exit_button.width() - 12, 12)
             self.exit_button.raise_()
-        self._refresh_camera()
+        self._refresh_cameras()
 
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key_Escape:
@@ -247,9 +343,18 @@ class ScanDashboardNode(Node):
             String, "/medical_nav/scanner_status", self._scanner_status, 10
         )
         self.create_subscription(
+            String, "/medical_nav/bridge_status", self._bridge_status, 10
+        )
+        self.create_subscription(
             CompressedImage,
             "/medical_nav/scanner_preview/compressed",
             self._camera_frame,
+            2,
+        )
+        self.create_subscription(
+            CompressedImage,
+            "/medical_nav/tele_scanner_preview/compressed",
+            self._tele_camera_frame,
             2,
         )
 
@@ -261,11 +366,20 @@ class ScanDashboardNode(Node):
     def _camera_frame(self, message: CompressedImage) -> None:
         self.window.set_camera_frame(bytes(message.data))
 
+    def _tele_camera_frame(self, message: CompressedImage) -> None:
+        self.window.set_tele_camera_frame(bytes(message.data))
+
     def _scanner_status(self, message: String) -> None:
         values = parse_scan_status(message.data)
         if values is not None:
             for context, value in values.items():
                 self.window.set_scan_value(context, value)
+        tele_state = parse_tele_scan_state(message.data)
+        if tele_state is not None:
+            self.window.set_tele_scan_state(tele_state)
+
+    def _bridge_status(self, message: String) -> None:
+        self.window.set_start_status(message.data)
 
 
 def main(args=None) -> None:

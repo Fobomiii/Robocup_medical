@@ -69,11 +69,11 @@ section "Clearance planner"
 ros2 param get /planner_server GridBased.plugin 2>/dev/null || \
     echo "[WARN] planner plugin parameter unavailable"
 for parameter in \
-    preferred_clearance \
-    clearance_weight \
-    density_radius \
-    density_weight \
-    goal_exemption_radius
+    max_speed \
+    crawl_speed \
+    soft_decel \
+    body_clearance \
+    costmap_weight
 do
     printf '%-28s ' "GridBased.$parameter"
     ros2 param get /planner_server "GridBased.$parameter" 2>/dev/null || echo "unavailable"
@@ -103,9 +103,21 @@ else
     echo "[MISS] no /dev/ttyUSB* device"
 fi
 
+section "Scanner cameras"
+primary_camera=${MEDICAL_SCAN_CAMERA:-/dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0}
+tele_camera=${MEDICAL_TELE_SCAN_CAMERA:-/dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0}
+for camera in "$primary_camera" "$tele_camera"; do
+    if [ -e "$camera" ]; then
+        printf '[OK]   %s -> %s\n' "$camera" "$(readlink -f "$camera")"
+    else
+        printf '[MISS] %s\n' "$camera"
+    fi
+done
+
 section "Required nodes"
 nodes=$(ros2 node list 2>/dev/null || true)
 for node in \
+    /code_scanner \
     /stm32_bridge \
     /lidar_self_filter \
     /medical_navigator \
@@ -137,6 +149,9 @@ for topic in \
     /cmd_vel_safe \
     /medical_nav/robot_pose \
     /medical_nav/bridge_status \
+    /medical_nav/scanner_status \
+    /medical_nav/scanner_preview/compressed \
+    /medical_nav/tele_scanner_preview/compressed \
     /medical_nav/lidar_filter_status \
     /map \
     /global_costmap/costmap \
@@ -172,6 +187,10 @@ done
 section "Bridge telemetry (one sample, max 4 s)"
 timeout 4 ros2 topic echo --once /medical_nav/bridge_status 2>/dev/null || \
     echo "[WARN] no bridge status sample"
+
+section "Scanner telemetry (one sample, max 4 s)"
+timeout 4 ros2 topic echo --once /medical_nav/scanner_status 2>/dev/null || \
+    echo "[WARN] no scanner status sample"
 
 section "Point cloud header (one sample, max 4 s)"
 timeout 4 ros2 topic echo --once /livox/lidar --field header 2>/dev/null || \

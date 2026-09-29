@@ -6,7 +6,6 @@
 
 #include "Board.h"
 #include "ChassisCtrl.h"
-#include "CN_TTS.h"
 #include "DJIMotorCtrlSTM32.h"
 #include "NUC_Obstacle.h"
 #include "Servo.h"
@@ -20,8 +19,11 @@
 
 #define MEDICAL_SCAN_BEEP_MS 200U
 #define MEDICAL_ORDER_HANDOFF_STOP_MS 500U
-/* Allow the selected compartment time to release the medicine before moving. */
-#define MEDICAL_DISPENSE_HOLD_MS 3000U
+/* Keep the selected compartment open long enough to release the medicine. */
+#define MEDICAL_DISPENSE_HOLD_MS 2500U
+#define MEDICAL_DISPENSE_ANNOUNCE_DELAY_MS 1000U
+#define MEDICAL_DISPENSE_TTS_TIMEOUT_MS 10000U
+#define MEDICAL_BOX_COUNT 2U
 
 /*
  * Final docking targets are sensor-face distances.  The field geometry uses
@@ -32,14 +34,16 @@
 #define MEDICAL_DOCK_SIDE_TARGET_MM 1147
 #define MEDICAL_DOCK_SIDE_SPLIT_THRESHOLD_MM 1600U
 #define MEDICAL_DOCK_TOLERANCE_MM 35
-#define MEDICAL_DOCK_SAMPLE_COUNT 12U
+#define MEDICAL_DOCK_SAMPLE_COUNT 10U
 #define MEDICAL_DOCK_SAMPLE_TRIM_COUNT 1U
-#define MEDICAL_DOCK_SAMPLE_SETTLE_MS 150U
+#define MEDICAL_DOCK_SAMPLE_SETTLE_MS 100U
 #define MEDICAL_DOCK_MAX_CORRECTIONS 2U
 #define MEDICAL_DOCK_TIMEOUT_MS 8000U
 #define MEDICAL_DOCK_PI 3.14159265358979323846f
 #define MEDICAL_ARM_TRAVEL_DEG 750.0f
-#define MEDICAL_ARM_TRAVEL_TIME_S 1.5f
+#define MEDICAL_ARM_DEPLOY_TIME_S 1.5f
+#define MEDICAL_ARM_RETRACT_TIME_S 1.5f
+#define MEDICAL_START_BUTTON_DEBOUNCE_MS 50U
 /*
  * Bench/field navigation test mode:
  *   nurse -> bed1 -> bed3 -> home
@@ -90,8 +94,42 @@ static float s_arm_origin_deg;
 static uint8_t s_arm_origin_valid;
 static uint8_t s_arm_target_deployed;
 static uint8_t s_arm_commanded_deployed;
+static uint8_t s_start_requested;
+static uint8_t s_start_button_down;
+static uint8_t s_start_button_armed;
+static uint32_t s_start_button_change_ms;
+static uint32_t s_box_open_ms[MEDICAL_BOX_COUNT];
+static uint8_t s_box_close_pending[MEDICAL_BOX_COUNT];
+static uint32_t s_dispense_start_ms;
+static uint8_t s_dispense_announcement_started;
 
 static void medical_set_state(MedicalTaskState next);
+
+static uint8_t medical_start_button_event(void)
+{
+  uint8_t down = (HAL_GPIO_ReadPin(BTN_C_GPIO_Port, BTN_C_Pin) == GPIO_PIN_RESET)
+                     ? 1U
+                     : 0U;
+  uint32_t now = HAL_GetTick();
+
+  if (down != s_start_button_down)
+  {
+    s_start_button_down = down;
+    s_start_button_change_ms = now;
+    if (down == 0U)
+    {
+      s_start_button_armed = 1U;
+    }
+  }
+
+  if ((down != 0U) && (s_start_button_armed != 0U) &&
+      ((now - s_start_button_change_ms) >= MEDICAL_START_BUTTON_DEBOUNCE_MS))
+  {
+    s_start_button_armed = 0U;
+    return 1U;
+  }
+  return 0U;
+}
 
 static void medical_arm_update(void)
 {
@@ -115,7 +153,9 @@ static void medical_arm_update(void)
       (s_arm_target_deployed != 0U)
           ? (s_arm_origin_deg - MEDICAL_ARM_TRAVEL_DEG)
           : s_arm_origin_deg,
-      MEDICAL_ARM_TRAVEL_TIME_S);
+      (s_arm_target_deployed != 0U)
+          ? MEDICAL_ARM_DEPLOY_TIME_S
+          : MEDICAL_ARM_RETRACT_TIME_S);
   s_arm_commanded_deployed = s_arm_target_deployed;
 }
 
@@ -254,7 +294,6 @@ static uint16_t medical_docking_filtered_distance(const uint16_t *samples)
 static void medical_docking_finish(void)
 {
   ChassisCtrl_Enable(false);
-  medical_arm_set_deployed(1U);
   medical_set_state((s_state == MEDICAL_TASK_DOCK_BED1)
                         ? MEDICAL_TASK_SCAN_BED1
                         : MEDICAL_TASK_SCAN_BED3);
@@ -468,6 +507,8 @@ static void medical_box_open(MedicineBox box)
   {
     SERVO2_OPEN();
   }
+  s_box_open_ms[(uint8_t)box] = HAL_GetTick();
+  s_box_close_pending[(uint8_t)box] = 1U;
 }
 
 static void medical_box_close(MedicineBox box)
@@ -479,6 +520,43 @@ static void medical_box_close(MedicineBox box)
   else
   {
     SERVO2_CLOSE();
+  }
+  s_box_close_pending[(uint8_t)box] = 0U;
+}
+
+static void medical_box_update(void)
+{
+  uint8_t box_index;
+  uint32_t now = HAL_GetTick();
+
+  for (box_index = 0U; box_index < MEDICAL_BOX_COUNT; box_index++)
+  {
+    if ((s_box_close_pending[box_index] != 0U) &&
+        ((now - s_box_open_ms[box_index]) >= MEDICAL_DISPENSE_HOLD_MS))
+    {
+      medical_box_close((MedicineBox)box_index);
+    }
+  }
+}
+
+static void medical_box_close_all(void)
+{
+  medical_box_close(MEDICINE_BOX_LEFT);
+  medical_box_close(MEDICINE_BOX_RIGHT);
+}
+
+static void medical_dispense_announcement_update(void)
+{
+  if ((s_dispense_announcement_started != 0U) ||
+      ((HAL_GetTick() - s_dispense_start_ms) <
+       MEDICAL_DISPENSE_ANNOUNCE_DELAY_MS))
+  {
+    return;
+  }
+
+  if (NUC_Nav_RequestTTS(s_current_bed) == HAL_OK)
+  {
+    s_dispense_announcement_started = 1U;
   }
 }
 
@@ -493,6 +571,24 @@ static void medical_set_state(MedicalTaskState next)
       medical_arm_set_deployed(0U);
       NUC_Nav_ClearVelocity();
       NUC_Nav_RequestGoal(NUC_NAV_GOAL_NURSE);
+      break;
+
+    case MEDICAL_TASK_WAIT_START:
+      medical_arm_set_deployed(0U);
+      NUC_Nav_ClearVelocity();
+      NUC_Nav_RequestGoal(NUC_NAV_GOAL_NURSE);
+      break;
+
+    case MEDICAL_TASK_WAIT_BED1_START:
+      medical_arm_set_deployed(0U);
+      NUC_Nav_ClearVelocity();
+      NUC_Nav_RequestGoal(NUC_NAV_GOAL_BED1);
+      break;
+
+    case MEDICAL_TASK_WAIT_BED3_START:
+      medical_arm_set_deployed(0U);
+      NUC_Nav_ClearVelocity();
+      NUC_Nav_RequestGoal(NUC_NAV_GOAL_BED3);
       break;
 
     case MEDICAL_TASK_NAV_BED1:
@@ -512,8 +608,9 @@ static void medical_set_state(MedicalTaskState next)
     case MEDICAL_TASK_DOCK_BED1:
     case MEDICAL_TASK_DOCK_BED3:
       /* Nav2 has reached the coarse bed goal.  The STM32 now owns the
-       * chassis for the final STP23L distance correction. */
+       * chassis for the final STP23L correction while the arm deploys. */
       NUC_Nav_ClearVelocity();
+      medical_arm_set_deployed(1U);
       medical_docking_reset();
       break;
 
@@ -524,30 +621,31 @@ static void medical_set_state(MedicalTaskState next)
       break;
 
     case MEDICAL_TASK_SCAN_ORDER:
-    case MEDICAL_TASK_SCAN_BED1:
-    case MEDICAL_TASK_SCAN_BED3:
       NUC_Nav_ClearVelocity();
       medical_scan_reset();
       break;
 
-    case MEDICAL_TASK_DISPENSE_BED1:
+    case MEDICAL_TASK_SCAN_BED1:
+    case MEDICAL_TASK_SCAN_BED3:
       NUC_Nav_ClearVelocity();
-      (void)CN_TTS_AnnounceBed1();
+      medical_scan_reset();
       medical_box_open(medical_box_for_bed(s_current_bed));
+      NUC_Nav_ClearTTS();
+      s_dispense_start_ms = HAL_GetTick();
+      s_dispense_announcement_started = 0U;
       break;
 
+    case MEDICAL_TASK_DISPENSE_BED1:
     case MEDICAL_TASK_DISPENSE_BED3:
       NUC_Nav_ClearVelocity();
-      (void)CN_TTS_AnnounceBed3();
-      medical_box_open(medical_box_for_bed(s_current_bed));
       break;
 
     case MEDICAL_TASK_COMPLETE:
     case MEDICAL_TASK_NAV_ERROR:
       medical_arm_set_deployed(0U);
       NUC_Nav_ClearVelocity();
-      SERVO1_CLOSE();
-      SERVO2_CLOSE();
+      NUC_Nav_ClearTTS();
+      medical_box_close_all();
       break;
 
     default:
@@ -626,12 +724,20 @@ void MedicalTask_Init(void)
   s_scan_beep_start_ms = 0U;
   s_scan_beep_active = 0U;
   s_arm_target_deployed = 0U;
+  s_dispense_start_ms = 0U;
+  s_dispense_announcement_started = 0U;
+  NUC_Nav_ClearTTS();
+  s_start_requested = 0U;
+  s_start_button_down =
+      (HAL_GPIO_ReadPin(BTN_C_GPIO_Port, BTN_C_Pin) == GPIO_PIN_RESET) ? 1U : 0U;
+  s_start_button_armed = (s_start_button_down == 0U) ? 1U : 0U;
+  s_start_button_change_ms = HAL_GetTick();
   BUZZ_Off();
   medical_scan_reset();
   medical_docking_reset();
-  SERVO1_CLOSE();
-  SERVO2_CLOSE();
-  medical_set_state(MEDICAL_TASK_NAV_NURSE);
+  medical_box_close_all();
+  /* Plan the first route immediately, but keep the chassis locked until C. */
+  medical_set_state(MEDICAL_TASK_WAIT_START);
 }
 
 void MedicalTask_Update(void)
@@ -641,10 +747,71 @@ void MedicalTask_Update(void)
 #endif
 
   medical_arm_update();
+  medical_box_update();
   medical_scan_beep_update();
+
+  if (medical_start_button_event() != 0U &&
+      (s_state == MEDICAL_TASK_WAIT_START ||
+       s_state == MEDICAL_TASK_WAIT_BED1_START ||
+       s_state == MEDICAL_TASK_WAIT_BED3_START) &&
+      (NUC_Nav_GetStatus() == NUC_NAV_FOLLOWING))
+  {
+    s_start_requested = 1U;
+  }
 
   switch (s_state)
   {
+    case MEDICAL_TASK_WAIT_START:
+      /* Scan the order at the origin, but keep its value off the dashboard.
+       * A confirmed order replaces the provisional nurse route with a direct
+       * route to the first requested bed. */
+#if MEDICAL_TEST_AUTO_SKIP_SCAN
+      if ((s_start_requested != 0U) &&
+          (NUC_Nav_GetStatus() == NUC_NAV_FOLLOWING))
+      {
+        s_start_requested = 0U;
+        medical_set_state(MEDICAL_TASK_NAV_NURSE);
+      }
+#else
+      if (medical_take_scan((uint8_t)NUC_SCAN_CONTEXT_ORDER,
+                            (uint8_t)NUC_SCAN_FORMAT_QR,
+                            confirmed_code, sizeof(confirmed_code)) &&
+          medical_decode_order(confirmed_code))
+      {
+        /* The destination changed; require a fresh A press only after the
+         * corresponding bed path has been planned. */
+        s_start_requested = 0U;
+        medical_set_state((s_first_bed == 1U)
+                              ? MEDICAL_TASK_WAIT_BED1_START
+                              : MEDICAL_TASK_WAIT_BED3_START);
+      }
+      else if ((s_start_requested != 0U) &&
+               (NUC_Nav_GetStatus() == NUC_NAV_FOLLOWING))
+      {
+        s_start_requested = 0U;
+        medical_set_state(MEDICAL_TASK_NAV_NURSE);
+      }
+#endif
+      break;
+
+    case MEDICAL_TASK_WAIT_BED1_START:
+      if ((s_start_requested != 0U) &&
+          (NUC_Nav_GetStatus() == NUC_NAV_FOLLOWING))
+      {
+        s_start_requested = 0U;
+        medical_set_state(MEDICAL_TASK_NAV_BED1);
+      }
+      break;
+
+    case MEDICAL_TASK_WAIT_BED3_START:
+      if ((s_start_requested != 0U) &&
+          (NUC_Nav_GetStatus() == NUC_NAV_FOLLOWING))
+      {
+        s_start_requested = 0U;
+        medical_set_state(MEDICAL_TASK_NAV_BED3);
+      }
+      break;
+
     case MEDICAL_TASK_NAV_NURSE:
 #if MEDICAL_TEST_AUTO_SKIP_SCAN
       medical_handle_nav_result(MEDICAL_TASK_SCAN_ORDER);
@@ -702,6 +869,7 @@ void MedicalTask_Update(void)
       break;
 
     case MEDICAL_TASK_SCAN_BED1:
+      medical_dispense_announcement_update();
 #if MEDICAL_TEST_AUTO_SKIP_SCAN
       medical_set_state(MEDICAL_TASK_DISPENSE_BED1);
 #else
@@ -732,6 +900,7 @@ void MedicalTask_Update(void)
       break;
 
     case MEDICAL_TASK_SCAN_BED3:
+      medical_dispense_announcement_update();
 #if MEDICAL_TEST_AUTO_SKIP_SCAN
       medical_set_state(MEDICAL_TASK_DISPENSE_BED3);
 #else
@@ -747,18 +916,35 @@ void MedicalTask_Update(void)
 
     case MEDICAL_TASK_DISPENSE_BED1:
     case MEDICAL_TASK_DISPENSE_BED3:
-      if ((HAL_GetTick() - s_state_enter_ms) >= MEDICAL_DISPENSE_HOLD_MS)
+      medical_dispense_announcement_update();
+      if (s_dispense_announcement_started == 0U)
       {
-        medical_box_close(medical_box_for_bed(s_current_bed));
-        s_delivered_count++;
-        if (s_delivered_count < 2U)
+        break;
+      }
+      if (NUC_Nav_GetTTSStatus() != NUC_TTS_COMPLETED)
+      {
+        if (NUC_Nav_GetTTSStatus() != NUC_TTS_ERROR &&
+            (HAL_GetTick() - s_dispense_start_ms) <
+                MEDICAL_DISPENSE_TTS_TIMEOUT_MS)
         {
-          medical_request_bed(s_second_bed);
+          break;
         }
-        else
-        {
-          medical_set_state(MEDICAL_TASK_NAV_HOME);
-        }
+        NUC_Nav_ClearTTS();
+      }
+#if !MEDICAL_TEST_AUTO_SKIP_SCAN
+      if (medical_bed_scan_available(s_current_bed) == 0U)
+      {
+        break;
+      }
+#endif
+      s_delivered_count++;
+      if (s_delivered_count < 2U)
+      {
+        medical_request_bed(s_second_bed);
+      }
+      else
+      {
+        medical_set_state(MEDICAL_TASK_NAV_HOME);
       }
       break;
 

@@ -333,6 +333,9 @@ extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t 
 /* -------------------------------------------------------------------------- */
 static const float kGear3508 = 19.f;
 static const float kSpeedLocK = 1000.f;
+static const float kPi = 3.14159265358979323846f;
+static const float kWheelDiameterMm = 152.0f;
+static const float kTurnRadiusMm = 250.0f;
 
 CHASSIS::CHASSIS(FDCAN_HandleTypeDef* hfdcan)
   : can_(hfdcan), frq_(1000), started_(false)
@@ -484,6 +487,7 @@ void M2006Motor::begin(uint16_t frq_hz)
   pos_default.ki = 0.f;
   pos_default.kd = 0.f;
   pos_default.dead_zone = 2000.f;
+  /* The 1.5 s arm trajectory peaks at 4500 rotor rpm with P36. */
   pos_default.max_out = 6000.f;
   s_arm_pos_pid.setParam(pos_default);
 
@@ -644,11 +648,6 @@ extern "C" void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
                                                 float left_mm_s,
                                                 float yaw_ccw_cdeg_s)
 {
-  /* 6-inch omni wheel: measured diameter is approximately 150 mm. */
-  static const float kPi = 3.14159265358979323846f;
-  static const float kWheelDiameterMm = 150.0f;
-  /* Measured chassis centre-to-wheel contact radius: 25 cm. */
-  static const float kTurnRadiusMm = 250.0f;
   const float mm_s_to_wheel_rpm = 60.0f / (kPi * kWheelDiameterMm);
 
   /* CHASSIS uses +Vx right, +Vy forward and +W clockwise. */
@@ -659,6 +658,64 @@ extern "C" void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
       (-yaw_ccw_rad_s * kTurnRadiusMm) * mm_s_to_wheel_rpm;
 
   DJI_Chassis_SetCommand(right_rpm, forward_rpm, clockwise_turn_rpm);
+}
+
+extern "C" uint8_t DJI_Chassis_GetMeasuredVelocity(float *forward_mm_s,
+                                                     float *left_mm_s,
+                                                     float *yaw_ccw_cdeg_s)
+{
+  int16_t rotor_rpm[4];
+  uint32_t last_rx_us[4];
+  uint32_t now_us;
+  uint32_t primask;
+  uint8_t online_mask = 0U;
+  float wheel_rpm[4];
+  float right_rpm;
+  float forward_rpm;
+  float clockwise_turn_rpm;
+  float rpm_to_mm_s = kPi * kWheelDiameterMm / 60.0f;
+
+  if (forward_mm_s == NULL || left_mm_s == NULL || yaw_ccw_cdeg_s == NULL)
+  {
+    return 0U;
+  }
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  now_us = micros_u32();
+  for (uint8_t index = 0U; index < 4U; index++)
+  {
+    MotorFb& motor = g_chassis_bus.motor((uint8_t)(index + 1U));
+    rotor_rpm[index] = motor.speed;
+    last_rx_us[index] = motor.last_rx_us;
+  }
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+
+  for (uint8_t index = 0U; index < 4U; index++)
+  {
+    if (last_rx_us[index] != 0U &&
+        (now_us - last_rx_us[index]) < 100000U)
+    {
+      online_mask |= (uint8_t)(1U << index);
+    }
+    wheel_rpm[index] = (float)rotor_rpm[index] / kGear3508;
+  }
+
+  right_rpm = (wheel_rpm[0] - wheel_rpm[1] -
+               wheel_rpm[2] + wheel_rpm[3]) * 0.25f;
+  forward_rpm = (wheel_rpm[0] + wheel_rpm[1] -
+                 wheel_rpm[2] - wheel_rpm[3]) * 0.25f;
+  clockwise_turn_rpm = (wheel_rpm[0] + wheel_rpm[1] +
+                        wheel_rpm[2] + wheel_rpm[3]) * 0.25f;
+
+  *forward_mm_s = forward_rpm * rpm_to_mm_s;
+  *left_mm_s = -right_rpm * rpm_to_mm_s;
+  *yaw_ccw_cdeg_s = -(clockwise_turn_rpm * rpm_to_mm_s /
+                       kTurnRadiusMm) * 18000.0f / kPi;
+  return online_mask;
 }
 
 extern "C" void DJI_Arm_CtrlAngle(float deg)

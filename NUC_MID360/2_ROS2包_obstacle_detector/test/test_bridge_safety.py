@@ -1,10 +1,73 @@
 import unittest
 
-from obstacle_detector.bridge_safety import navigation_motion_is_authorized
-from obstacle_detector.nav_protocol import GOAL_BED1, GOAL_BED3, NAV_FOLLOWING, NAV_WAIT_PATH
+from obstacle_detector.bridge_safety import (
+    SettledStopDetector,
+    medical_mission_restarted,
+    navigation_motion_is_authorized,
+)
+from obstacle_detector.nav_protocol import (
+    GOAL_BED1,
+    GOAL_BED3,
+    NAV_FOLLOWING,
+    NAV_IDLE,
+    NAV_WAIT_PATH,
+    TASK_WAIT_START,
+)
 
 
 class BridgeSafetyTest(unittest.TestCase):
+    def test_detects_stm32_restart_while_wait_state_is_unchanged(self):
+        self.assertTrue(
+            medical_mission_restarted(
+                TASK_WAIT_START,
+                NAV_FOLLOWING,
+                TASK_WAIT_START,
+                NAV_WAIT_PATH,
+                0.02,
+                0.5,
+            )
+        )
+        self.assertTrue(
+            medical_mission_restarted(
+                TASK_WAIT_START,
+                NAV_FOLLOWING,
+                TASK_WAIT_START,
+                NAV_FOLLOWING,
+                0.8,
+                0.5,
+            )
+        )
+        self.assertFalse(
+            medical_mission_restarted(
+                TASK_WAIT_START,
+                NAV_FOLLOWING,
+                TASK_WAIT_START,
+                NAV_FOLLOWING,
+                0.02,
+                0.5,
+            )
+        )
+        self.assertFalse(
+            medical_mission_restarted(
+                TASK_WAIT_START,
+                NAV_FOLLOWING,
+                1,
+                NAV_IDLE,
+                1.0,
+                0.5,
+            )
+        )
+
+    def test_settled_stop_detector_waits_and_resets(self):
+        detector = SettledStopDetector(0.03, 0.05, 0.15)
+
+        self.assertFalse(detector.update(0.4, 0.0, 0.0, 1.0))
+        self.assertFalse(detector.update(0.02, 0.0, 0.04, 1.1))
+        self.assertFalse(detector.update(0.02, 0.0, 0.04, 1.24))
+        self.assertTrue(detector.update(0.02, 0.0, 0.04, 1.251))
+        self.assertFalse(detector.update(0.04, 0.0, 0.0, 1.3))
+        self.assertFalse(detector.update(0.0, 0.0, 0.0, 1.4))
+
     def test_matching_active_goal_allows_navigation(self):
         self.assertTrue(
             navigation_motion_is_authorized(

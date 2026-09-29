@@ -8,6 +8,7 @@
 #include "OPS.h"
 #include "Board.h"
 #include "CN_TTS.h"
+#include "HWT101CT.h"
 #include "cmsis_os.h"
 #include "NUC_Obstacle.h"
 #include "STP23L.h"
@@ -135,7 +136,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-  if (huart->Instance == UART8)
+  if (huart->Instance == USART1)
+  {
+    HWT101_OnUartError();
+  }
+  else if (huart->Instance == UART8)
   {
     NUC_Obstacle_OnUartError();
   }

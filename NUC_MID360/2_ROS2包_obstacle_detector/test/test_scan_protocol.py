@@ -22,8 +22,11 @@ from obstacle_detector.nav_protocol import (
 )
 from obstacle_detector.scanner_core import (
     ScanConsensus,
+    expected_scan,
     scan_matches_task,
     scan_position_is_allowed,
+    tele_camera_assists,
+    tele_camera_should_capture,
 )
 
 
@@ -61,7 +64,10 @@ class ScanProtocolTest(unittest.TestCase):
             decode_scan_ack(b"\x00\x01\x09")
 
     def test_state_format_and_whitelist_are_all_required(self):
+        self.assertEqual(expected_scan(14), (SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR))
+        self.assertIsNone(expected_scan(15))
         self.assertTrue(scan_matches_task(1, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
+        self.assertTrue(scan_matches_task(14, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
         self.assertTrue(scan_matches_task(2, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
         self.assertFalse(scan_matches_task(4, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
         self.assertFalse(
@@ -97,6 +103,18 @@ class ScanProtocolTest(unittest.TestCase):
         consensus = ScanConsensus(required_hits=2, window_s=0.8)
         self.assertFalse(consensus.observe(SCAN_FORMAT_CODE128, "6946522463487", 1.0))
         self.assertFalse(consensus.observe(SCAN_FORMAT_CODE128, "6946522463487", 2.0))
+
+    def test_tele_camera_only_assists_pre_start_qr(self):
+        self.assertTrue(tele_camera_assists(14, SCAN_FORMAT_QR))
+        self.assertFalse(tele_camera_assists(1, SCAN_FORMAT_QR))
+        self.assertFalse(tele_camera_assists(14, SCAN_FORMAT_CODE128))
+        self.assertFalse(tele_camera_assists(3, SCAN_FORMAT_CODE128))
+
+    def test_tele_camera_stays_live_until_start_button_is_accepted(self):
+        for task_state in (14, 15, 16):
+            self.assertTrue(tele_camera_should_capture(task_state))
+        for task_state in (0, 1, 3, 6, 9, 10, 11):
+            self.assertFalse(tele_camera_should_capture(task_state))
 
     def test_bed_scan_requires_proximity_to_its_current_target(self):
         targets = {
