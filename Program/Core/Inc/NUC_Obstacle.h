@@ -150,6 +150,14 @@ void NUC_Nav_ServiceWheelOdom(float forward_mm_s,
                               float yaw_ccw_cdeg_s,
                               uint8_t online_mask);
 
+/** Send per-wheel target, feedback and current diagnostics at 20 Hz. */
+void NUC_Nav_ServiceWheelDiagnostics(const int16_t target_rpm[4],
+                                     const int16_t measured_rpm[4],
+                                     const int16_t command_current[4],
+                                     const int16_t feedback_current[4],
+                                     uint8_t online_mask,
+                                     uint8_t current_saturation_mask);
+
 /** Access the most recently committed path for the active request. */
 uint8_t NUC_Nav_HasRequestedPath(void);
 uint16_t NUC_Nav_GetPathGeneration(void);

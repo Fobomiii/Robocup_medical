@@ -2,7 +2,7 @@ import math
 import struct
 import unittest
 
-from obstacle_detector.nav_protocol import decode_wheel_odom
+from obstacle_detector.nav_protocol import decode_wheel_diagnostics, decode_wheel_odom
 from obstacle_detector.wheel_odometry_ekf import PlanarWheelOdometryEkf
 
 
@@ -16,6 +16,23 @@ class WheelOdomProtocolTest(unittest.TestCase):
         self.assertEqual(telemetry.yaw_ccw_cdeg_s, 4500)
         self.assertEqual(telemetry.online_mask, 0x0F)
         self.assertEqual(telemetry.stamp_cs, 65000)
+
+    def test_decode_wheel_diagnostics(self):
+        values = (
+            1000, -1000, 2000, -2000,
+            900, -950, 1800, -1900,
+            1200, -1300, 9900, -9900,
+            800, -850, 7000, -7100,
+            0x0F, 0x0C, 65001,
+        )
+        telemetry = decode_wheel_diagnostics(struct.pack(">16hBBH", *values))
+        self.assertEqual(telemetry.target_rpm, (1000, -1000, 2000, -2000))
+        self.assertEqual(telemetry.measured_rpm, (900, -950, 1800, -1900))
+        self.assertEqual(telemetry.command_current, (1200, -1300, 9900, -9900))
+        self.assertEqual(telemetry.feedback_current, (800, -850, 7000, -7100))
+        self.assertEqual(telemetry.online_mask, 0x0F)
+        self.assertEqual(telemetry.current_saturation_mask, 0x0C)
+        self.assertEqual(telemetry.stamp_cs, 65001)
 
 
 class PlanarWheelOdometryEkfTest(unittest.TestCase):

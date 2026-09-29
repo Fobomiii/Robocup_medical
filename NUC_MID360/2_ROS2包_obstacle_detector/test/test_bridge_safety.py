@@ -1,6 +1,7 @@
 import unittest
 
 from obstacle_detector.bridge_safety import (
+    GateReleaseLimiter,
     SettledStopDetector,
     medical_mission_restarted,
     navigation_motion_is_authorized,
@@ -16,6 +17,74 @@ from obstacle_detector.nav_protocol import (
 
 
 class BridgeSafetyTest(unittest.TestCase):
+    def test_gate_release_limiter_uses_common_wheel_space_scale(self):
+        limiter = GateReleaseLimiter(2.0, 0.25)
+        limiter.reset(1.0)
+
+        output = limiter.update(1.0, 0.5, 0.4, 1.1)
+
+        self.assertAlmostEqual(output[0], 0.125)
+        self.assertAlmostEqual(output[1], 0.0625)
+        self.assertAlmostEqual(output[2], 0.05)
+        self.assertTrue(limiter.active)
+        self.assertTrue(limiter.limiting)
+
+    def test_gate_release_limiter_becomes_transparent_after_catchup(self):
+        limiter = GateReleaseLimiter(2.0, 0.25)
+        limiter.reset(1.0)
+
+        self.assertEqual(limiter.update(1.0, 0.0, 0.0, 1.5), (1.0, 0.0, 0.0))
+        self.assertFalse(limiter.active)
+        self.assertEqual(limiter.update(2.0, 0.0, 0.0, 1.51), (2.0, 0.0, 0.0))
+
+    def test_gate_release_limiter_never_delays_stop_or_reduction(self):
+        limiter = GateReleaseLimiter(2.0, 0.25, 0.25)
+        limiter.reset(1.0)
+        limiter.update(1.0, 0.5, 0.4, 1.1)
+
+        self.assertEqual(limiter.update(0.05, 0.0, 0.0, 1.11), (0.05, 0.0, 0.0))
+        self.assertTrue(limiter.active)
+        self.assertEqual(limiter.update(0.0, 0.0, 0.0, 1.12), (0.0, 0.0, 0.0))
+
+    def test_gate_release_limiter_ramps_after_safety_slowdown(self):
+        limiter = GateReleaseLimiter(2.5, 0.25, 0.25)
+        limiter.reset(1.0)
+        output = limiter.update(1.0, 0.0, 0.0, 1.5)
+        self.assertAlmostEqual(output[0], 1.0)
+        self.assertEqual(output[1:], (0.0, 0.0))
+        self.assertFalse(limiter.active)
+
+        self.assertEqual(limiter.update(0.4, 0.0, 0.0, 1.6), (0.4, 0.0, 0.0))
+        self.assertTrue(limiter.active)
+        output = limiter.update(1.0, 0.0, 0.0, 1.8)
+        self.assertAlmostEqual(output[0], 0.9)
+        self.assertEqual(output[1:], (0.0, 0.0))
+        self.assertTrue(limiter.limiting)
+
+    def test_gate_release_limiter_ignores_gradual_bed_slowdown(self):
+        limiter = GateReleaseLimiter(2.5, 0.25, 0.25)
+        limiter.reset(1.0)
+        self.assertEqual(limiter.update(1.0, 0.0, 0.0, 1.5), (1.0, 0.0, 0.0))
+        self.assertFalse(limiter.active)
+
+        self.assertEqual(limiter.update(0.85, 0.0, 0.0, 1.6), (0.85, 0.0, 0.0))
+        self.assertEqual(limiter.update(0.70, 0.0, 0.0, 1.7), (0.70, 0.0, 0.0))
+        self.assertFalse(limiter.active)
+        self.assertEqual(limiter.update(1.0, 0.0, 0.0, 1.71), (1.0, 0.0, 0.0))
+
+    def test_gate_release_limiter_rearms_after_authorization_is_revoked(self):
+        limiter = GateReleaseLimiter(2.0, 0.25)
+        limiter.reset(1.0)
+        limiter.update(1.0, 0.0, 0.0, 1.5)
+        limiter.update(2.0, 0.0, 0.0, 1.51)
+
+        limiter.reset(2.0)
+
+        output = limiter.update(1.0, 0.0, 0.0, 2.1)
+        self.assertAlmostEqual(output[0], 0.2)
+        self.assertEqual(output[1:], (0.0, 0.0))
+        self.assertTrue(limiter.limiting)
+
     def test_detects_stm32_restart_while_wait_state_is_unchanged(self):
         self.assertTrue(
             medical_mission_restarted(

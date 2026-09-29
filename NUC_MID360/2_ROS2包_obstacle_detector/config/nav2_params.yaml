@@ -151,13 +151,13 @@ controller_server:
       # Keep holonomic correction available, but sample lateral motion more
       # conservatively so the raised chassis follows the safe global path
       # instead of cutting across it with a large diagonal command.
-      vy_std: 0.25
+      vy_std: 0.18
       # Sample angular motion conservatively. The chassis should translate
       # holonomically instead of rotating to exploit its faster body X axis.
       wz_std: 0.15
 
       vx_max: 2.00
-      vx_min: -1.2
+      vx_min: -2.0
       # Cap lateral motion below forward speed to reduce side-slip overshoot.
       # Keep vy_std conservative so corrections remain progressive.
       vy_max: 1.50
@@ -291,7 +291,7 @@ planner_server:
       # limits. Stage 2 chooses the safest route that remains within the
       # fastest time plus max(10%, 0.5 s).
       forward_speed: 2.00
-      reverse_speed: 1.20
+      reverse_speed: 2.00
       lateral_speed: 1.50
       max_time_ratio: 1.10
       min_time_slack: 0.50
@@ -356,7 +356,7 @@ velocity_smoother:
     # Keep these at the NUC linear limit. The STM32 has a separate 4.00 m/s
     # hard cap, so any other command source still has a lower-level guard.
     max_velocity: [2.00, 2.00, 0.80]
-    min_velocity: [-1.20, -2.00, -0.80]
+    min_velocity: [-2.00, -2.00, -0.80]
     # Limit normal acceleration and braking for the raised arm's higher centre
     # of gravity. Collision Monitor emergency stops still command zero.
     max_accel: [1.5, 1.5, 1.8]

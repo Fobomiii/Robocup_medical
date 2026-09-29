@@ -46,7 +46,7 @@ class NavigationSafetyConfigTest(unittest.TestCase):
     def test_omni_controller_holds_task_yaw_during_translation(self):
         follow_path = self.config["controller_server"]["ros__parameters"]["FollowPath"]
         self.assertEqual(follow_path["motion_model"], "Omni")
-        self.assertEqual(follow_path["vx_min"], -1.20)
+        self.assertEqual(follow_path["vx_min"], -2.00)
         self.assertEqual(follow_path["vy_max"], 1.5)
         self.assertFalse(follow_path["PathAngleCritic"]["enabled"])
         self.assertEqual(follow_path["PathAngleCritic"]["mode"], 1)
@@ -109,6 +109,11 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"bed_terminal_speed_m_s": 0.15', launch_source)
         self.assertIn('"bed_terminal_distance_m": 0.20', launch_source)
         self.assertIn('"pose_timeout_s": 0.5', launch_source)
+        self.assertIn('"gate_release_wheel_accel_m_s2": 2.5', launch_source)
+        self.assertIn('"gate_release_yaw_radius_m": 0.25', launch_source)
+        self.assertIn(
+            '"gate_release_rearm_drop_m_s": 0.25', launch_source
+        )
         self.assertNotIn('"collision_monitor_predictive",', launch_source)
 
         setup_source = (PACKAGE / "setup.py").read_text(encoding="utf-8")
@@ -351,33 +356,45 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"nurse_scan_stop_linear_m_s": 0.03', launch_source)
         self.assertIn('"nurse_scan_stop_settle_s": 0.15', launch_source)
 
-    def test_bed_docking_precaptures_absolute_targets_with_fallback(self):
+    def test_bed_docking_samples_after_arrival_with_split_fallback(self):
         root = PACKAGE.parents[1]
         medical_task = (root / "Program" / "Core" / "Src" / "MedicalTask.c").read_text(
             encoding="utf-8"
         )
-        self.assertIn("MEDICAL_DOCK_PRECAPTURE_RADIUS_MM 800.0f", medical_task)
-        self.assertIn("MEDICAL_DOCK_PRECAPTURE_YAW_DEG 3.0f", medical_task)
-        self.assertIn("MEDICAL_DOCK_VERIFY_MIN_SAMPLES 3U", medical_task)
-        self.assertIn("MEDICAL_DOCK_VERIFY_TIMEOUT_MS 450U", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_COUNT 8U", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_TRIM_COUNT 1U", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_SETTLE_MS 100U", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_TIMEOUT_MS 1500U", medical_task)
+        self.assertIn("MEDICAL_DOCK_TIMEOUT_MS 3000U", medical_task)
+        self.assertIn("MEDICAL_DOCK_SIDE_SPLIT_THRESHOLD_MM 1600U", medical_task)
         self.assertIn("MEDICAL_DOCK_LASER_MAX_CORRECTION_MM 400.0f", medical_task)
-        self.assertIn("MEDICAL_DOCK_OPS_FALLBACK_MAX_MM 120.0f", medical_task)
+        self.assertIn("MEDICAL_DOCK_SPEED_LOC_K 1000.0f", medical_task)
+        self.assertIn("MEDICAL_DOCK_TIMEOUT_BEEP_FIRST_MS 200U", medical_task)
+        self.assertIn("MEDICAL_DOCK_TIMEOUT_BEEP_GAP_MS 100U", medical_task)
+        self.assertIn("MEDICAL_DOCK_TIMEOUT_BEEP_SECOND_MS 300U", medical_task)
         self.assertRegex(
             medical_task,
             r"if \(s_current_bed == 1U\)\s*"
             r"\{\s*return STP23L_GetSampleC\(distance_mm, frame_sequence\);\s*\}\s*"
             r"return STP23L_GetSampleA\(distance_mm, frame_sequence\);",
         )
-        self.assertIn("medical_is_bed_navigation_state() != 0U", medical_task)
-        self.assertIn("medical_docking_capture_targets", medical_task)
-        self.assertIn("s_dock_front_target_samples", medical_task)
-        self.assertIn("s_dock_side_target_samples", medical_task)
-        self.assertIn("MEDICAL_DOCK_HANDOFF", medical_task)
-        self.assertIn("MEDICAL_DOCK_MOVE_INITIAL", medical_task)
-        self.assertIn("MEDICAL_DOCK_MOVE_CORRECTION", medical_task)
+        self.assertNotIn("medical_docking_capture_targets", medical_task)
+        self.assertIn("medical_docking_collect_samples", medical_task)
+        self.assertIn("medical_docking_collect_front_samples", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_INITIAL", medical_task)
+        self.assertIn("MEDICAL_DOCK_MOVE_COMBINED", medical_task)
+        self.assertIn("MEDICAL_DOCK_MOVE_SPLIT_SIDE", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_SPLIT_FRONT", medical_task)
+        self.assertIn(
+            "DJI_Chassis_SetSpeedLocationGain(MEDICAL_DOCK_SPEED_LOC_K)",
+            medical_task,
+        )
+        self.assertIn("DJI_Chassis_SetSpeedLocationGain(0.0f)", medical_task)
+        self.assertIn("medical_docking_timeout_beep_start", medical_task)
         self.assertRegex(
             medical_task,
-            r"ChassisCtrl_MoveTarget\(target_x,\s*target_y,\s*0\.0f,",
+            r"ChassisCtrl_MoveTarget\(pos_x \+ field_x_delta,\s*"
+            r"pos_y \+ field_y_delta,\s*0\.0f,",
         )
 
     def test_arm_overlaps_final_docking_and_retracts_during_navigation(self):
@@ -391,8 +408,8 @@ class NavigationSafetyConfigTest(unittest.TestCase):
 
         self.assertIn("MEDICAL_ARM_DEPLOY_TIME_S 1.5f", medical_task)
         self.assertIn("MEDICAL_ARM_RETRACT_TIME_S 1.5f", medical_task)
-        self.assertIn("MEDICAL_DOCK_MOVE_INITIAL", medical_task)
-        self.assertIn("MEDICAL_DOCK_MOVE_CORRECTION", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_INITIAL", medical_task)
+        self.assertIn("MEDICAL_DOCK_MOVE_COMBINED", medical_task)
         self.assertRegex(
             medical_task,
             r"case MEDICAL_TASK_NAV_BED1:[\s\S]*?"
@@ -420,14 +437,16 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("MEDICAL_DISPENSE_HOLD_MS 2500U", medical_task)
-        self.assertIn("MEDICAL_DOCK_SAMPLE_COUNT 5U", medical_task)
-        self.assertIn("MEDICAL_DOCK_VERIFY_MIN_SAMPLES 3U", medical_task)
-        self.assertIn("MEDICAL_DOCK_VERIFY_TIMEOUT_MS 450U", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_COUNT 8U", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_TRIM_COUNT 1U", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_TIMEOUT_MS 1500U", medical_task)
         self.assertIn("CHASSIS_CTRL_REACH_X_MM 5.0f", chassis_control)
         self.assertIn("CHASSIS_CTRL_REACH_Y_MM 5.0f", chassis_control)
         self.assertIn("CHASSIS_CTRL_REACH_YAW_DEG 0.5f", chassis_control)
         self.assertIn("CHASSIS_CTRL_XY_SLEW_RPM_PER_S 300.0f", chassis_control)
         self.assertIn("CHASSIS_CTRL_YAW_SLEW_RPM_PER_S 600.0f", chassis_control)
+        self.assertNotIn("CHASSIS_CTRL_MIN_XY_RPM", chassis_control)
+        self.assertNotIn("CHASSIS_CTRL_MIN_YAW_RPM", chassis_control)
         self.assertIn("has_previous_", pid_control)
         self.assertIn("(has_previous_ != 0U)", pid_control)
 

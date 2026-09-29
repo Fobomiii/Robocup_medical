@@ -1081,6 +1081,7 @@ void StartCanHostTask(void *argument)
   float measured_forward_mm_s;
   float measured_left_mm_s;
   float measured_yaw_ccw_cdeg_s;
+  DJI_ChassisWheelDiagnostics wheel_diagnostics;
   uint8_t wheel_online_mask;
   uint8_t dock_override;
 
@@ -1138,6 +1139,14 @@ void StartCanHostTask(void *argument)
     {
       DJI_Chassis_SetVelocityCommand(0.0f, 0.0f, 0.0f);
     }
+    (void)DJI_Chassis_GetWheelDiagnostics(&wheel_diagnostics);
+    NUC_Nav_ServiceWheelDiagnostics(
+        wheel_diagnostics.target_rpm,
+        wheel_diagnostics.measured_rpm,
+        wheel_diagnostics.command_current,
+        wheel_diagnostics.feedback_current,
+        wheel_diagnostics.online_mask,
+        wheel_diagnostics.current_saturation_mask);
     osDelay(10);
   }
   /* USER CODE END StartCanHostTask */

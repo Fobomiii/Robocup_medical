@@ -114,6 +114,10 @@ RViz 必须在图形用户登录后启动，因此使用：
 $HOME/start_rviz.sh
 ```
 
+`start_rviz.sh` 会等待静态地图、Global Costmap 和 Local Costmap 发布器就绪后再启动
+RViz，最长等待 45 秒。部署脚本会在 Nav2 服务重启后主动重启 RViz，避免旧 RViz
+跨越 DDS 发布器重建后偶发保持橙色、收不到 Costmap；登录自启动仍保持禁用。
+
 所有本车 ROS 2 进程固定使用独立 Domain，并限制为 NUC 本机发现，避免比赛网络中的其他
 ROS 设备发布同名 `/map`、`/tf` 或控制话题：
 

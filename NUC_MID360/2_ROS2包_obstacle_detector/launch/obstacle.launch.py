@@ -205,6 +205,11 @@ def generate_launch_description():
                         "goal_handoff_hold_s": 0.5,
                         "navigator_following_hold_s": 0.3,
                         "navigator_status_timeout_s": 1.2,
+                        # Limit task-gate release and re-acceleration after a
+                        # collision slowdown. Braking still passes immediately.
+                        "gate_release_wheel_accel_m_s2": 2.5,
+                        "gate_release_yaw_radius_m": 0.25,
+                        "gate_release_rearm_drop_m_s": 0.25,
                         "nurse_scan_stop_linear_m_s": 0.03,
                         "nurse_scan_stop_angular_rad_s": 0.05,
                         "nurse_scan_stop_settle_s": 0.15,

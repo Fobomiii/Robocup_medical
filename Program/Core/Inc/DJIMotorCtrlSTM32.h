@@ -104,10 +104,26 @@ extern M2006Motor arm;
 extern "C" {
 #endif
 
+typedef struct {
+  int16_t target_rpm[4];
+  int16_t measured_rpm[4];
+  int16_t command_current[4];
+  int16_t feedback_current[4];
+  uint8_t online_mask;
+  uint8_t current_saturation_mask;
+} DJI_ChassisWheelDiagnostics;
+
 void DJI_Motor_ChassisTask(void);
 void DJI_Motor_ArmStart(void);
 
 void DJI_Chassis_SetCommand(float vx, float vy, float w);
+
+/**
+ * Set the per-wheel integrated-position correction used by the speed loop.
+ * Changing the gain also re-bases all four wheel position targets to the
+ * current encoder positions so stale error cannot cause a command jump.
+ */
+void DJI_Chassis_SetSpeedLocationGain(float gain);
 
 /**
  * Convert a ROS body velocity command to the wheel-RPM command used internally.
@@ -124,6 +140,10 @@ void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
 uint8_t DJI_Chassis_GetMeasuredVelocity(float *forward_mm_s,
                                         float *left_mm_s,
                                         float *yaw_ccw_cdeg_s);
+
+/** Atomically snapshot per-wheel targets, feedback and controller output. */
+uint8_t DJI_Chassis_GetWheelDiagnostics(
+    DJI_ChassisWheelDiagnostics *diagnostics);
 
 /** Immediate angle (deg). */
 void DJI_Arm_CtrlAngle(float deg);

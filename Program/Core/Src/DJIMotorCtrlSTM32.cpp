@@ -332,10 +332,11 @@ extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t 
 /* CHASSIS                                                                    */
 /* -------------------------------------------------------------------------- */
 static const float kGear3508 = 19.f;
-static const float kSpeedLocK = 1000.f;
+static volatile float s_chassis_speed_loc_k = 0.f;
 static const float kPi = 3.14159265358979323846f;
 static const float kWheelDiameterMm = 152.0f;
 static const float kTurnRadiusMm = 250.0f;
+static const int16_t kCurrentSaturationThreshold = 9900;
 
 CHASSIS::CHASSIS(FDCAN_HandleTypeDef* hfdcan)
   : can_(hfdcan), frq_(1000), started_(false)
@@ -385,7 +386,8 @@ void CHASSIS::Update(float Vx, float Vy, float W)
   for (int i = 0; i < 4; ++i) {
     float rotor = out_rpm[i] * kGear3508;
     cur[i] = g_chassis_bus.speedLoopStep(
-      g_chassis_bus.motor((uint8_t)(i + 1)), rotor, kSpeedLocK, now, dt);
+      g_chassis_bus.motor((uint8_t)(i + 1)), rotor,
+      s_chassis_speed_loc_k, now, dt);
   }
   g_chassis_bus.sendGroup200(cur[0], cur[1], cur[2], cur[3]);
 }
@@ -644,6 +646,30 @@ extern "C" void DJI_Chassis_SetCommand(float vx, float vy, float w)
   s_cmd_w = w;
 }
 
+extern "C" void DJI_Chassis_SetSpeedLocationGain(float gain)
+{
+  uint32_t primask;
+
+  if (gain < 0.f) {
+    gain = 0.f;
+  }
+  if (fabsf(gain - s_chassis_speed_loc_k) <= 1e-6f) {
+    return;
+  }
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  for (uint8_t id = 1U; id <= 4U; ++id) {
+    MotorFb& motor = g_chassis_bus.motor(id);
+    motor.speed_loc_target = (float)motor.location;
+    motor.speed_pid.reset();
+  }
+  s_chassis_speed_loc_k = gain;
+  if (primask == 0U) {
+    __enable_irq();
+  }
+}
+
 extern "C" void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
                                                 float left_mm_s,
                                                 float yaw_ccw_cdeg_s)
@@ -716,6 +742,54 @@ extern "C" uint8_t DJI_Chassis_GetMeasuredVelocity(float *forward_mm_s,
   *yaw_ccw_cdeg_s = -(clockwise_turn_rpm * rpm_to_mm_s /
                        kTurnRadiusMm) * 18000.0f / kPi;
   return online_mask;
+}
+
+extern "C" uint8_t DJI_Chassis_GetWheelDiagnostics(
+    DJI_ChassisWheelDiagnostics *diagnostics)
+{
+  uint32_t now_us;
+  uint32_t primask;
+  uint32_t last_rx_us[4];
+
+  if (diagnostics == NULL)
+  {
+    return 0U;
+  }
+
+  diagnostics->online_mask = 0U;
+  diagnostics->current_saturation_mask = 0U;
+  primask = __get_PRIMASK();
+  __disable_irq();
+  now_us = micros_u32();
+  for (uint8_t index = 0U; index < 4U; index++)
+  {
+    MotorFb& motor = g_chassis_bus.motor((uint8_t)(index + 1U));
+    diagnostics->target_rpm[index] = (int16_t)motor.target_speed;
+    diagnostics->measured_rpm[index] = motor.speed;
+    diagnostics->command_current[index] = motor.set_current;
+    diagnostics->feedback_current[index] = motor.current;
+    last_rx_us[index] = motor.last_rx_us;
+  }
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+
+  for (uint8_t index = 0U; index < 4U; index++)
+  {
+    int32_t command_current = diagnostics->command_current[index];
+    if (last_rx_us[index] != 0U &&
+        (now_us - last_rx_us[index]) < 100000U)
+    {
+      diagnostics->online_mask |= (uint8_t)(1U << index);
+    }
+    if (command_current >= kCurrentSaturationThreshold ||
+        command_current <= -kCurrentSaturationThreshold)
+    {
+      diagnostics->current_saturation_mask |= (uint8_t)(1U << index);
+    }
+  }
+  return diagnostics->online_mask;
 }
 
 extern "C" void DJI_Arm_CtrlAngle(float deg)

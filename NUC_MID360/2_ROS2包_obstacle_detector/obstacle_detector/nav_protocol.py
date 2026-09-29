@@ -11,7 +11,7 @@ compatible during migration.
 from dataclasses import dataclass
 import math
 import struct
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 
 
 SYNC = b"\xAA\xCC"
@@ -25,6 +25,7 @@ MSG_STP23L = 0x13
 MSG_SCAN_ACK = 0x14
 MSG_WHEEL_ODOM = 0x15
 MSG_TTS_REQUEST = 0x16
+MSG_WHEEL_DIAGNOSTICS = 0x17
 MSG_PATH_BEGIN = 0x20
 MSG_WAYPOINT = 0x21
 MSG_PATH_COMMIT = 0x22
@@ -157,6 +158,19 @@ class WheelOdomTelemetry:
 
 
 @dataclass(frozen=True)
+class WheelDiagnosticsTelemetry:
+    """Raw per-wheel M3508/C620 controller diagnostics."""
+
+    target_rpm: Tuple[int, int, int, int]
+    measured_rpm: Tuple[int, int, int, int]
+    command_current: Tuple[int, int, int, int]
+    feedback_current: Tuple[int, int, int, int]
+    online_mask: int
+    current_saturation_mask: int
+    stamp_cs: int
+
+
+@dataclass(frozen=True)
 class ScanResult:
     scan_id: int
     context: int
@@ -270,6 +284,23 @@ def decode_wheel_odom(payload: bytes) -> WheelOdomTelemetry:
     if len(payload) != 9:
         raise ValueError(f"WHEEL_ODOM payload length is {len(payload)}, expected 9")
     return WheelOdomTelemetry(*struct.unpack(">hhhBH", payload))
+
+
+def decode_wheel_diagnostics(payload: bytes) -> WheelDiagnosticsTelemetry:
+    if len(payload) != 36:
+        raise ValueError(
+            f"WHEEL_DIAGNOSTICS payload length is {len(payload)}, expected 36"
+        )
+    values = struct.unpack(">16hBBH", payload)
+    return WheelDiagnosticsTelemetry(
+        target_rpm=values[0:4],
+        measured_rpm=values[4:8],
+        command_current=values[8:12],
+        feedback_current=values[12:16],
+        online_mask=values[16],
+        current_saturation_mask=values[17],
+        stamp_cs=values[18],
+    )
 
 
 def decode_goal_request(payload: bytes) -> GoalRequest:

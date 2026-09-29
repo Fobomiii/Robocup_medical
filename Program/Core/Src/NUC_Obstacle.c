@@ -43,6 +43,7 @@
 #define NAV_STM32_MAX_LINEAR_MM_S 4000
 #define NAV_POSE_PERIOD_MS   20U
 #define NAV_WHEEL_ODOM_PERIOD_MS 20U
+#define NAV_WHEEL_DIAGNOSTICS_PERIOD_MS 50U
 #define NAV_GOAL_PERIOD_MS   250U
 #define NAV_TTS_PERIOD_MS    250U
 #define NAV_STP23L_PERIOD_MS 100U
@@ -54,6 +55,7 @@
 #define NAV_MSG_SCAN_ACK     0x14U
 #define NAV_MSG_WHEEL_ODOM   0x15U
 #define NAV_MSG_TTS_REQUEST  0x16U
+#define NAV_MSG_WHEEL_DIAGNOSTICS 0x17U
 #define NAV_MSG_PATH_BEGIN   0x20U
 #define NAV_MSG_WAYPOINT     0x21U
 #define NAV_MSG_PATH_COMMIT  0x22U
@@ -113,6 +115,7 @@ static uint32_t s_nav_last_pose_tx_ms;
 static uint32_t s_nav_last_goal_tx_ms;
 static uint32_t s_nav_last_stp23l_tx_ms;
 static uint32_t s_nav_last_wheel_odom_tx_ms;
+static uint32_t s_nav_last_wheel_diagnostics_tx_ms;
 static uint32_t s_nav_last_tts_tx_ms;
 static NUC_NavGoal s_nav_requested_goal;
 static uint16_t s_nav_request_id;
@@ -576,6 +579,7 @@ void NUC_Obstacle_Init(void)
   s_nav_last_goal_tx_ms = 0U;
   s_nav_last_stp23l_tx_ms = 0U;
   s_nav_last_wheel_odom_tx_ms = 0U;
+  s_nav_last_wheel_diagnostics_tx_ms = 0U;
   s_nav_last_tts_tx_ms = 0U;
   s_nav_requested_goal = NUC_NAV_GOAL_NONE;
   s_nav_request_id = 0U;
@@ -861,6 +865,42 @@ void NUC_Nav_ServiceWheelOdom(float forward_mm_s,
   write_u16_be(&payload[7], (uint16_t)(now / 10U));
   (void)nav_send_frame(NAV_MSG_WHEEL_ODOM, payload, sizeof(payload));
   s_nav_last_wheel_odom_tx_ms = now;
+}
+
+void NUC_Nav_ServiceWheelDiagnostics(const int16_t target_rpm[4],
+                                     const int16_t measured_rpm[4],
+                                     const int16_t command_current[4],
+                                     const int16_t feedback_current[4],
+                                     uint8_t online_mask,
+                                     uint8_t current_saturation_mask)
+{
+  uint32_t now = HAL_GetTick();
+  uint8_t payload[36];
+  uint8_t index;
+
+  if (target_rpm == NULL || measured_rpm == NULL ||
+      command_current == NULL || feedback_current == NULL)
+  {
+    return;
+  }
+  if ((now - s_nav_last_wheel_diagnostics_tx_ms) <
+      NAV_WHEEL_DIAGNOSTICS_PERIOD_MS)
+  {
+    return;
+  }
+
+  for (index = 0U; index < 4U; index++)
+  {
+    write_i16_be(&payload[index * 2U], target_rpm[index]);
+    write_i16_be(&payload[8U + index * 2U], measured_rpm[index]);
+    write_i16_be(&payload[16U + index * 2U], command_current[index]);
+    write_i16_be(&payload[24U + index * 2U], feedback_current[index]);
+  }
+  payload[32] = online_mask & 0x0FU;
+  payload[33] = current_saturation_mask & 0x0FU;
+  write_u16_be(&payload[34], (uint16_t)(now / 10U));
+  (void)nav_send_frame(NAV_MSG_WHEEL_DIAGNOSTICS, payload, sizeof(payload));
+  s_nav_last_wheel_diagnostics_tx_ms = now;
 }
 
 uint8_t NUC_Nav_HasRequestedPath(void)

@@ -14,6 +14,108 @@ from .nav_protocol import (
 NAVIGATION_TASK_STATES = frozenset((1, 3, 6, 9))
 
 
+class GateReleaseLimiter:
+    """Limit gate release and re-acceleration after a safety slowdown."""
+
+    def __init__(
+        self,
+        max_wheel_accel_m_s2: float,
+        yaw_radius_m: float,
+        rearm_drop_m_s: float = 0.0,
+    ) -> None:
+        self.max_wheel_accel_m_s2 = max(0.0, float(max_wheel_accel_m_s2))
+        self.yaw_radius_m = max(0.0, float(yaw_radius_m))
+        self.rearm_drop_m_s = max(0.0, float(rearm_drop_m_s))
+        self.output = (0.0, 0.0, 0.0)
+        self.last_update_s = None
+        self.last_input_peak = 0.0
+        self.active = True
+        self.limiting = False
+
+    def reset(self, now_s=None) -> None:
+        self.output = (0.0, 0.0, 0.0)
+        self.last_update_s = None if now_s is None else float(now_s)
+        self.last_input_peak = 0.0
+        self.active = True
+        self.limiting = False
+
+    def _wheel_speeds(self, command):
+        vx, vy, wz = command
+        yaw_speed = self.yaw_radius_m * wz
+        return (
+            vx - vy - yaw_speed,
+            vx + vy - yaw_speed,
+            -vx + vy - yaw_speed,
+            -vx - vy - yaw_speed,
+        )
+
+    def update(self, vx: float, vy: float, wz: float, now_s: float):
+        desired = (float(vx), float(vy), float(wz))
+        now_s = float(now_s)
+        desired_wheels = self._wheel_speeds(desired)
+        desired_peak = max(abs(speed) for speed in desired_wheels)
+        previous_input_peak = self.last_input_peak
+        self.last_input_peak = desired_peak
+
+        if self.max_wheel_accel_m_s2 <= 0.0:
+            self.output = desired
+            self.last_update_s = now_s
+            self.active = False
+            self.limiting = False
+            return self.output
+
+        current_wheels = self._wheel_speeds(self.output)
+        current_peak = max(abs(speed) for speed in current_wheels)
+
+        if (
+            self.rearm_drop_m_s > 0.0
+            and previous_input_peak - desired_peak >= self.rearm_drop_m_s
+        ):
+            self.active = True
+
+        # Stops and safety-commanded reductions must never wait for a ramp.
+        if desired_peak <= current_peak:
+            self.output = desired
+            self.last_update_s = now_s
+            self.limiting = False
+            return self.output
+
+        if not self.active:
+            self.output = desired
+            self.last_update_s = now_s
+            self.active = False
+            self.limiting = False
+            return self.output
+
+        if self.last_update_s is None:
+            self.last_update_s = now_s
+            self.limiting = True
+            return self.output
+
+        dt = max(0.0, now_s - self.last_update_s)
+        self.last_update_s = now_s
+        wheel_delta = tuple(
+            desired_speed - current_speed
+            for desired_speed, current_speed in zip(desired_wheels, current_wheels)
+        )
+        peak_delta = max(abs(delta) for delta in wheel_delta)
+        if peak_delta == 0.0:
+            self.output = desired
+            self.limiting = False
+            return self.output
+
+        allowed_delta = self.max_wheel_accel_m_s2 * dt
+        alpha = min(1.0, allowed_delta / peak_delta)
+        self.output = tuple(
+            current + alpha * (target - current)
+            for current, target in zip(self.output, desired)
+        )
+        self.limiting = alpha < 1.0
+        if not self.limiting:
+            self.active = False
+        return self.output
+
+
 def medical_mission_restarted(
     previous_task_state,
     previous_nav_status,

@@ -48,6 +48,7 @@ from .nav_protocol import (
     MSG_TTS_REQUEST,
     MSG_TTS_STATUS,
     MSG_VEL_CMD,
+    MSG_WHEEL_DIAGNOSTICS,
     MSG_WHEEL_ODOM,
     NAV_FOLLOWING,
     NAV_IDLE,
@@ -64,6 +65,7 @@ from .nav_protocol import (
     decode_scan_ack,
     decode_stp23l,
     decode_tts_request,
+    decode_wheel_diagnostics,
     decode_wheel_odom,
     encode_frame,
     encode_heartbeat,
@@ -73,6 +75,7 @@ from .nav_protocol import (
     encode_velocity,
 )
 from .bridge_safety import (
+    GateReleaseLimiter,
     SettledStopDetector,
     medical_mission_restarted,
     navigation_motion_is_authorized,
@@ -126,6 +129,9 @@ class Stm32Bridge(Node):
         self.declare_parameter("goal_handoff_hold_s", 0.5)
         self.declare_parameter("navigator_following_hold_s", 0.3)
         self.declare_parameter("navigator_status_timeout_s", 1.2)
+        self.declare_parameter("gate_release_wheel_accel_m_s2", 2.5)
+        self.declare_parameter("gate_release_yaw_radius_m", 0.25)
+        self.declare_parameter("gate_release_rearm_drop_m_s", 0.25)
         self.declare_parameter("nurse_scan_stop_linear_m_s", 0.03)
         self.declare_parameter("nurse_scan_stop_angular_rad_s", 0.05)
         self.declare_parameter("nurse_scan_stop_settle_s", 0.15)
@@ -188,6 +194,11 @@ class Stm32Bridge(Node):
         )
         self.navigator_status_timeout_s = max(
             0.5, float(get("navigator_status_timeout_s"))
+        )
+        self.gate_release_limiter = GateReleaseLimiter(
+            float(get("gate_release_wheel_accel_m_s2")),
+            float(get("gate_release_yaw_radius_m")),
+            float(get("gate_release_rearm_drop_m_s")),
         )
         self.nurse_scan_stop_detector = SettledStopDetector(
             float(get("nurse_scan_stop_linear_m_s")),
@@ -261,6 +272,7 @@ class Stm32Bridge(Node):
         self.started_s = time.monotonic()
         self.stp23l = None
         self.wheel_odom = None
+        self.wheel_diagnostics = None
         self.last_wheel_odom_s = 0.0
         self.last_calibration_event = None
         self.next_scan_id = 0
@@ -307,6 +319,9 @@ class Stm32Bridge(Node):
         )
         self.wheel_odom_pub = self.create_publisher(
             Odometry, "/medical_nav/wheel_odom", 10
+        )
+        self.wheel_diagnostics_pub = self.create_publisher(
+            String, "/medical_nav/wheel_diagnostics", 10
         )
         self.status_pub = self.create_publisher(String, "/medical_nav/bridge_status", 10)
         self.goal_pub = self.create_publisher(String, "/medical_nav/goal_request", 10)
@@ -371,6 +386,8 @@ class Stm32Bridge(Node):
                     self._handle_stp23l(frame)
                 elif frame.msg_type == MSG_WHEEL_ODOM:
                     self._handle_wheel_odom(frame)
+                elif frame.msg_type == MSG_WHEEL_DIAGNOSTICS:
+                    self._handle_wheel_diagnostics(frame)
                 elif frame.msg_type == MSG_SCAN_ACK:
                     self._handle_scan_ack(frame)
                 elif frame.msg_type == MSG_TTS_REQUEST:
@@ -399,6 +416,7 @@ class Stm32Bridge(Node):
             self.pose_timeout_s,
         )
         if mission_restarted:
+            self.gate_release_limiter.reset(received_s)
             self.mission_epoch = (self.mission_epoch + 1) & 0xFFFFFFFF
             if self.mission_epoch == 0:
                 self.mission_epoch = 1
@@ -466,6 +484,7 @@ class Stm32Bridge(Node):
         self.last_pose_s = received_s
         if previous_task_state is not None and previous_task_state != pose.task_state:
             self.stopped = True
+            self.gate_release_limiter.reset(received_s)
             self._send_velocity(0.0, 0.0, 0.0, source="task_transition")
         task_message = UInt8()
         task_message.data = pose.task_state
@@ -501,6 +520,7 @@ class Stm32Bridge(Node):
             self.last_navigator_status_s = 0.0
             self.navigator_following_s = 0.0
             self.stopped = True
+            self.gate_release_limiter.reset(self.goal_request_s)
             self._send_velocity(0.0, 0.0, 0.0, source="goal_handoff")
         name = POINT_NAMES.get(request.goal_id, str(request.goal_id))
         message = String()
@@ -558,6 +578,30 @@ class Stm32Bridge(Node):
             else invalid_variance
         )
         self.wheel_odom_pub.publish(message)
+
+    def _handle_wheel_diagnostics(self, frame: Frame) -> None:
+        telemetry = decode_wheel_diagnostics(frame.payload)
+        self.wheel_diagnostics = telemetry
+        message = String()
+        message.data = json.dumps(
+            {
+                "target_rpm": telemetry.target_rpm,
+                "measured_rpm": telemetry.measured_rpm,
+                "rpm_error": [
+                    target - measured
+                    for target, measured in zip(
+                        telemetry.target_rpm, telemetry.measured_rpm
+                    )
+                ],
+                "command_current": telemetry.command_current,
+                "feedback_current": telemetry.feedback_current,
+                "online_mask": telemetry.online_mask,
+                "current_saturation_mask": telemetry.current_saturation_mask,
+                "stamp_cs": telemetry.stamp_cs,
+            },
+            separators=(",", ":"),
+        )
+        self.wheel_diagnostics_pub.publish(message)
 
     def _handle_stp23l(self, frame: Frame) -> None:
         telemetry = decode_stp23l(frame.payload)
@@ -938,7 +982,8 @@ class Stm32Bridge(Node):
     # ------------------------------------------------------------------
 
     def _cmd_vel(self, msg: Twist) -> None:
-        self.last_cmd_s = time.monotonic()
+        now_s = time.monotonic()
+        self.last_cmd_s = now_s
         self.last_safe_cmd = (msg.linear.x, msg.linear.y, msg.angular.z)
         if (
             self.nurse_scan_soft_stop
@@ -946,6 +991,7 @@ class Stm32Bridge(Node):
             and self.pose.task_state == TASK_NAV_NURSE
         ):
             self.stopped = False
+            self.gate_release_limiter.reset(now_s)
             self._send_velocity(
                 msg.linear.x,
                 msg.linear.y,
@@ -955,10 +1001,17 @@ class Stm32Bridge(Node):
             return
         if not self._motion_is_authorized():
             self.stopped = True
+            self.gate_release_limiter.reset(now_s)
             self._send_velocity(0.0, 0.0, 0.0, source="task_gate")
             return
         self.stopped = False
-        self._send_velocity(msg.linear.x, msg.linear.y, msg.angular.z, source="nav2")
+        if self.enforce_task_gate:
+            vx, vy, wz = self.gate_release_limiter.update(
+                msg.linear.x, msg.linear.y, msg.angular.z, now_s
+            )
+        else:
+            vx, vy, wz = msg.linear.x, msg.linear.y, msg.angular.z
+        self._send_velocity(vx, vy, wz, source="nav2")
 
     def _motion_is_authorized(self) -> bool:
         if not self.enforce_task_gate:
@@ -1048,6 +1101,7 @@ class Stm32Bridge(Node):
                 if not was_following:
                     self.navigator_following_s = self.last_navigator_status_s
                     self.stopped = True
+                    self.gate_release_limiter.reset(received_s)
                     self._send_velocity(
                         0.0, 0.0, 0.0, source="navigator_following_hold"
                     )
@@ -1055,6 +1109,7 @@ class Stm32Bridge(Node):
                 self.navigator_following_s = 0.0
                 if not self.nurse_scan_soft_stop:
                     self.stopped = True
+                    self.gate_release_limiter.reset(received_s)
                     self._send_velocity(0.0, 0.0, 0.0, source="navigator_state")
             payload = encode_nav_status(request_id, goal_id, effective_nav_state)
             frame = encode_frame(MSG_NAV_STATUS, self.tx_seq, payload)
@@ -1075,6 +1130,7 @@ class Stm32Bridge(Node):
             return
         self.stopped = True
         self.last_safe_cmd = (0.0, 0.0, 0.0)
+        self.gate_release_limiter.reset(time.monotonic())
         self._send_velocity(0.0, 0.0, 0.0, source="watchdog")
         self.get_logger().warn(
             f"No {self.cmd_vel_topic} for {silent_for:.2f}s - sending stop",
@@ -1106,6 +1162,23 @@ class Stm32Bridge(Node):
             "task_gate": self.enforce_task_gate,
             "motion_authorized": self._motion_is_authorized(),
             "nurse_scan_soft_stop": self.nurse_scan_soft_stop,
+            "gate_release_limiter": {
+                "enabled": self.enforce_task_gate
+                and self.gate_release_limiter.max_wheel_accel_m_s2 > 0.0,
+                "active": self.enforce_task_gate
+                and self.gate_release_limiter.active,
+                "limiting": self.gate_release_limiter.limiting,
+                "wheel_accel_m_s2": self.gate_release_limiter.max_wheel_accel_m_s2,
+                "yaw_radius_m": self.gate_release_limiter.yaw_radius_m,
+                "rearm_drop_m_s": (
+                    self.gate_release_limiter.rearm_drop_m_s
+                ),
+                "output": {
+                    "vx": round(self.gate_release_limiter.output[0], 3),
+                    "vy": round(self.gate_release_limiter.output[1], 3),
+                    "wz": round(self.gate_release_limiter.output[2], 3),
+                },
+            },
             "last_safe_cmd": {
                 "vx": round(self.last_safe_cmd[0], 3),
                 "vy": round(self.last_safe_cmd[1], 3),
@@ -1176,6 +1249,8 @@ class Stm32Bridge(Node):
                 "online_mask": self.wheel_odom.online_mask,
                 "stamp_cs": self.wheel_odom.stamp_cs,
             }
+        if self.wheel_diagnostics is not None:
+            status["wheel_diagnostics"] = asdict(self.wheel_diagnostics)
         status["scanner_transport"] = {
             "pending": self.pending_scan is not None,
             "attempts": self.pending_scan["attempts"] if self.pending_scan else 0,
