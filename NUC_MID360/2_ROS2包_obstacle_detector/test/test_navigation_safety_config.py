@@ -351,22 +351,34 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"nurse_scan_stop_linear_m_s": 0.03', launch_source)
         self.assertIn('"nurse_scan_stop_settle_s": 0.15', launch_source)
 
-    def test_abnormal_bed_docking_splits_side_and_front_moves(self):
+    def test_bed_docking_precaptures_absolute_targets_with_fallback(self):
         root = PACKAGE.parents[1]
         medical_task = (root / "Program" / "Core" / "Src" / "MedicalTask.c").read_text(
             encoding="utf-8"
         )
-        self.assertIn("MEDICAL_DOCK_SIDE_SPLIT_THRESHOLD_MM 1600U", medical_task)
+        self.assertIn("MEDICAL_DOCK_PRECAPTURE_RADIUS_MM 800.0f", medical_task)
+        self.assertIn("MEDICAL_DOCK_PRECAPTURE_YAW_DEG 3.0f", medical_task)
+        self.assertIn("MEDICAL_DOCK_VERIFY_MIN_SAMPLES 3U", medical_task)
+        self.assertIn("MEDICAL_DOCK_VERIFY_TIMEOUT_MS 450U", medical_task)
+        self.assertIn("MEDICAL_DOCK_LASER_MAX_CORRECTION_MM 400.0f", medical_task)
+        self.assertIn("MEDICAL_DOCK_OPS_FALLBACK_MAX_MM 120.0f", medical_task)
         self.assertRegex(
             medical_task,
-            r"if \(s_state == MEDICAL_TASK_DOCK_BED1\)\s*"
+            r"if \(s_current_bed == 1U\)\s*"
             r"\{\s*return STP23L_GetSampleC\(distance_mm, frame_sequence\);\s*\}\s*"
             r"return STP23L_GetSampleA\(distance_mm, frame_sequence\);",
         )
-        self.assertIn("MEDICAL_DOCK_MOVE_SPLIT_SIDE", medical_task)
-        self.assertIn("MEDICAL_DOCK_SAMPLE_SPLIT_FRONT", medical_task)
-        self.assertIn("MEDICAL_DOCK_MOVE_SPLIT_FRONT", medical_task)
-        self.assertIn("medical_docking_collect_front_samples", medical_task)
+        self.assertIn("medical_is_bed_navigation_state() != 0U", medical_task)
+        self.assertIn("medical_docking_capture_targets", medical_task)
+        self.assertIn("s_dock_front_target_samples", medical_task)
+        self.assertIn("s_dock_side_target_samples", medical_task)
+        self.assertIn("MEDICAL_DOCK_HANDOFF", medical_task)
+        self.assertIn("MEDICAL_DOCK_MOVE_INITIAL", medical_task)
+        self.assertIn("MEDICAL_DOCK_MOVE_CORRECTION", medical_task)
+        self.assertRegex(
+            medical_task,
+            r"ChassisCtrl_MoveTarget\(target_x,\s*target_y,\s*0\.0f,",
+        )
 
     def test_arm_overlaps_final_docking_and_retracts_during_navigation(self):
         root = PACKAGE.parents[1]
@@ -378,12 +390,9 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("MEDICAL_ARM_DEPLOY_TIME_S 1.5f", medical_task)
-        self.assertIn("MEDICAL_ARM_RETRACT_TIME_S 2.0f", medical_task)
-        self.assertRegex(
-            medical_task,
-            r"move_phase == MEDICAL_DOCK_MOVE_COMBINED\) \|\|\s*"
-            r"\(move_phase == MEDICAL_DOCK_MOVE_SPLIT_FRONT\)",
-        )
+        self.assertIn("MEDICAL_ARM_RETRACT_TIME_S 1.5f", medical_task)
+        self.assertIn("MEDICAL_DOCK_MOVE_INITIAL", medical_task)
+        self.assertIn("MEDICAL_DOCK_MOVE_CORRECTION", medical_task)
         self.assertRegex(
             medical_task,
             r"case MEDICAL_TASK_NAV_BED1:[\s\S]*?"
@@ -406,14 +415,21 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         chassis_control = (
             root / "Program" / "Core" / "Src" / "ChassisCtrl.c"
         ).read_text(encoding="utf-8")
+        pid_control = (
+            root / "Program" / "Core" / "Src" / "PID.cpp"
+        ).read_text(encoding="utf-8")
 
         self.assertIn("MEDICAL_DISPENSE_HOLD_MS 2500U", medical_task)
-        self.assertIn("MEDICAL_DOCK_SAMPLE_COUNT 10U", medical_task)
-        self.assertIn("MEDICAL_DOCK_SAMPLE_TRIM_COUNT 1U", medical_task)
-        self.assertIn("MEDICAL_DOCK_SAMPLE_SETTLE_MS 100U", medical_task)
+        self.assertIn("MEDICAL_DOCK_SAMPLE_COUNT 5U", medical_task)
+        self.assertIn("MEDICAL_DOCK_VERIFY_MIN_SAMPLES 3U", medical_task)
+        self.assertIn("MEDICAL_DOCK_VERIFY_TIMEOUT_MS 450U", medical_task)
         self.assertIn("CHASSIS_CTRL_REACH_X_MM 5.0f", chassis_control)
         self.assertIn("CHASSIS_CTRL_REACH_Y_MM 5.0f", chassis_control)
         self.assertIn("CHASSIS_CTRL_REACH_YAW_DEG 0.5f", chassis_control)
+        self.assertIn("CHASSIS_CTRL_XY_SLEW_RPM_PER_S 300.0f", chassis_control)
+        self.assertIn("CHASSIS_CTRL_YAW_SLEW_RPM_PER_S 600.0f", chassis_control)
+        self.assertIn("has_previous_", pid_control)
+        self.assertIn("(has_previous_ != 0U)", pid_control)
 
     def test_scanner_uses_full_frame_and_bed_proximity_gate(self):
         scanner = yaml.safe_load(SCANNER_PARAMS.read_text(encoding="utf-8"))[

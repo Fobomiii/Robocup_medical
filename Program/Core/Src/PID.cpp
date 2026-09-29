@@ -57,7 +57,7 @@ public:
   PIDAxis()
       : kp_(0.0f), ki_(0.0f), kd_(0.0f), out_min_(0.0f), out_max_(0.0f),
         i_max_(0.0f), integral_(0.0f), previous_error_(0.0f), last_us_(0U),
-        normalize_angle_(0U)
+        has_previous_(0U), normalize_angle_(0U)
   {
   }
 
@@ -89,6 +89,7 @@ public:
     integral_ = 0.0f;
     previous_error_ = 0.0f;
     last_us_ = 0U;
+    has_previous_ = 0U;
   }
 
   float update(float target, float measurement)
@@ -130,11 +131,12 @@ public:
       integral_ = 0.0f;
     }
 
-    if (kd_ != 0.0f)
+    if ((kd_ != 0.0f) && (has_previous_ != 0U))
     {
       derivative_output = kd_ * (error - previous_error_) / dt;
     }
     previous_error_ = error;
+    has_previous_ = 1U;
 
     output = kp_ * error + integral_ + derivative_output;
     if (output > out_max_)
@@ -158,6 +160,7 @@ private:
   float integral_;
   float previous_error_;
   uint32_t last_us_;
+  uint8_t has_previous_;
   uint8_t normalize_angle_;
 };
 
