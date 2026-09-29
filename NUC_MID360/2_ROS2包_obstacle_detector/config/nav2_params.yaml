@@ -75,6 +75,7 @@ bt_navigator:
     plugin_lib_names:
       - nav2_compute_path_to_pose_action_bt_node
       - nav2_compute_path_through_poses_action_bt_node
+      - nav2_smooth_path_action_bt_node
       - nav2_follow_path_action_bt_node
       - nav2_back_up_action_bt_node
       - nav2_spin_action_bt_node
@@ -162,6 +163,16 @@ controller_server:
       # Keep vy_std conservative so corrections remain progressive.
       vy_max: 1.50
       wz_max: 0.80
+      # Match MPPI's rollout dynamics to the real command chain. Without
+      # these limits MPPI assumes the diagonal velocity component can change
+      # much faster than the 1.3 m/s^2 velocity smoother, so it reaches a
+      # sharp path corner before beginning to remove motion toward an
+      # obstacle. These values retain the same top speed while making MPPI
+      # start the direction change early enough for the raised chassis.
+      ax_max: 1.30
+      ax_min: -1.30
+      ay_max: 1.30
+      az_max: 1.80
 
       iteration_count: 1
       # Keep three metres of the global path available to the 2.0 s rollout.
@@ -318,6 +329,14 @@ smoother_server:
     smoother_plugins: ["simple_smoother"]
     simple_smoother:
       plugin: "nav2_smoother::SimpleSmoother"
+      # Round the clearance planner's safe polyline corners before MPPI sees
+      # them. The smoother checks the global costmap, so it cannot trade the
+      # nurse-station clearance for a shorter curve.
+      # Keep enough rounding to remove abrupt diagonal-to-straight commands,
+      # while staying closer to the clearance planner's verified route so a
+      # 135-degree interior corner does not become an unnecessarily long arc.
+      w_data: 0.20
+      w_smooth: 0.35
       tolerance: 1.0e-10
       max_its: 1000
       do_refinement: true
@@ -386,7 +405,7 @@ collision_monitor:
       # obstacle without repeatedly throttling on distant sparse lidar points.
       points: [0.28, 0.0, 0.20, -0.20, 0.0, -0.28, -0.20, -0.20, -0.28, 0.0, -0.20, 0.20, 0.0, 0.28, 0.20, 0.20]
       action_type: "approach"
-      time_before_collision: 0.8
+      time_before_collision: 1.0
       simulation_time_step: 0.1
       max_points: 3
       visualize: True

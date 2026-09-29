@@ -9,8 +9,14 @@
         <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
         <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
         <RateController hz="2.0">
-          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
-            <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}"/>
+          <RecoveryNode number_of_retries="1" name="ComputeAndSmoothPath">
+            <Sequence name="PlanThenSmooth">
+              <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}"/>
+              <Fallback name="SmoothOrKeepOriginal">
+                <SmoothPath unsmoothed_path="{path}" smoothed_path="{path}" smoother_id="simple_smoother" max_smoothing_duration="0.20"/>
+                <AlwaysSuccess/>
+              </Fallback>
+            </Sequence>
             <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
           </RecoveryNode>
         </RateController>

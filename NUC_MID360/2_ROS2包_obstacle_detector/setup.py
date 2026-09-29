@@ -26,6 +26,7 @@ setup(
             "lidar_self_filter = obstacle_detector.lidar_transform:main",
             "cone_footprint_compensator = obstacle_detector.cone_footprint:main",
             "lidar_odometry_guard = obstacle_detector.lidar_odometry_guard:main",
+            "corner_speed_limiter = obstacle_detector.corner_speed_limiter:main",
             "home_approach_limiter = obstacle_detector.home_approach_limiter:main",
             "code_scanner = obstacle_detector.code_scanner:main",
             "scan_dashboard = obstacle_detector.scan_dashboard:main",

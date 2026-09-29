@@ -33,6 +33,10 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertEqual(follow_path["vx_std"], 0.30)
         self.assertEqual(follow_path["vy_std"], 0.18)
         self.assertEqual(follow_path["wz_std"], 0.15)
+        self.assertEqual(follow_path["ax_max"], 1.30)
+        self.assertEqual(follow_path["ax_min"], -1.30)
+        self.assertEqual(follow_path["ay_max"], 1.30)
+        self.assertEqual(follow_path["az_max"], 1.80)
         self.assertEqual(follow_path["prune_distance"], 3.0)
         self.assertEqual(follow_path["temperature"], 0.25)
         self.assertEqual(
@@ -76,7 +80,7 @@ class NavigationSafetyConfigTest(unittest.TestCase):
 
         approach = monitor["ApproachPolygon"]
         self.assertEqual(approach["action_type"], "approach")
-        self.assertEqual(approach["time_before_collision"], 0.8)
+        self.assertEqual(approach["time_before_collision"], 1.0)
         self.assertEqual(approach["simulation_time_step"], 0.1)
         self.assertEqual(approach["max_points"], 3)
 
@@ -95,6 +99,12 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertNotIn('name="collision_monitor_predictive"', launch_source)
         self.assertIn('executable="home_approach_limiter"', launch_source)
         self.assertIn('name="home_approach_limiter"', launch_source)
+        self.assertIn('executable="corner_speed_limiter"', launch_source)
+        self.assertIn('name="corner_speed_limiter"', launch_source)
+        self.assertIn('"output_topic": "/speed_limit"', launch_source)
+        self.assertIn('"lookahead_distance_m": 1.50', launch_source)
+        self.assertIn('"braking_decel_m_s2": 1.30', launch_source)
+        self.assertIn('"min_turn_angle_deg": 25.0', launch_source)
         self.assertIn('"input_topic": "/cmd_vel"', launch_source)
         self.assertIn('"output_topic": "/cmd_vel_home_limited"', launch_source)
         self.assertIn('"home_task_state": 9', launch_source)
@@ -121,12 +131,35 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             "home_approach_limiter = obstacle_detector.home_approach_limiter:main",
             setup_source,
         )
+        self.assertIn(
+            "corner_speed_limiter = obstacle_detector.corner_speed_limiter:main",
+            setup_source,
+        )
 
     def test_behavior_trees_replan_at_two_hertz(self):
         root = ET.parse(BT_XML).getroot()
         rate_controllers = root.findall(".//RateController")
         self.assertEqual(len(rate_controllers), 1)
         self.assertEqual(float(rate_controllers[0].attrib["hz"]), 2.0)
+        smoothers = root.findall(".//SmoothPath")
+        self.assertEqual(len(smoothers), 1)
+        self.assertEqual(smoothers[0].attrib["smoother_id"], "simple_smoother")
+        self.assertEqual(
+            float(smoothers[0].attrib["max_smoothing_duration"]), 0.20
+        )
+        smooth_fallback = root.find(".//Fallback[@name='SmoothOrKeepOriginal']")
+        self.assertIsNotNone(smooth_fallback)
+        self.assertIsNotNone(smooth_fallback.find("SmoothPath"))
+        self.assertIsNotNone(smooth_fallback.find("AlwaysSuccess"))
+        plugin_names = self.config["bt_navigator"]["ros__parameters"][
+            "plugin_lib_names"
+        ]
+        self.assertIn("nav2_smooth_path_action_bt_node", plugin_names)
+        smoother = self.config["smoother_server"]["ros__parameters"][
+            "simple_smoother"
+        ]
+        self.assertEqual(smoother["w_data"], 0.20)
+        self.assertEqual(smoother["w_smooth"], 0.35)
         self.assertNotIn("error_code_id", BT_XML.read_text(encoding="utf-8"))
 
         nurse_root = ET.parse(NURSE_BT_XML).getroot()
