@@ -356,7 +356,7 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"nurse_scan_stop_linear_m_s": 0.03', launch_source)
         self.assertIn('"nurse_scan_stop_settle_s": 0.15', launch_source)
 
-    def test_bed_docking_samples_after_arrival_with_split_fallback(self):
+    def test_bed_docking_tracks_while_moving_with_split_fallback(self):
         root = PACKAGE.parents[1]
         medical_task = (root / "Program" / "Core" / "Src" / "MedicalTask.c").read_text(
             encoding="utf-8"
@@ -365,6 +365,10 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn("MEDICAL_DOCK_SAMPLE_TRIM_COUNT 1U", medical_task)
         self.assertIn("MEDICAL_DOCK_SAMPLE_SETTLE_MS 100U", medical_task)
         self.assertIn("MEDICAL_DOCK_SAMPLE_TIMEOUT_MS 1500U", medical_task)
+        self.assertIn("MEDICAL_DOCK_TRACK_MIN_SAMPLES 3U", medical_task)
+        self.assertIn("MEDICAL_DOCK_TRACK_SPREAD_MM 40.0f", medical_task)
+        self.assertIn("MEDICAL_DOCK_TRACK_RADIUS_MM 800.0f", medical_task)
+        self.assertIn("MEDICAL_DOCK_TRACK_YAW_DEG 3.0f", medical_task)
         self.assertIn("MEDICAL_DOCK_TIMEOUT_MS 3000U", medical_task)
         self.assertIn("MEDICAL_DOCK_SIDE_SPLIT_THRESHOLD_MM 1600U", medical_task)
         self.assertIn("MEDICAL_DOCK_LASER_MAX_CORRECTION_MM 400.0f", medical_task)
@@ -378,10 +382,23 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             r"\{\s*return STP23L_GetSampleC\(distance_mm, frame_sequence\);\s*\}\s*"
             r"return STP23L_GetSampleA\(distance_mm, frame_sequence\);",
         )
-        self.assertNotIn("medical_docking_capture_targets", medical_task)
+        self.assertIn("medical_is_bed_navigation_state() != 0U", medical_task)
+        self.assertIn("medical_docking_capture_targets", medical_task)
+        self.assertIn("medical_docking_get_tracked_target", medical_task)
+        self.assertIn("medical_docking_finish_or_correct_tracked", medical_task)
+        self.assertRegex(
+            medical_task,
+            r"medical_is_bed_navigation_state\(\) != 0U[\s\S]*?"
+            r"medical_docking_capture_targets[\s\S]*?"
+            r"medical_docking_get_tracked_target[\s\S]*?"
+            r"medical_set_state[\s\S]*?"
+            r"medical_docking_start_absolute_move[\s\S]*?return 1U;",
+        )
         self.assertIn("medical_docking_collect_samples", medical_task)
         self.assertIn("medical_docking_collect_front_samples", medical_task)
         self.assertIn("MEDICAL_DOCK_SAMPLE_INITIAL", medical_task)
+        self.assertIn("MEDICAL_DOCK_MOVE_TRACKED", medical_task)
+        self.assertIn("MEDICAL_DOCK_MOVE_TRACKED_CORRECTION", medical_task)
         self.assertIn("MEDICAL_DOCK_MOVE_COMBINED", medical_task)
         self.assertIn("MEDICAL_DOCK_MOVE_SPLIT_SIDE", medical_task)
         self.assertIn("MEDICAL_DOCK_SAMPLE_SPLIT_FRONT", medical_task)
