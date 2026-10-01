@@ -8,6 +8,20 @@ from obstacle_detector.cone_footprint_core import expand_cone_footprints
 
 
 class ConeFootprintTest(unittest.TestCase):
+    def test_compensator_keeps_tf_reception_parallel_with_cloud_processing(self):
+        """Exact-time persistence lookups must not starve TF callbacks."""
+        from pathlib import Path
+
+        source = (
+            Path(__file__).resolve().parents[1]
+            / "obstacle_detector"
+            / "cone_footprint.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("from rclpy.executors import MultiThreadedExecutor", source)
+        self.assertIn("MultiThreadedExecutor(num_threads=2)", source)
+        self.assertIn("executor.spin()", source)
+
     def test_compact_vertical_return_adds_known_base_disk(self):
         cone = np.array(
             [

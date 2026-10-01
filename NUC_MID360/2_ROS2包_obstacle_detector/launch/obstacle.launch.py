@@ -37,6 +37,9 @@ def generate_launch_description():
     scanner_enabled = LaunchConfiguration("scanner_enabled")
     scan_camera = LaunchConfiguration("scan_camera")
     tele_scan_camera = LaunchConfiguration("tele_scan_camera")
+    health_ble_enabled = LaunchConfiguration("health_ble_enabled")
+    health_ble_device_name = LaunchConfiguration("health_ble_device_name")
+    health_ble_device_address = LaunchConfiguration("health_ble_device_address")
 
     # YAML cannot expand an ament package path itself. Rewrite only this leaf
     # parameter so bt_navigator receives the installed XML's absolute path.
@@ -59,6 +62,11 @@ def generate_launch_description():
             # Reject Nav2 velocity outside the four delivery navigation states.
             DeclareLaunchArgument("enforce_task_gate", default_value="true"),
             DeclareLaunchArgument("scanner_enabled", default_value="true"),
+            DeclareLaunchArgument("health_ble_enabled", default_value="true"),
+            DeclareLaunchArgument(
+                "health_ble_device_name", default_value="MedicalVitals-S3"
+            ),
+            DeclareLaunchArgument("health_ble_device_address", default_value=""),
             DeclareLaunchArgument(
                 "scan_camera",
                 default_value=(
@@ -266,6 +274,28 @@ def generate_launch_description():
                         "tele_camera_device": tele_scan_camera,
                         "field_config": field_map,
                     },
+                ],
+                respawn=True,
+                respawn_delay=2.0,
+            ),
+            Node(
+                package="obstacle_detector",
+                executable="health_ble_bridge",
+                name="health_ble_bridge",
+                output="screen",
+                condition=IfCondition(health_ble_enabled),
+                parameters=[
+                    {
+                        "device_name": health_ble_device_name,
+                        "device_address": health_ble_device_address,
+                        "scan_timeout_s": 5.0,
+                        "reconnect_delay_s": 1.0,
+                        "connect_timeout_s": 10.0,
+                        "forget_after_failures": 3,
+                        "clear_stale_device": True,
+                        "stale_timeout_s": 2.0,
+                        "status_rate_hz": 5.0,
+                    }
                 ],
                 respawn=True,
                 respawn_delay=2.0,

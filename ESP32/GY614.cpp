@@ -9,7 +9,9 @@ GY614::GY614(HardwareSerial& serial)
     _startReg(0),
     _dataLen(0),
     _frameReady(false),
-    _lastQueryMs(0) {}
+    _lastQueryMs(0),
+    _lastUpdateMs(0),
+    _sampleSequence(0) {}
 
 bool GY614::begin(int rxPin, int txPin, uint32_t baud, uint8_t addr) {
   _addr = addr;
@@ -84,12 +86,18 @@ void GY614::parseByte(uint8_t b) {
       _ta = (int16_t)((_buf[7] << 8) | _buf[8]) / 100.0f;
       _bo = (int16_t)((_buf[9] << 8) | _buf[10]) / 100.0f;
       _ready = true;
+      _lastUpdateMs = millis();
+      ++_sampleSequence;
     }
     return;
   }
 
   _cnt++;
   if (_cnt >= sizeof(_buf)) _cnt = 0;
+}
+
+bool GY614::ready(uint32_t maxAgeMs) const {
+  return _ready && (millis() - _lastUpdateMs <= maxAgeMs);
 }
 
 void GY614::update(uint32_t queryIntervalMs) {

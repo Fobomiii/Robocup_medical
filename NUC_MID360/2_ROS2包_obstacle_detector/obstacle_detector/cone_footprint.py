@@ -9,6 +9,7 @@ import numpy as np
 
 import rclpy
 from rclpy.duration import Duration
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
@@ -149,7 +150,7 @@ class ConeFootprintCompensator(Node):
             now = time.monotonic()
             if now - self._last_tf_warning > 2.0:
                 self.get_logger().warning(
-                    f"Cone persistence TF {source_frame}->{target_frame} unavailable: {error}"
+                    f"Cone compensation TF {source_frame}->{target_frame} unavailable: {error}"
                 )
                 self._last_tf_warning = now
             return False
@@ -259,8 +260,8 @@ class ConeFootprintCompensator(Node):
 
     def _cloud_callback(self, message: PointCloud2) -> None:
         xyz = xyz_from_cloud(message)
-        expanded, centers = expand_cone_footprints(xyz, **self.parameters)
         source_frame = message.header.frame_id.lstrip("/") or "base_link"
+        expanded, centers = expand_cone_footprints(xyz, **self.parameters)
         extras = self._persistent_extras(centers, source_frame, message.header.stamp)
         if extras:
             expanded = np.vstack(
@@ -304,11 +305,18 @@ class ConeFootprintCompensator(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = ConeFootprintCompensator()
+    # Cone persistence uses exact-time base_link<->odom lookups. Keep cloud
+    # callbacks serialized, but allow TransformListener (which uses its own
+    # reentrant callback group) to update the buffer on the second worker
+    # thread instead of starving behind point-cloud processing.
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
+        executor.shutdown()
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

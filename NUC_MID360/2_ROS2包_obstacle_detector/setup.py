@@ -29,6 +29,7 @@ setup(
             "corner_speed_limiter = obstacle_detector.corner_speed_limiter:main",
             "home_approach_limiter = obstacle_detector.home_approach_limiter:main",
             "code_scanner = obstacle_detector.code_scanner:main",
+            "health_ble_bridge = obstacle_detector.health_ble_bridge:main",
             "scan_dashboard = obstacle_detector.scan_dashboard:main",
         ],
     },

@@ -3,6 +3,7 @@
 
 import signal
 import sys
+import time
 
 import rclpy
 from PyQt5.QtCore import QSize, Qt, QTimer
@@ -22,6 +23,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
 
+from .health_ble_core import parse_health_status
 from .nav_protocol import (
     SCAN_CONTEXT_BED1,
     SCAN_CONTEXT_BED3,
@@ -71,6 +73,7 @@ class ScanDashboardWindow(QMainWindow):
         self._tele_camera_pixmap = None
         self._tele_scan_state = "standby"
         self._hide_order_value = True
+        self._last_health_status_monotonic = 0.0
 
         root = QWidget()
         root.setObjectName("root")
@@ -83,16 +86,17 @@ class ScanDashboardWindow(QMainWindow):
         screen_width = screen.geometry().width() if screen is not None else 1280
         camera_width = max(260, round((screen_width - 92) / 4.0))
         title_size = max(16, min(22, round(screen_height * 0.020)))
-        nurse_value_size = max(26, min(38, round(screen_height * 0.035)))
-        bed_value_size = max(44, min(68, round(screen_height * 0.063)))
+        nurse_value_size = max(20, min(28, round(screen_height * 0.028)))
+        bed_value_size = max(30, min(46, round(screen_height * 0.045)))
+        health_value_size = max(42, min(60, round(screen_height * 0.070)))
 
         information = QWidget()
         information_layout = QVBoxLayout(information)
         information_layout.setContentsMargins(0, 0, 0, 0)
         information_layout.setSpacing(12)
 
-        nurse_card, self.nurse_value = self._make_card(
-            "护士台二维码", nurse_value_size, title_size, minimum_height=100
+        health_card = self._make_health_card(
+            health_value_size, title_size
         )
         bed1_card, self.bed1_value = self._make_card(
             "1床条码", bed_value_size, title_size
@@ -100,7 +104,7 @@ class ScanDashboardWindow(QMainWindow):
         bed3_card, self.bed3_value = self._make_card(
             "3床条码", bed_value_size, title_size
         )
-        information_layout.addWidget(nurse_card, 1)
+        information_layout.addWidget(health_card, 3)
         information_layout.addWidget(bed1_card, 2)
         information_layout.addWidget(bed3_card, 2)
 
@@ -137,11 +141,16 @@ class ScanDashboardWindow(QMainWindow):
         self.tele_camera_view.setFixedHeight(
             self.tele_camera_view.heightForWidth(camera_width)
         )
+        nurse_card, self.nurse_value = self._make_card(
+            "护士台二维码", nurse_value_size, title_size, minimum_height=84
+        )
+        nurse_card.setMaximumHeight(max(96, round(screen_height * 0.13)))
         camera_layout.addWidget(self.start_value)
         camera_layout.addWidget(camera_title)
         camera_layout.addWidget(self.camera_view, 1)
         camera_layout.addWidget(tele_camera_title)
         camera_layout.addWidget(self.tele_camera_view, 1)
+        camera_layout.addWidget(nurse_card)
         camera_layout.addStretch(1)
 
         layout.addWidget(information, 3)
@@ -168,6 +177,10 @@ class ScanDashboardWindow(QMainWindow):
                 border-radius: 18px;
             }
             QLabel#scanValue {
+                color: #0068d9;
+                background: transparent;
+            }
+            QLabel#healthValue {
                 color: #0068d9;
                 background: transparent;
             }
@@ -199,6 +212,12 @@ class ScanDashboardWindow(QMainWindow):
             """
         )
 
+        self._health_status_watchdog = QTimer(self)
+        self._health_status_watchdog.timeout.connect(
+            self._check_health_status_timeout
+        )
+        self._health_status_watchdog.start(1000)
+
     @staticmethod
     def _make_card(
         title: str, value_size: int, title_size: int, minimum_height: int = 0
@@ -223,6 +242,100 @@ class ScanDashboardWindow(QMainWindow):
         layout.addWidget(title_label)
         layout.addWidget(value_label, 1)
         return card, value_label
+
+    def _make_health_card(self, value_size: int, title_size: int) -> QFrame:
+        card = QFrame()
+        card.setObjectName("scanCard")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(24, 12, 24, 16)
+        layout.setSpacing(8)
+
+        title_label = QLabel("生命体征")
+        title_label.setFont(QFont("Noto Sans CJK SC", title_size, QFont.Bold))
+        layout.addWidget(title_label)
+
+        self.health_connection_status = QLabel("等待重连")
+        self.health_connection_status.setObjectName("healthConnectionStatus")
+        self.health_connection_status.setFont(
+            QFont("Noto Sans CJK SC", title_size, QFont.Bold)
+        )
+        self.health_connection_status.setAlignment(Qt.AlignCenter)
+        self.health_connection_status.setStyleSheet("color: #e53935;")
+        layout.addWidget(self.health_connection_status)
+
+        metrics = QHBoxLayout()
+        metrics.setSpacing(24)
+        heart_layout, self.heart_rate_value = self._make_health_metric(
+            "心率：", "-- bpm", value_size, title_size
+        )
+        temperature_layout, self.temperature_value = self._make_health_metric(
+            "体温：", "-- °C", value_size, title_size
+        )
+        metrics.addLayout(heart_layout, 1)
+        metrics.addLayout(temperature_layout, 1)
+        layout.addLayout(metrics, 1)
+        return card
+
+    @staticmethod
+    def _make_health_metric(
+        title: str, placeholder: str, value_size: int, title_size: int
+    ):
+        layout = QVBoxLayout()
+        layout.setSpacing(2)
+        title_label = QLabel(title)
+        title_label.setFont(QFont("Noto Sans CJK SC", title_size, QFont.Bold))
+        value_label = QLabel(placeholder)
+        value_label.setObjectName("healthValue")
+        value_label.setFont(QFont("DejaVu Sans", value_size, QFont.Bold))
+        value_label.setAlignment(Qt.AlignCenter)
+        value_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addWidget(title_label)
+        layout.addWidget(value_label, 1)
+        return layout, value_label
+
+    def _set_health_connection_state(self, connected: bool) -> None:
+        if connected:
+            self.health_connection_status.setText("连接成功")
+            self.health_connection_status.setStyleSheet("color: #138a36;")
+        else:
+            self.health_connection_status.setText("等待重连")
+            self.health_connection_status.setStyleSheet("color: #e53935;")
+
+    def _clear_health_values(self) -> None:
+        self.heart_rate_value.setText("-- bpm")
+        self.temperature_value.setText("-- °C")
+
+    def _check_health_status_timeout(self) -> None:
+        if (
+            self._last_health_status_monotonic <= 0.0
+            or time.monotonic() - self._last_health_status_monotonic > 3.0
+        ):
+            self._set_health_connection_state(False)
+            self._clear_health_values()
+
+    def set_health_status(self, payload: str) -> None:
+        status = parse_health_status(payload)
+        if status is None:
+            self._set_health_connection_state(False)
+            self._clear_health_values()
+            return
+        self._last_health_status_monotonic = time.monotonic()
+        if not status["ble_link"]:
+            self._set_health_connection_state(False)
+            self._clear_health_values()
+            return
+        self._set_health_connection_state(True)
+        if not status["connected"]:
+            self._clear_health_values()
+            return
+        heart_rate = status["heart_rate_bpm"]
+        temperature = status["temperature_c"]
+        self.heart_rate_value.setText(
+            f"{heart_rate:d} bpm" if heart_rate is not None else "-- bpm"
+        )
+        self.temperature_value.setText(
+            f"{temperature:.2f} °C" if temperature is not None else "-- °C"
+        )
 
     def set_scan_value(self, context: int, value: str) -> None:
         if context == SCAN_CONTEXT_ORDER and self._hide_order_value:
@@ -346,6 +459,9 @@ class ScanDashboardNode(Node):
             String, "/medical_nav/bridge_status", self._bridge_status, 10
         )
         self.create_subscription(
+            String, "/medical_nav/health_status", self._health_status, 10
+        )
+        self.create_subscription(
             CompressedImage,
             "/medical_nav/scanner_preview/compressed",
             self._camera_frame,
@@ -380,6 +496,9 @@ class ScanDashboardNode(Node):
 
     def _bridge_status(self, message: String) -> None:
         self.window.set_start_status(message.data)
+
+    def _health_status(self, message: String) -> None:
+        self.window.set_health_status(message.data)
 
 
 def main(args=None) -> None:

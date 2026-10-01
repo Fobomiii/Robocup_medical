@@ -38,7 +38,10 @@
   <exec_depend>python3-pyqt5</exec_depend>
   <exec_depend>python3-pyzbar</exec_depend>
   <exec_depend>python3-serial</exec_depend>
+  <exec_depend>python3-bleak</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>bluez</exec_depend>
+  <exec_depend>rfkill</exec_depend>
   <exec_depend>v4l-utils</exec_depend>
   <exec_depend>alsa-utils</exec_depend>
   <exec_depend>ffmpeg</exec_depend>

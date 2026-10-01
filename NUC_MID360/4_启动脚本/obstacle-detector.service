@@ -6,13 +6,17 @@ Wants=mid360.service
 [Service]
 Type=simple
 User=fzurobot
+SupplementaryGroups=dialout
 Environment=HOME=/home/fzurobot
 Environment=MEDICAL_NAV_DRY_RUN=false
 Environment=ROS_DOMAIN_ID=77
 Environment=ROS_LOCALHOST_ONLY=1
 EnvironmentFile=-/home/fzurobot/.config/medical-navigation.env
 ExecStartPre=/bin/sleep 5
-ExecStart=/bin/bash /home/fzurobot/start_obstacle.sh /dev/medical_stm32
+ExecStart=/bin/bash /home/fzurobot/start_obstacle.sh /dev/ttyUSB0
+KillSignal=SIGINT
+TimeoutStopSec=20
+SendSIGKILL=yes
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

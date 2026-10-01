@@ -83,9 +83,11 @@ class SerialTransport:
                 self.connected = True
             self.logger.info(f"Serial {self.port}@{self.baud} opened")
             return True
-        except serial.SerialException:
+        except serial.SerialException as exc:
             ports = [port.device for port in serial.tools.list_ports.comports()]
-            self.logger.warn(f"Serial {self.port} unavailable; detected ports: {ports}")
+            self.logger.warn(
+                f"Serial {self.port} unavailable: {exc}; detected ports: {ports}"
+            )
             return False
 
     def _feed_handshake(self, value: int) -> None:

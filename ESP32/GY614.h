@@ -4,30 +4,31 @@
 #include <HardwareSerial.h>
 
 /**
- * GY614 / GY615V3 ºìÍâ²âÎÂÄ£¿é£¨UART£©
+ * GY614 / GY615V3 çº¢å¤–æµ‹æ¸©æ¨¡å—ï¼ˆUARTï¼‰
  *
- * ÓÃ·¨:
+ * ç”¨æ³•:
  *   GY614 gy;
  *   gy.begin(rxPin, txPin);   // setup
- *   gy.update();              // loop ÀïÖÜÆÚĞÔµ÷ÓÃ
- *   float t = gy.bo();        // ÌåÎÂ ¡ãC
+ *   gy.update();              // loop é‡Œå‘¨æœŸæ€§è°ƒç”¨
+ *   float t = gy.bo();        // ä½“æ¸© Â°C
  */
 class GY614 {
 public:
   explicit GY614(HardwareSerial& serial = Serial1);
 
-  // rxPin: ESP32 ÊÕ½Å(½ÓÄ£¿éTX)  txPin: ESP32 ·¢½Å(½ÓÄ£¿éRX)
+  // rxPin: ESP32 æ”¶è„š(æ¥æ¨¡å—TX)  txPin: ESP32 å‘è„š(æ¥æ¨¡å—RX)
   bool begin(int rxPin, int txPin, uint32_t baud = 9600, uint8_t addr = 0xA4);
 
-  // ÊÕÊı¾İ + ¶¨Ê±²éÑ¯£¬loop Àïµ÷ÓÃ
+  // æ”¶æ•°æ® + å®šæ—¶æŸ¥è¯¢ï¼Œloop é‡Œè°ƒç”¨
   void update(uint32_t queryIntervalMs = 500);
 
-  bool ready() const { return _ready; }
+  bool ready(uint32_t maxAgeMs = 2000) const;
+  uint32_t sampleSequence() const { return _sampleSequence; }
 
-  float e() const { return _e; }    // ·¢ÉäÂÊ
-  float to() const { return _to; }  // Ä¿±êÎÂ¶È
-  float ta() const { return _ta; }  // »·¾³ÎÂ¶È
-  float bo() const { return _bo; }  // ÌåÎÂ
+  float e() const { return _e; }    // å‘å°„ç‡
+  float to() const { return _to; }  // ç›®æ ‡æ¸©åº¦
+  float ta() const { return _ta; }  // ç¯å¢ƒæ¸©åº¦
+  float bo() const { return _bo; }  // ä½“æ¸©
 
 private:
   void requestTemp();
@@ -45,4 +46,6 @@ private:
   uint8_t _dataLen;
   bool _frameReady;
   uint32_t _lastQueryMs;
+  uint32_t _lastUpdateMs;
+  uint32_t _sampleSequence;
 };
