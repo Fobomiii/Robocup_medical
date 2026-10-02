@@ -59,6 +59,7 @@ class ClearancePlannerConfigTest(unittest.TestCase):
         self.assertEqual(planner["forward_speed"], controller["vx_max"])
         self.assertEqual(planner["reverse_speed"], abs(controller["vx_min"]))
         self.assertEqual(planner["lateral_speed"], controller["vy_max"])
+        self.assertAlmostEqual(planner["max_planar_speed"], 2.00)
         self.assertAlmostEqual(planner["max_wheel_speed"], 2.00)
         self.assertAlmostEqual(planner["simplification_time_tolerance"], 1.01)
         self.assertGreaterEqual(planner["max_time_ratio"], 1.0)
@@ -96,7 +97,11 @@ class ClearancePlannerConfigTest(unittest.TestCase):
         self.assertIn("fastestTimeField", source)
         self.assertIn("constrainedSafePath", source)
         self.assertIn("time_budget", source)
-        self.assertIn("std::max({x_time, y_time, wheel_time})", source)
+        self.assertIn(
+            "std::max({x_time, y_time, planar_time, wheel_time})", source
+        )
+        self.assertIn("params.max_planar_speed", source)
+        self.assertIn("/ kSqrtTwo", source)
         self.assertIn("max_wheel_speed", source)
         self.assertIn("polylineTime", source)
         self.assertIn("simplification_time_tolerance", source)

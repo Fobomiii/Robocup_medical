@@ -13,11 +13,11 @@ from rclpy.node import Node
 from std_msgs.msg import UInt8
 
 from .field_goals import load_field_goals
-from .home_approach_core import limit_home_velocity
+from .home_approach_core import limit_home_velocity, scale_planar_velocity
 
 
 class HomeApproachLimiter(Node):
-    """Apply soft braking envelopes while navigating home or to either bed."""
+    """Apply the global planar cap plus home/bed braking envelopes."""
 
     def __init__(self) -> None:
         super().__init__("home_approach_limiter")
@@ -127,6 +127,17 @@ class HomeApproachLimiter(Node):
     def _zero_twist() -> Twist:
         return Twist()
 
+    @staticmethod
+    def _with_planar_velocity(message: Twist, vx: float, vy: float) -> Twist:
+        output = Twist()
+        output.linear.x = vx
+        output.linear.y = vy
+        output.linear.z = message.linear.z
+        output.angular.x = message.angular.x
+        output.angular.y = message.angular.y
+        output.angular.z = message.angular.z
+        return output
+
     def _publish_zero(self) -> None:
         self.cmd_pub.publish(self._zero_twist())
 
@@ -151,7 +162,12 @@ class HomeApproachLimiter(Node):
     def _cmd_callback(self, message: Twist) -> None:
         self.latest_cmd = message
         if self.task_state not in self.approach_profiles:
-            self.cmd_pub.publish(message)
+            limited_x, limited_y = scale_planar_velocity(
+                message.linear.x, message.linear.y, self.max_speed_m_s
+            )
+            self.cmd_pub.publish(
+                self._with_planar_velocity(message, limited_x, limited_y)
+            )
             return
         self._publish_limited(message)
 
@@ -184,14 +200,9 @@ class HomeApproachLimiter(Node):
                 terminal_speed_m_s=terminal_speed_m_s,
                 terminal_distance_m=terminal_distance_m,
             )
-        output = Twist()
-        output.linear.x = limited_x
-        output.linear.y = limited_y
-        output.linear.z = message.linear.z
-        output.angular.x = message.angular.x
-        output.angular.y = message.angular.y
-        output.angular.z = message.angular.z
-        self.cmd_pub.publish(output)
+        self.cmd_pub.publish(
+            self._with_planar_velocity(message, limited_x, limited_y)
+        )
 
 
 def main(args=None) -> None:

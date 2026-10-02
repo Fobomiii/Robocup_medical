@@ -190,7 +190,7 @@ public:
     dwt_init_once();
 
     PidParam speed_default;
-    speed_default.kp = 5.f;
+    speed_default.kp = 6.f;
     speed_default.ki = 1.f;
     speed_default.kd = 0.01f;
     speed_default.dead_zone = 1.f;
@@ -334,8 +334,12 @@ extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t 
 static const float kGear3508 = 19.f;
 static volatile float s_chassis_speed_loc_k = 0.f;
 static const float kPi = 3.14159265358979323846f;
+static const float kInvSqrt2 = 0.70710678118654752440f;
+static const float kSqrt2 = 1.41421356237309504880f;
 static const float kWheelDiameterMm = 152.0f;
 static const float kTurnRadiusMm = 250.0f;
+static const float kMaxPlanarSpeedMmS = 2000.0f;
+static const float kMaxWheelSurfaceSpeedMmS = 2000.0f;
 static const int16_t kCurrentSaturationThreshold = 9900;
 
 CHASSIS::CHASSIS(FDCAN_HandleTypeDef* hfdcan)
@@ -369,10 +373,20 @@ void CHASSIS::Update(float Vx, float Vy, float W)
   }
 
   float out_rpm[4];
-  out_rpm[0] = Vx+Vy + W;
-  out_rpm[1] = -Vx+Vy + W;
-  out_rpm[2] = -Vx-Vy + W;
-  out_rpm[3] = Vx-Vy + W;
+  const float max_wheel_rpm =
+      kMaxWheelSurfaceSpeedMmS * 60.0f / (kPi * kWheelDiameterMm);
+  out_rpm[0] = (Vx+Vy) * kInvSqrt2 + W;
+  out_rpm[1] = (-Vx+Vy) * kInvSqrt2 + W;
+  out_rpm[2] = (-Vx-Vy) * kInvSqrt2 + W;
+  out_rpm[3] = (Vx-Vy) * kInvSqrt2 + W;
+
+  for (int i = 0; i < 4; ++i) {
+    if (out_rpm[i] > max_wheel_rpm) {
+      out_rpm[i] = max_wheel_rpm;
+    } else if (out_rpm[i] < -max_wheel_rpm) {
+      out_rpm[i] = -max_wheel_rpm;
+    }
+  }
 
   static uint32_t last_us = 0;
   uint32_t now = micros_u32();
@@ -675,6 +689,15 @@ extern "C" void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
                                                 float yaw_ccw_cdeg_s)
 {
   const float mm_s_to_wheel_rpm = 60.0f / (kPi * kWheelDiameterMm);
+  const float planar_speed =
+      sqrtf(forward_mm_s * forward_mm_s + left_mm_s * left_mm_s);
+
+  if (planar_speed > kMaxPlanarSpeedMmS)
+  {
+    const float planar_scale = kMaxPlanarSpeedMmS / planar_speed;
+    forward_mm_s *= planar_scale;
+    left_mm_s *= planar_scale;
+  }
 
   /* CHASSIS uses +Vx right, +Vy forward and +W clockwise. */
   const float right_rpm = -left_mm_s * mm_s_to_wheel_rpm;
@@ -731,9 +754,9 @@ extern "C" uint8_t DJI_Chassis_GetMeasuredVelocity(float *forward_mm_s,
   }
 
   right_rpm = (wheel_rpm[0] - wheel_rpm[1] -
-               wheel_rpm[2] + wheel_rpm[3]) * 0.25f;
+               wheel_rpm[2] + wheel_rpm[3]) * 0.25f * kSqrt2;
   forward_rpm = (wheel_rpm[0] + wheel_rpm[1] -
-                 wheel_rpm[2] - wheel_rpm[3]) * 0.25f;
+                 wheel_rpm[2] - wheel_rpm[3]) * 0.25f * kSqrt2;
   clockwise_turn_rpm = (wheel_rpm[0] + wheel_rpm[1] +
                         wheel_rpm[2] + wheel_rpm[3]) * 0.25f;
 

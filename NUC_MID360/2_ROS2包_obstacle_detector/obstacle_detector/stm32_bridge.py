@@ -77,9 +77,9 @@ from .nav_protocol import (
 from .bridge_safety import (
     GateReleaseLimiter,
     SettledStopDetector,
+    limit_xdrive_command,
     medical_mission_restarted,
     navigation_motion_is_authorized,
-    normalize_omni_command,
 )
 from .field_goals import load_field_goals
 from .nuc_tts import NucTtsPlayer, TtsPlaybackResult
@@ -133,7 +133,11 @@ class Stm32Bridge(Node):
         self.declare_parameter("gate_release_wheel_accel_m_s2", 2.5)
         self.declare_parameter("gate_release_yaw_radius_m", 0.25)
         self.declare_parameter("gate_release_rearm_drop_m_s", 0.25)
+        self.declare_parameter("max_planar_speed_m_s", 2.0)
         self.declare_parameter("max_wheel_speed_m_s", 2.0)
+        self.declare_parameter("heading_correction_max_wz_rad_s", 0.20)
+        self.declare_parameter("active_rotation_max_wz_rad_s", 0.80)
+        self.declare_parameter("active_rotation_linear_threshold_m_s", 0.05)
         self.declare_parameter("nurse_scan_stop_linear_m_s", 0.03)
         self.declare_parameter("nurse_scan_stop_angular_rad_s", 0.05)
         self.declare_parameter("nurse_scan_stop_settle_s", 0.15)
@@ -158,7 +162,7 @@ class Stm32Bridge(Node):
         self.declare_parameter("tts_tail_silence_s", 0.0)
         self.declare_parameter("tts_keepalive_enabled", True)
         self.declare_parameter("tts_timeout_s", 8.0)
-        # A common wheel-space cap is applied before these protocol guards.
+        # Circular body and physical X-drive wheel caps precede these guards.
         self.declare_parameter("max_speed_mm_s", 2000.0)
         self.declare_parameter("max_yaw_cdeg_s", 9000.0)
         # Competition mode also applies when this node is launched directly.
@@ -181,7 +185,19 @@ class Stm32Bridge(Node):
         self.cmd_timeout_s = float(get("cmd_timeout_s"))
         self.max_speed_mm_s = float(get("max_speed_mm_s"))
         self.max_yaw_cdeg_s = float(get("max_yaw_cdeg_s"))
+        self.max_planar_speed_m_s = max(
+            0.0, float(get("max_planar_speed_m_s"))
+        )
         self.max_wheel_speed_m_s = max(0.0, float(get("max_wheel_speed_m_s")))
+        self.heading_correction_max_wz_rad_s = max(
+            0.0, float(get("heading_correction_max_wz_rad_s"))
+        )
+        self.active_rotation_max_wz_rad_s = max(
+            0.0, float(get("active_rotation_max_wz_rad_s"))
+        )
+        self.active_rotation_linear_threshold_m_s = max(
+            0.0, float(get("active_rotation_linear_threshold_m_s"))
+        )
         self.twist_filter_alpha = max(0.0, min(1.0, float(get("twist_filter_alpha"))))
         self.wheel_odom_timeout_s = max(
             0.05, float(get("wheel_odom_timeout_s"))
@@ -264,8 +280,10 @@ class Stm32Bridge(Node):
         self.last_pose_s = 0.0
         self.last_cmd_s = 0.0
         self.last_sent = (0.0, 0.0, 0.0)
+        self.last_planar_normalization_scale = 1.0
         self.last_wheel_normalization_scale = 1.0
         self.last_requested_wheel_peak_m_s = 0.0
+        self.last_yaw_mode = "active_rotation"
         self.last_safe_cmd = (0.0, 0.0, 0.0)
         self.nurse_scan_soft_stop = False
         self.tx_seq = 0
@@ -326,6 +344,11 @@ class Stm32Bridge(Node):
         )
         self.wheel_diagnostics_pub = self.create_publisher(
             String, "/medical_nav/wheel_diagnostics", 10
+        )
+        # High-rate, read-only visibility into the command that actually
+        # leaves the bridge after release limiting and X-drive saturation.
+        self.bridge_cmd_debug_pub = self.create_publisher(
+            String, "/medical_nav/bridge_cmd_debug", 10
         )
         self.status_pub = self.create_publisher(String, "/medical_nav/bridge_status", 10)
         self.goal_pub = self.create_publisher(String, "/medical_nav/goal_request", 10)
@@ -995,7 +1018,6 @@ class Stm32Bridge(Node):
             and self.pose.task_state == TASK_NAV_NURSE
         ):
             self.stopped = False
-            self.gate_release_limiter.reset(now_s)
             self._send_velocity(
                 msg.linear.x,
                 msg.linear.y,
@@ -1009,13 +1031,9 @@ class Stm32Bridge(Node):
             self._send_velocity(0.0, 0.0, 0.0, source="task_gate")
             return
         self.stopped = False
-        if self.enforce_task_gate:
-            vx, vy, wz = self.gate_release_limiter.update(
-                msg.linear.x, msg.linear.y, msg.angular.z, now_s
-            )
-        else:
-            vx, vy, wz = msg.linear.x, msg.linear.y, msg.angular.z
-        self._send_velocity(vx, vy, wz, source="nav2")
+        self._send_velocity(
+            msg.linear.x, msg.linear.y, msg.angular.z, source="nav2"
+        )
 
     def _motion_is_authorized(self) -> bool:
         if not self.enforce_task_gate:
@@ -1040,18 +1058,106 @@ class Stm32Bridge(Node):
             self.navigator_state,
         )
 
+    @staticmethod
+    def _debug_command(vx: float, vy: float, wz: float) -> dict:
+        return {
+            "vx": round(float(vx), 4),
+            "vy": round(float(vy), 4),
+            "wz": round(float(wz), 4),
+            "speed": round(math.hypot(float(vx), float(vy)), 4),
+        }
+
+    def _publish_bridge_cmd_debug(
+        self,
+        source: str,
+        release_limited_cmd,
+        sent_cmd,
+        planar_scale: float,
+        wheel_scale: float,
+        requested_wheel_peak: float,
+        yaw_mode: str,
+        transport_sent: bool,
+    ) -> None:
+        """Publish command-chain diagnostics without participating in control."""
+        try:
+            message = String()
+            message.data = json.dumps(
+                {
+                    "stamp_ns": int(self.get_clock().now().nanoseconds),
+                    "source": str(source),
+                    "task_state": (
+                        int(self.pose.task_state) if self.pose is not None else None
+                    ),
+                    "safe_cmd": self._debug_command(*self.last_safe_cmd),
+                    "release_limited_cmd": self._debug_command(
+                        *release_limited_cmd
+                    ),
+                    "sent_cmd": self._debug_command(*sent_cmd),
+                    "gate_release": {
+                        "mode": "continuous_asymmetric",
+                        "active": bool(self.gate_release_limiter.active),
+                        "limiting": bool(self.gate_release_limiter.limiting),
+                        "wheel_accel_m_s2": round(
+                            float(
+                                self.gate_release_limiter.max_wheel_accel_m_s2
+                            ),
+                            3,
+                        ),
+                        "rearm_drop_m_s": round(
+                            float(self.gate_release_limiter.rearm_drop_m_s), 3
+                        ),
+                    },
+                    "xdrive": {
+                        "planar_scale": round(float(planar_scale), 4),
+                        "wheel_scale": round(float(wheel_scale), 4),
+                        "requested_wheel_peak_m_s": round(
+                            float(requested_wheel_peak), 4
+                        ),
+                        "yaw_mode": str(yaw_mode),
+                    },
+                    "dry_run": bool(self.dry_run),
+                    "transport_sent": bool(transport_sent),
+                },
+                separators=(",", ":"),
+            )
+            self.bridge_cmd_debug_pub.publish(message)
+        except Exception as exc:
+            # Diagnostics must never interrupt the velocity command path.
+            self.get_logger().warning(
+                f"bridge command diagnostic publish failed: {exc}",
+                throttle_duration_sec=2.0,
+            )
+
     def _send_velocity(self, vx: float, vy: float, wz: float, source: str) -> None:
         # Keep ROS body signs on the wire. The STM32 is the only layer that
         # knows motor mounting signs and converts these values to wheel RPM.
-        vx, vy, wz, wheel_scale, requested_wheel_peak = normalize_omni_command(
+        vx, vy, wz = self.gate_release_limiter.update(
+            vx, vy, wz, time.monotonic()
+        )
+        release_limited_cmd = (float(vx), float(vy), float(wz))
+        (
             vx,
             vy,
             wz,
+            planar_scale,
+            wheel_scale,
+            requested_wheel_peak,
+            yaw_mode,
+        ) = limit_xdrive_command(
+            vx,
+            vy,
+            wz,
+            self.max_planar_speed_m_s,
             self.max_wheel_speed_m_s,
             self.gate_release_limiter.yaw_radius_m,
+            self.heading_correction_max_wz_rad_s,
+            self.active_rotation_max_wz_rad_s,
+            self.active_rotation_linear_threshold_m_s,
         )
+        self.last_planar_normalization_scale = planar_scale
         self.last_wheel_normalization_scale = wheel_scale
         self.last_requested_wheel_peak_m_s = requested_wheel_peak
+        self.last_yaw_mode = yaw_mode
         vx_mm = vx * 1000.0
         vy_mm = vy * 1000.0
         wz_cdeg = wz * 18000.0 / math.pi
@@ -1059,20 +1165,36 @@ class Stm32Bridge(Node):
         vy_mm = max(-self.max_speed_mm_s, min(self.max_speed_mm_s, vy_mm))
         wz_cdeg = max(-self.max_yaw_cdeg_s, min(self.max_yaw_cdeg_s, wz_cdeg))
         self.last_sent = (vx_mm, vy_mm, wz_cdeg)
+        sent_cmd = (
+            vx_mm / 1000.0,
+            vy_mm / 1000.0,
+            wz_cdeg * math.pi / 18000.0,
+        )
+        transport_sent = False
 
-        if self.dry_run:
-            return
+        if not self.dry_run:
+            stamp_cs = int((time.monotonic() - self.started_s) * 100.0) & 0xFFFF
+            payload = encode_velocity(*sent_cmd, stamp_cs)
+            frame = encode_frame(MSG_VEL_CMD, self.tx_seq, payload)
+            if self.transport.send(frame):
+                transport_sent = True
+                self.tx_seq = (self.tx_seq + 1) & 0xFF
+                self.cmd_count += 1
+                self.get_logger().debug(
+                    f"{source}: vx={vx_mm:.0f} vy={vy_mm:.0f} "
+                    f"wz={wz_cdeg:.0f} mm/s,cdeg/s"
+                )
 
-        stamp_cs = int((time.monotonic() - self.started_s) * 100.0) & 0xFFFF
-        payload = encode_velocity(vx_mm / 1000.0, vy_mm / 1000.0,
-                                  wz_cdeg * math.pi / 18000.0, stamp_cs)
-        frame = encode_frame(MSG_VEL_CMD, self.tx_seq, payload)
-        if self.transport.send(frame):
-            self.tx_seq = (self.tx_seq + 1) & 0xFF
-            self.cmd_count += 1
-            self.get_logger().debug(
-                f"{source}: vx={vx_mm:.0f} vy={vy_mm:.0f} wz={wz_cdeg:.0f} mm/s,cdeg/s"
-            )
+        self._publish_bridge_cmd_debug(
+            source,
+            release_limited_cmd,
+            sent_cmd,
+            planar_scale,
+            wheel_scale,
+            requested_wheel_peak,
+            yaw_mode,
+            transport_sent,
+        )
 
     def _navigator_status(self, msg: String) -> None:
         try:
@@ -1176,10 +1298,11 @@ class Stm32Bridge(Node):
             "motion_authorized": self._motion_is_authorized(),
             "nurse_scan_soft_stop": self.nurse_scan_soft_stop,
             "gate_release_limiter": {
-                "enabled": self.enforce_task_gate
-                and self.gate_release_limiter.max_wheel_accel_m_s2 > 0.0,
-                "active": self.enforce_task_gate
-                and self.gate_release_limiter.active,
+                "mode": "continuous_asymmetric",
+                "enabled": (
+                    self.gate_release_limiter.max_wheel_accel_m_s2 > 0.0
+                ),
+                "active": self.gate_release_limiter.active,
                 "limiting": self.gate_release_limiter.limiting,
                 "wheel_accel_m_s2": self.gate_release_limiter.max_wheel_accel_m_s2,
                 "yaw_radius_m": self.gate_release_limiter.yaw_radius_m,
@@ -1192,13 +1315,29 @@ class Stm32Bridge(Node):
                     "wz": round(self.gate_release_limiter.output[2], 3),
                 },
             },
-            "wheel_normalization": {
+            "xdrive_limits": {
                 "enabled": self.max_wheel_speed_m_s > 0.0,
+                "max_planar_speed_m_s": self.max_planar_speed_m_s,
                 "max_wheel_speed_m_s": self.max_wheel_speed_m_s,
+                "heading_correction_max_wz_rad_s": (
+                    self.heading_correction_max_wz_rad_s
+                ),
+                "active_rotation_max_wz_rad_s": (
+                    self.active_rotation_max_wz_rad_s
+                ),
+                "active_rotation_linear_threshold_m_s": (
+                    self.active_rotation_linear_threshold_m_s
+                ),
+                "yaw_mode": self.last_yaw_mode,
                 "requested_peak_m_s": round(
                     self.last_requested_wheel_peak_m_s, 3
                 ),
-                "scale": round(self.last_wheel_normalization_scale, 3),
+                "planar_scale": round(
+                    self.last_planar_normalization_scale, 3
+                ),
+                "translation_wheel_scale": round(
+                    self.last_wheel_normalization_scale, 3
+                ),
             },
             "last_safe_cmd": {
                 "vx": round(self.last_safe_cmd[0], 3),

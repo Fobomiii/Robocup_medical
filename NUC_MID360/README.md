@@ -11,7 +11,8 @@ OPS9 XY + HWT101CT yaw
 stm32_bridge
         ├─ /odom
         ├─ map -> odom -> base_link TF
-        └─ /cmd_vel_safe -> STM32 wheel velocity loop
+        ├─ /cmd_vel_safe -> STM32 wheel velocity loop
+        └─ /medical_nav/bridge_cmd_debug (event-driven diagnostic only)
 
 Mid360 /livox/lidar (livox_frame, raw diagnostics)
         -> robot_state_publisher TF + lidar_self_filter

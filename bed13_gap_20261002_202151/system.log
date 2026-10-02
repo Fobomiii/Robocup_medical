@@ -1,0 +1,300 @@
+========== 2026-10-02T20:22:23,382438543+08:00 ==========
+LOAD: 1.70 2.06 1.23 7/1089 8054
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2199       27874          35        1667       29100
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Rl   15.8  0.2     576 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     572 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     576 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     576 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     572 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2273    2237 Sl    7.2  0.2     576 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2275    2237 Sl    7.2  0.1     576 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2469    2237 Sl    7.2  0.1     572 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     572 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     572 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8057    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:24,400158493+08:00 ==========
+LOAD: 1.70 2.06 1.23 2/1100 8078
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2252       27820          35        1667       29047
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     577 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     573 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     577 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     577 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     573 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2273    2237 Sl    7.2  0.2     577 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2275    2237 Sl    7.2  0.1     577 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2469    2237 Sl    7.2  0.1     573 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     573 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     573 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8081    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:25,416635518+08:00 ==========
+LOAD: 1.70 2.06 1.23 7/1098 8091
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2247       27825          35        1667       29052
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Rl   15.8  0.2     578 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     574 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Rl    9.6  0.2     578 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Rl    8.2  0.2     578 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     574 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2273    2237 Rl    7.2  0.2     578 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2275    2237 Sl    7.2  0.1     578 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2469    2237 Sl    7.2  0.1     574 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     574 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     574 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8094    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:26,441942861+08:00 ==========
+LOAD: 1.70 2.06 1.23 3/1098 8103
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2252       27821          34        1666       29047
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     579 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     575 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     579 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     579 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     575 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2273    2237 Sl    7.2  0.2     579 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2275    2237 Sl    7.2  0.1     579 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2469    2237 Sl    7.2  0.1     575 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     575 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     575 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8106    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:27,474791282+08:00 ==========
+LOAD: 1.70 2.06 1.23 3/1099 8116
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2255       27818          34        1666       29045
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Rl   15.8  0.2     580 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     576 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     580 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     580 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     576 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2273    2237 Sl    7.2  0.2     580 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2275    2237 Sl    7.2  0.1     580 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2469    2237 Rl    7.2  0.1     576 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     576 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     576 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8119    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:28,505150993+08:00 ==========
+LOAD: 1.56 2.02 1.22 13/1100 8153
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2242       27832          34        1666       29058
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     581 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     577 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     581 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     581 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     577 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2273    2237 Sl    7.2  0.2     581 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2275    2237 Sl    7.2  0.1     581 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2469    2237 Sl    7.2  0.1     577 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     577 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     577 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8156    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:29,532228714+08:00 ==========
+LOAD: 1.56 2.02 1.22 3/1100 8168
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2234       27839          34        1666       29066
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     582 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     578 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     582 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     582 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     578 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2273    2237 Sl    7.2  0.2     582 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2275    2237 Sl    7.2  0.1     582 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2469    2237 Sl    7.2  0.1     578 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     578 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     578 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8171    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:30,557151302+08:00 ==========
+LOAD: 1.56 2.02 1.22 6/1100 8181
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2227       27846          34        1666       29073
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     583 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     579 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     583 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     583 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     579 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2273    2237 Sl    7.2  0.2     583 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2275    2237 Sl    7.2  0.1     583 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2469    2237 Sl    7.2  0.1     579 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     579 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     579 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8184    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:31,580686798+08:00 ==========
+LOAD: 1.56 2.02 1.22 3/1100 8194
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2225       27849          34        1666       29076
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     584 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     580 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     584 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     584 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     580 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2273    2237 Sl    7.2  0.2     584 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2275    2237 Sl    7.2  0.1     584 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2469    2237 Rl    7.2  0.1     580 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Rl    4.6  0.1     580 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Rl    3.5  0.1     580 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8197    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:32,608016248+08:00 ==========
+LOAD: 1.56 2.02 1.22 2/1100 8207
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2221       27852          34        1666       29079
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     585 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     581 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     585 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Rl    8.2  0.2     585 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     581 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2273    2237 Sl    7.2  0.2     585 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2275    2237 Rl    7.2  0.1     585 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2469    2237 Sl    7.2  0.1     581 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     581 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     581 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8210    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:33,634822102+08:00 ==========
+LOAD: 1.44 1.99 1.22 14/1100 8220
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2217       27857          34        1666       29084
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     586 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     582 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     586 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     586 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     582 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2275    2237 Sl    7.3  0.1     586 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2273    2237 Sl    7.2  0.2     586 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2469    2237 Sl    7.2  0.1     582 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     582 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     582 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8223    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:34,652084317+08:00 ==========
+LOAD: 1.44 1.99 1.22 2/1100 8233
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2209       27864          34        1666       29091
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     587 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     583 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.7  0.2     587 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     587 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     583 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2275    2237 Sl    7.3  0.1     587 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2273    2237 Sl    7.2  0.2     587 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2469    2237 Sl    7.2  0.1     583 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     583 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     583 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8236    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:35,675976161+08:00 ==========
+LOAD: 1.44 1.99 1.22 9/1100 8246
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2210       27863          34        1666       29090
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     588 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     584 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.7  0.2     588 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     588 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     584 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2275    2237 Sl    7.3  0.1     588 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2273    2237 Sl    7.2  0.2     588 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2469    2237 Sl    7.2  0.1     584 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     584 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     584 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8249    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:36,704850199+08:00 ==========
+LOAD: 1.44 1.99 1.22 2/1098 8258
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2209       27864          34        1666       29091
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Sl   15.8  0.2     590 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     586 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     590 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     590 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     586 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2275    2237 Sl    7.3  0.1     590 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2273    2237 Sl    7.2  0.2     590 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2469    2237 Sl    7.2  0.1     586 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     586 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     586 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8261    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+
+========== 2026-10-02T20:22:36,850016547+08:00 ==========
+LOAD: 1.44 1.99 1.22 5/1098 8264
+MEMORY:
+               total        used        free      shared  buff/cache   available
+内存：      31740        2208       27865          34        1666       29093
+交换：       2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM ELAPSED COMMAND         COMMAND
+   2259    2237 Rl   15.8  0.2     590 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_gyayrnyc
+   2461    2237 Sl   13.0  0.1     586 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+   2279    2237 Sl    9.6  0.2     590 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_3q2rpmnn
+   2271    2237 Sl    8.2  0.2     590 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_3znaxpey
+   2465    2237 Sl    7.9  0.1     586 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2275    2237 Sl    7.3  0.1     590 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+   2273    2237 Sl    7.2  0.2     590 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_p0ekdptm
+   2469    2237 Sl    7.2  0.1     586 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2467    2237 Sl    4.6  0.1     586 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static
+   2473    2237 Sl    3.5  0.1     586 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_w3_fbm48 -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+   8267    8051 S+    0.0  0.0       0 awk             awk                  NR == 1 ||                 /controller_server/ ||                 /planner_server/ ||                 /behavior_server/ ||                 /bt_navigator/ ||                 /velocity_smoother/ ||                 /collision_monitor/ ||                 /medical_navigator/ ||                 /stm32_bridge/ ||                 /home_approach_limiter/ ||                 /corner_speed_limiter/ ||                 /lidar_transform/             
+

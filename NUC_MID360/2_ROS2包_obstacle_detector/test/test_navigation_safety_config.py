@@ -31,12 +31,12 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         )
         self.assertEqual(follow_path["batch_size"], 1200)
         self.assertEqual(follow_path["vx_std"], 0.30)
-        self.assertEqual(follow_path["vy_std"], 0.18)
+        self.assertEqual(follow_path["vy_std"], 0.28)
         self.assertEqual(follow_path["wz_std"], 0.15)
-        self.assertEqual(follow_path["ax_max"], 1.30)
-        self.assertEqual(follow_path["ax_min"], -1.30)
-        self.assertEqual(follow_path["ay_max"], 1.30)
-        self.assertEqual(follow_path["az_max"], 1.80)
+        # The Humble MPPI plugin does not declare acceleration parameters;
+        # acceleration and braking are enforced by velocity_smoother.
+        for unsupported in ("ax_max", "ax_min", "ay_max", "az_max"):
+            self.assertNotIn(unsupported, follow_path)
         self.assertEqual(follow_path["prune_distance"], 3.0)
         self.assertEqual(follow_path["temperature"], 0.25)
         self.assertEqual(
@@ -45,13 +45,17 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertEqual(follow_path["PathAlignCritic"]["cost_weight"], 10.0)
         self.assertEqual(follow_path["PathAngleCritic"]["cost_weight"], 1.5)
         self.assertFalse(follow_path["CostCritic"]["consider_footprint"])
-        self.assertFalse(follow_path["visualize"])
+        self.assertTrue(follow_path["visualize"])
+        self.assertEqual(
+            follow_path["TrajectoryVisualizer"]["trajectory_step"], 5
+        )
+        self.assertEqual(follow_path["TrajectoryVisualizer"]["time_step"], 3)
 
     def test_omni_controller_holds_task_yaw_during_translation(self):
         follow_path = self.config["controller_server"]["ros__parameters"]["FollowPath"]
         self.assertEqual(follow_path["motion_model"], "Omni")
         self.assertEqual(follow_path["vx_min"], -2.00)
-        self.assertEqual(follow_path["vy_max"], 1.5)
+        self.assertEqual(follow_path["vy_max"], 2.0)
         self.assertFalse(follow_path["PathAngleCritic"]["enabled"])
         self.assertEqual(follow_path["PathAngleCritic"]["mode"], 1)
         self.assertTrue(follow_path["GoalAngleCritic"]["enabled"])
@@ -70,7 +74,7 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         monitor = self.config["collision_monitor"]["ros__parameters"]
 
         # Ordinary motion is ramp-limited before entering the safety chain.
-        self.assertEqual(normal_smoother["max_accel"], [1.5, 1.5, 1.8])
+        self.assertEqual(normal_smoother["max_accel"], [1.7, 1.7, 1.8])
         self.assertEqual(normal_smoother["max_decel"], [-1.3, -1.3, -2.0])
         self.assertNotIn("collision_monitor_predictive", self.config)
         self.assertEqual(monitor["polygons"], ["ApproachPolygon", "StopPolygon"])
@@ -101,11 +105,17 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('name="home_approach_limiter"', launch_source)
         self.assertIn('executable="corner_speed_limiter"', launch_source)
         self.assertIn('name="corner_speed_limiter"', launch_source)
+        self.assertIn('"raw_path_topic": "/plan"', launch_source)
+        self.assertIn(
+            '"smoothed_path_topic": "/transformed_global_plan"',
+            launch_source,
+        )
         self.assertIn('"output_topic": "/speed_limit"', launch_source)
         self.assertIn('"lookahead_distance_m": 1.50', launch_source)
         self.assertIn('"braking_decel_m_s2": 1.30', launch_source)
         self.assertIn('"min_corner_speed_m_s": 1.0', launch_source)
-        self.assertIn('"min_turn_angle_deg": 25.0', launch_source)
+        self.assertIn('"tangent_span_m": 0.50', launch_source)
+        self.assertIn('"min_turn_angle_deg": 30.0', launch_source)
         self.assertIn('"input_topic": "/cmd_vel"', launch_source)
         self.assertIn('"output_topic": "/cmd_vel_home_limited"', launch_source)
         self.assertIn('"home_task_state": 9', launch_source)
@@ -116,19 +126,37 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"terminal_speed_m_s": 0.10', launch_source)
         self.assertIn('"terminal_distance_m": 0.10', launch_source)
         self.assertIn('"bed_max_speed_m_s": 2.0', launch_source)
-        self.assertIn('"bed_soft_decel_m_s2": 1.0', launch_source)
+        self.assertIn('"bed_soft_decel_m_s2": 1.2', launch_source)
         self.assertIn('"bed_terminal_speed_m_s": 0.15', launch_source)
         self.assertIn('"bed_terminal_distance_m": 0.20', launch_source)
         self.assertIn('"pose_timeout_s": 0.5', launch_source)
         self.assertIn('"gate_release_wheel_accel_m_s2": 2.5', launch_source)
         self.assertIn('"gate_release_yaw_radius_m": 0.25', launch_source)
+        self.assertIn('"max_planar_speed_m_s": 2.0', launch_source)
         self.assertIn('"max_wheel_speed_m_s": 2.0', launch_source)
+        self.assertIn(
+            '"heading_correction_max_wz_rad_s": 0.20', launch_source
+        )
+        self.assertIn(
+            '"active_rotation_max_wz_rad_s": 0.80', launch_source
+        )
+        self.assertIn(
+            '"active_rotation_linear_threshold_m_s": 0.05', launch_source
+        )
         self.assertIn(
             '"gate_release_rearm_drop_m_s": 0.25', launch_source
         )
         self.assertNotIn('"collision_monitor_predictive",', launch_source)
 
         setup_source = (PACKAGE / "setup.py").read_text(encoding="utf-8")
+        approach_source = (
+            PACKAGE / "obstacle_detector" / "home_approach_limiter.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("scale_planar_velocity", approach_source)
+        self.assertIn(
+            "message.linear.x, message.linear.y, self.max_speed_m_s",
+            approach_source,
+        )
         self.assertIn(
             "home_approach_limiter = obstacle_detector.home_approach_limiter:main",
             setup_source,
@@ -320,6 +348,24 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"navigator_status_timeout_s": 1.2', launch_source)
         self.assertIn('"goal_handoff_timeout_s": 1.0', launch_source)
 
+    def test_bridge_publishes_post_limiter_command_diagnostics(self):
+        bridge = (
+            PACKAGE / "obstacle_detector" / "stm32_bridge.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('"/medical_nav/bridge_cmd_debug"', bridge)
+        self.assertIn("def _publish_bridge_cmd_debug(", bridge)
+        self.assertIn('"safe_cmd"', bridge)
+        self.assertIn('"release_limited_cmd"', bridge)
+        self.assertIn('"sent_cmd"', bridge)
+        self.assertIn('"gate_release"', bridge)
+        self.assertIn('"mode": "continuous_asymmetric"', bridge)
+        self.assertIn('"transport_sent"', bridge)
+        self.assertIn(
+            "# Diagnostics must never interrupt the velocity command path.",
+            bridge,
+        )
+
     def test_start_gate_and_dashboard_status_states(self):
         root = PACKAGE.parents[1]
         medical_task = (root / "Program" / "Core" / "Src" / "MedicalTask.c").read_text(
@@ -476,6 +522,27 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             r"NUC_Nav_RequestGoal\(NUC_NAV_GOAL_HOME\);",
         )
         self.assertIn("pos_default.max_out = 6000.f;", motor_control)
+
+    def test_stm32_uses_normalized_xdrive_and_matching_odometry(self):
+        root = PACKAGE.parents[1]
+        motor_control = (
+            root / "Program" / "Core" / "Src" / "DJIMotorCtrlSTM32.cpp"
+        ).read_text(encoding="utf-8")
+        nav_transport = (
+            root / "Program" / "Core" / "Src" / "NUC_Obstacle.c"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("kInvSqrt2 = 0.70710678118654752440f", motor_control)
+        self.assertIn("kSqrt2 = 1.41421356237309504880f", motor_control)
+        self.assertIn("(Vx+Vy) * kInvSqrt2 + W", motor_control)
+        self.assertIn("0.25f * kSqrt2", motor_control)
+        self.assertIn("kMaxPlanarSpeedMmS = 2000.0f", motor_control)
+        self.assertIn("kMaxWheelSurfaceSpeedMmS = 2000.0f", motor_control)
+        self.assertIn("speed_default.kp = 6.f;", motor_control)
+        self.assertIn("speed_default.ki = 1.f;", motor_control)
+        self.assertIn("speed_default.kd = 0.01f;", motor_control)
+        self.assertIn("speed_default.max_out = 10000.f;", motor_control)
+        self.assertIn("#define NAV_STM32_MAX_LINEAR_MM_S 2000", nav_transport)
 
     def test_bed_workflow_uses_bounded_fast_docking(self):
         root = PACKAGE.parents[1]

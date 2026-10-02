@@ -27,8 +27,9 @@ public:
     double tolerance{0.10};
     double max_planning_time{1.5};
     double forward_speed{2.00};
-    double reverse_speed{1.20};
-    double lateral_speed{1.50};
+    double reverse_speed{2.00};
+    double lateral_speed{2.00};
+    double max_planar_speed{2.00};
     double max_wheel_speed{2.00};
     double max_time_ratio{1.10};
     double min_time_slack{0.50};

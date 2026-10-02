@@ -307,10 +307,14 @@ double moveTime(
   const double x_speed = body_x >= 0.0 ? params.forward_speed : params.reverse_speed;
   const double x_time = std::abs(body_x) / std::max(0.01, x_speed);
   const double y_time = std::abs(body_y) / std::max(0.01, params.lateral_speed);
+  const double planar_time =
+    std::hypot(body_x, body_y) / std::max(0.01, params.max_planar_speed);
+  // Physical wheel travel for four ordinary omni wheels mounted as a
+  // 45-degree X-drive.  Translation projects onto a wheel with 1/sqrt(2).
   const double wheel_time =
-    (std::abs(body_x) + std::abs(body_y)) /
+    ((std::abs(body_x) + std::abs(body_y)) / kSqrtTwo) /
     std::max(0.01, params.max_wheel_speed);
-  return std::max({x_time, y_time, wheel_time});
+  return std::max({x_time, y_time, planar_time, wheel_time});
 }
 
 double poseYaw(const geometry_msgs::msg::Quaternion & orientation)
@@ -793,8 +797,9 @@ void ClearancePlanner::configure(
   declare("tolerance", 0.10);
   declare("max_planning_time", 1.5);
   declare("forward_speed", 2.00);
-  declare("reverse_speed", 1.20);
-  declare("lateral_speed", 1.50);
+  declare("reverse_speed", 2.00);
+  declare("lateral_speed", 2.00);
+  declare("max_planar_speed", 2.00);
   declare("max_wheel_speed", 2.00);
   declare("max_time_ratio", 1.10);
   declare("min_time_slack", 0.50);
@@ -856,6 +861,7 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   read("forward_speed", params.forward_speed);
   read("reverse_speed", params.reverse_speed);
   read("lateral_speed", params.lateral_speed);
+  read("max_planar_speed", params.max_planar_speed);
   read("max_wheel_speed", params.max_wheel_speed);
   read("max_time_ratio", params.max_time_ratio);
   read("min_time_slack", params.min_time_slack);
@@ -879,6 +885,7 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   params.forward_speed = std::max(0.05, params.forward_speed);
   params.reverse_speed = std::max(0.05, params.reverse_speed);
   params.lateral_speed = std::max(0.05, params.lateral_speed);
+  params.max_planar_speed = std::max(0.05, params.max_planar_speed);
   params.max_wheel_speed = std::max(0.05, params.max_wheel_speed);
   params.max_time_ratio = std::max(1.0, params.max_time_ratio);
   params.min_time_slack = std::max(0.0, params.min_time_slack);

@@ -217,14 +217,24 @@ def generate_launch_description():
                         "goal_handoff_hold_s": 0.5,
                         "navigator_following_hold_s": 0.3,
                         "navigator_status_timeout_s": 1.2,
-                        # Limit task-gate release and re-acceleration after a
-                        # collision slowdown. Braking still passes immediately.
+                        # Continuously limit post-safety wheel acceleration.
+                        # Stops and reductions still pass immediately.
                         "gate_release_wheel_accel_m_s2": 2.5,
                         "gate_release_yaw_radius_m": 0.25,
+                        # Retained for deployed-parameter compatibility; the
+                        # continuous limiter no longer needs re-arming.
                         "gate_release_rearm_drop_m_s": 0.25,
-                        # Preserve Vx/Vy/W direction while keeping every
-                        # 45-degree omni wheel inside the proven 2.0 m/s cap.
+                        # Standard X-drive: body translation is capped on a
+                        # 2.0 m/s circle and projected onto the 45-degree
+                        # wheel axes with the physical 1/sqrt(2) factor.
+                        "max_planar_speed_m_s": 2.0,
                         "max_wheel_speed_m_s": 2.0,
+                        # MPPI supplies both commands.  Translating wz is a
+                        # small heading-hold correction; near-stationary wz is
+                        # an intentional active rotation with a separate cap.
+                        "heading_correction_max_wz_rad_s": 0.20,
+                        "active_rotation_max_wz_rad_s": 0.80,
+                        "active_rotation_linear_threshold_m_s": 0.05,
                         "nurse_scan_stop_linear_m_s": 0.03,
                         "nurse_scan_stop_angular_rad_s": 0.05,
                         "nurse_scan_stop_settle_s": 0.15,
@@ -249,8 +259,9 @@ def generate_launch_description():
                         "tts_lead_silence_s": 0.0,
                         "tts_tail_silence_s": 0.0,
                         "tts_timeout_s": 8.0,
-                        # Per-axis protocol guard after common wheel-space
-                        # normalization. STM32 keeps a separate hard cap.
+                        # Per-axis protocol guard after circular body-speed and
+                        # physical X-drive wheel projection. STM32 repeats the
+                        # same hard safety caps.
                         "max_speed_mm_s": 2000.0,
                         "dry_run": ParameterValue(dry_run, value_type=bool),
                         "enforce_task_gate": ParameterValue(
@@ -363,8 +374,11 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     {
+                        # Prefer the smoothed, pruned path that MPPI actually
+                        # follows. Keep the planner's raw path as a fallback
+                        # during controller startup, recovery or goal handoff.
                         "raw_path_topic": "/plan",
-                        "smoothed_path_topic": "/plan_smoothed",
+                        "smoothed_path_topic": "/transformed_global_plan",
                         "pose_topic": "/medical_nav/robot_pose",
                         "output_topic": "/speed_limit",
                         "status_topic": "/medical_nav/corner_speed_status",
@@ -373,9 +387,13 @@ def generate_launch_description():
                         "lateral_accel_m_s2": 1.40,
                         "braking_decel_m_s2": 1.30,
                         "lookahead_distance_m": 1.50,
-                        "tangent_span_m": 0.35,
+                        # Average path tangents over a wider span so MPPI's
+                        # short local-plan kinks do not create false corners.
+                        "tangent_span_m": 0.50,
                         "sample_step_m": 0.10,
-                        "min_turn_angle_deg": 25.0,
+                        # Keep genuine Bed 1-3 bends while ignoring minor
+                        # direction changes and near-field sampling noise.
+                        "min_turn_angle_deg": 30.0,
                         "braking_margin_m": 0.05,
                         "path_timeout_s": 1.50,
                         "pose_timeout_s": 0.50,
@@ -411,7 +429,7 @@ def generate_launch_description():
                         # cap planar vx/vy together before Nav2 hands control
                         # to the STM32 laser docking correction.
                         "bed_max_speed_m_s": 2.0,
-                        "bed_soft_decel_m_s2": 1.0,
+                        "bed_soft_decel_m_s2": 1.2,
                         "bed_terminal_speed_m_s": 0.15,
                         "bed_terminal_distance_m": 0.20,
                         "pose_timeout_s": 0.5,

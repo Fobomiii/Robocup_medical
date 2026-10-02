@@ -3,6 +3,9 @@ import unittest
 from obstacle_detector.bridge_safety import (
     GateReleaseLimiter,
     SettledStopDetector,
+    limit_planar_velocity,
+    limit_xdrive_command,
+    limit_yaw_rate_by_motion,
     medical_mission_restarted,
     navigation_motion_is_authorized,
     normalize_omni_command,
@@ -19,24 +22,90 @@ from obstacle_detector.nav_protocol import (
 
 
 class BridgeSafetyTest(unittest.TestCase):
+    def test_xdrive_uses_physical_45_degree_wheel_projection(self):
+        axial = omni_wheel_speeds(2.0, 0.0, 0.0, 0.25)
+        diagonal = omni_wheel_speeds(2.0 ** 0.5, 2.0 ** 0.5, 0.0, 0.25)
+
+        self.assertAlmostEqual(max(abs(value) for value in axial), 2.0 ** 0.5)
+        self.assertAlmostEqual(max(abs(value) for value in diagonal), 2.0)
+
     def test_wheel_normalization_leaves_single_axis_motion_unchanged(self):
         output = normalize_omni_command(2.0, 0.0, 0.0, 2.0, 0.25)
         self.assertEqual(output[:4], (2.0, 0.0, 0.0, 1.0))
-        self.assertEqual(
+        self.assertAlmostEqual(
             max(
                 abs(value)
                 for value in omni_wheel_speeds(*output[:3], 0.25)
             ),
-            2.0,
+            2.0 ** 0.5,
         )
 
     def test_wheel_normalization_scales_diagonal_motion_together(self):
         vx, vy, wz, scale, requested_peak = normalize_omni_command(
             2.0, 1.5, 0.0, 2.0, 0.25
         )
-        self.assertAlmostEqual(requested_peak, 3.5)
-        self.assertAlmostEqual(scale, 2.0 / 3.5)
+        expected_peak = 3.5 / (2.0 ** 0.5)
+        self.assertAlmostEqual(requested_peak, expected_peak)
+        self.assertAlmostEqual(scale, 2.0 / expected_peak)
         self.assertAlmostEqual(vx / vy, 2.0 / 1.5)
+        self.assertAlmostEqual(
+            max(abs(value) for value in omni_wheel_speeds(vx, vy, wz, 0.25)),
+            2.0,
+        )
+
+    def test_planar_limit_projects_square_command_to_two_m_per_s_circle(self):
+        vx, vy, scale = limit_planar_velocity(2.0, 2.0, 2.0)
+
+        self.assertAlmostEqual(vx, 2.0 ** 0.5)
+        self.assertAlmostEqual(vy, 2.0 ** 0.5)
+        self.assertAlmostEqual(scale, 1.0 / (2.0 ** 0.5))
+        self.assertAlmostEqual((vx * vx + vy * vy) ** 0.5, 2.0)
+
+    def test_yaw_limits_separate_heading_hold_from_active_rotation(self):
+        heading_wz, heading_mode = limit_yaw_rate_by_motion(
+            0.0, 1.0, 0.8, 0.2, 0.8, 0.05
+        )
+        rotation_wz, rotation_mode = limit_yaw_rate_by_motion(
+            0.0, 0.0, 0.8, 0.2, 0.8, 0.05
+        )
+
+        self.assertEqual(heading_mode, "heading_correction")
+        self.assertAlmostEqual(heading_wz, 0.2)
+        self.assertEqual(rotation_mode, "active_rotation")
+        self.assertAlmostEqual(rotation_wz, 0.8)
+
+    def test_xdrive_command_reaches_two_m_per_s_in_diagonal_direction(self):
+        output = limit_xdrive_command(
+            2.0, 2.0, 0.0, 2.0, 2.0, 0.25, 0.2, 0.8, 0.05
+        )
+        vx, vy, wz, planar_scale, wheel_scale, requested_peak, yaw_mode = output
+
+        self.assertAlmostEqual(vx, 2.0 ** 0.5)
+        self.assertAlmostEqual(vy, 2.0 ** 0.5)
+        self.assertEqual(wz, 0.0)
+        self.assertAlmostEqual(planar_scale, 1.0 / (2.0 ** 0.5))
+        self.assertEqual(wheel_scale, 1.0)
+        self.assertAlmostEqual(requested_peak, 2.0)
+        self.assertEqual(yaw_mode, "heading_correction")
+
+    def test_heading_correction_keeps_yaw_and_reduces_translation_for_headroom(self):
+        output = limit_xdrive_command(
+            2.0 ** 0.5,
+            2.0 ** 0.5,
+            0.2,
+            2.0,
+            2.0,
+            0.25,
+            0.2,
+            0.8,
+            0.05,
+        )
+        vx, vy, wz, _, wheel_scale, _, yaw_mode = output
+
+        self.assertAlmostEqual(wz, 0.2)
+        self.assertAlmostEqual(wheel_scale, 0.975)
+        self.assertAlmostEqual((vx * vx + vy * vy) ** 0.5, 1.95)
+        self.assertEqual(yaw_mode, "heading_correction")
         self.assertAlmostEqual(
             max(abs(value) for value in omni_wheel_speeds(vx, vy, wz, 0.25)),
             2.0,
@@ -44,7 +113,7 @@ class BridgeSafetyTest(unittest.TestCase):
 
     def test_wheel_normalization_includes_yaw_load(self):
         vx, vy, wz, scale, _ = normalize_omni_command(
-            1.5, 0.5, 2.0, 2.0, 0.25
+            1.5, 0.5, 3.0, 2.0, 0.25
         )
         self.assertLess(scale, 1.0)
         self.assertAlmostEqual(
@@ -58,19 +127,24 @@ class BridgeSafetyTest(unittest.TestCase):
 
         output = limiter.update(1.0, 0.5, 0.4, 1.1)
 
-        self.assertAlmostEqual(output[0], 0.125)
-        self.assertAlmostEqual(output[1], 0.0625)
-        self.assertAlmostEqual(output[2], 0.05)
+        self.assertAlmostEqual(output[0] / output[1], 2.0)
+        self.assertAlmostEqual(output[0] / output[2], 2.5)
+        self.assertAlmostEqual(
+            max(abs(value) for value in limiter._wheel_speeds(output)), 0.2
+        )
         self.assertTrue(limiter.active)
         self.assertTrue(limiter.limiting)
 
-    def test_gate_release_limiter_becomes_transparent_after_catchup(self):
+    def test_gate_release_limiter_stays_armed_after_catchup(self):
         limiter = GateReleaseLimiter(2.0, 0.25)
         limiter.reset(1.0)
 
         self.assertEqual(limiter.update(1.0, 0.0, 0.0, 1.5), (1.0, 0.0, 0.0))
-        self.assertFalse(limiter.active)
-        self.assertEqual(limiter.update(2.0, 0.0, 0.0, 1.51), (2.0, 0.0, 0.0))
+        self.assertTrue(limiter.active)
+        output = limiter.update(2.0, 0.0, 0.0, 1.51)
+        self.assertGreater(output[0], 1.0)
+        self.assertLess(output[0], 2.0)
+        self.assertTrue(limiter.limiting)
 
     def test_gate_release_limiter_never_delays_stop_or_reduction(self):
         limiter = GateReleaseLimiter(2.0, 0.25, 0.25)
@@ -82,32 +156,47 @@ class BridgeSafetyTest(unittest.TestCase):
         self.assertEqual(limiter.update(0.0, 0.0, 0.0, 1.12), (0.0, 0.0, 0.0))
 
     def test_gate_release_limiter_ramps_after_safety_slowdown(self):
-        limiter = GateReleaseLimiter(2.5, 0.25, 0.25)
+        limiter = GateReleaseLimiter(2.0, 0.25, 0.25)
         limiter.reset(1.0)
         output = limiter.update(1.0, 0.0, 0.0, 1.5)
         self.assertAlmostEqual(output[0], 1.0)
         self.assertEqual(output[1:], (0.0, 0.0))
-        self.assertFalse(limiter.active)
+        self.assertTrue(limiter.active)
 
         self.assertEqual(limiter.update(0.4, 0.0, 0.0, 1.6), (0.4, 0.0, 0.0))
         self.assertTrue(limiter.active)
         output = limiter.update(1.0, 0.0, 0.0, 1.8)
-        self.assertAlmostEqual(output[0], 0.9)
+        self.assertGreater(output[0], 0.4)
+        self.assertLess(output[0], 1.0)
         self.assertEqual(output[1:], (0.0, 0.0))
         self.assertTrue(limiter.limiting)
 
-    def test_gate_release_limiter_ignores_gradual_bed_slowdown(self):
+    def test_gate_release_limiter_catches_recovery_after_gradual_slowdown(self):
         limiter = GateReleaseLimiter(2.5, 0.25, 0.25)
         limiter.reset(1.0)
         self.assertEqual(limiter.update(1.0, 0.0, 0.0, 1.5), (1.0, 0.0, 0.0))
-        self.assertFalse(limiter.active)
+        self.assertTrue(limiter.active)
 
         self.assertEqual(limiter.update(0.85, 0.0, 0.0, 1.6), (0.85, 0.0, 0.0))
         self.assertEqual(limiter.update(0.70, 0.0, 0.0, 1.7), (0.70, 0.0, 0.0))
-        self.assertFalse(limiter.active)
-        self.assertEqual(limiter.update(1.0, 0.0, 0.0, 1.71), (1.0, 0.0, 0.0))
+        self.assertTrue(limiter.active)
+        output = limiter.update(1.0, 0.0, 0.0, 1.71)
+        self.assertGreater(output[0], 0.70)
+        self.assertLess(output[0], 1.0)
+        self.assertTrue(limiter.limiting)
 
-    def test_gate_release_limiter_rearms_after_authorization_is_revoked(self):
+    def test_gate_release_limiter_can_be_disabled_transparently(self):
+        limiter = GateReleaseLimiter(0.0, 0.25)
+        limiter.reset(1.0)
+
+        self.assertEqual(
+            limiter.update(1.5, -0.4, 0.3, 1.001),
+            (1.5, -0.4, 0.3),
+        )
+        self.assertFalse(limiter.active)
+        self.assertFalse(limiter.limiting)
+
+    def test_gate_release_limiter_restarts_after_authorization_is_revoked(self):
         limiter = GateReleaseLimiter(2.0, 0.25)
         limiter.reset(1.0)
         limiter.update(1.0, 0.0, 0.0, 1.5)
@@ -116,7 +205,9 @@ class BridgeSafetyTest(unittest.TestCase):
         limiter.reset(2.0)
 
         output = limiter.update(1.0, 0.0, 0.0, 2.1)
-        self.assertAlmostEqual(output[0], 0.2)
+        self.assertAlmostEqual(
+            max(abs(value) for value in limiter._wheel_speeds(output)), 0.2
+        )
         self.assertEqual(output[1:], (0.0, 0.0))
         self.assertTrue(limiter.limiting)
 

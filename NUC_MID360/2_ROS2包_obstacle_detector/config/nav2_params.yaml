@@ -149,30 +149,23 @@ controller_server:
       # Explore enough of the 2.0 m/s command range. The previous narrow
       # distribution converged around 0.2-0.3 m/s even on an open path.
       vx_std: 0.30
-      # Keep holonomic correction available, but sample lateral motion more
-      # conservatively so the raised chassis follows the safe global path
-      # instead of cutting across it with a large diagonal command.
-      vy_std: 0.18
+      # The X-drive has the same 2.0 m/s body-speed capability in every
+      # direction.  Sample lateral motion strongly enough to build a Bed 1-3
+      # transfer without waiting for many low-speed MPPI iterations.
+      vy_std: 0.28
       # Sample angular motion conservatively. The chassis should translate
       # holonomically instead of rotating to exploit its faster body X axis.
       wz_std: 0.15
 
       vx_max: 2.00
       vx_min: -2.0
-      # Cap lateral motion below forward speed to reduce side-slip overshoot.
-      # Keep vy_std conservative so corrections remain progressive.
-      vy_max: 1.50
+      vy_max: 2.00
+      # This remains the active-rotation ceiling.  stm32_bridge separately
+      # caps wz to 0.20 rad/s while translating for heading hold.
       wz_max: 0.80
-      # Match MPPI's rollout dynamics to the real command chain. Without
-      # these limits MPPI assumes the diagonal velocity component can change
-      # much faster than the 1.3 m/s^2 velocity smoother, so it reaches a
-      # sharp path corner before beginning to remove motion toward an
-      # obstacle. These values retain the same top speed while making MPPI
-      # start the direction change early enough for the raised chassis.
-      ax_max: 1.30
-      ax_min: -1.30
-      ay_max: 1.30
-      az_max: 1.80
+      # Humble MPPI does not expose acceleration-limit parameters. The
+      # velocity_smoother below enforces the chassis acceleration and braking
+      # envelope on MPPI's output before it reaches the safety chain.
 
       iteration_count: 1
       # Keep three metres of the global path available to the 2.0 s rollout.
@@ -188,9 +181,11 @@ controller_server:
       # requested final heading, while the bounded vy range permits sideways
       # correction during transit.
       motion_model: "Omni"
-      # Trajectory markers are diagnostic-only and add avoidable CPU/network
-      # load even when RViz is not open.
-      visualize: false
+      # Publish MPPI's sampled/optimal trajectories and the transformed global
+      # plan so the Bed 1-3 turn geometry can be compared with the raw plan.
+      # The i9-13900HX has sufficient headroom for this diagnostic profile;
+      # controller-loop timing remains the field acceptance criterion.
+      visualize: true
       regenerate_noises: false
       TrajectoryVisualizer:
         trajectory_step: 5
@@ -298,12 +293,13 @@ planner_server:
       allow_unknown: false
       max_planning_time: 1.5
 
-      # Model the real 45-degree four-wheel feasible set. Diagonal travel is
-      # allowed whenever it is genuinely faster, but |Vx|+|Vy| may not exceed
-      # the same 2.0 m/s wheel-space limit enforced by stm32_bridge.
+      # Model the physical 45-degree X-drive feasible set.  Body translation
+      # is capped by a 2.0 m/s circle; wheel travel uses the matching
+      # (|Vx|+|Vy|)/sqrt(2) projection and a 2.0 m/s physical wheel cap.
       forward_speed: 2.00
       reverse_speed: 2.00
-      lateral_speed: 1.50
+      lateral_speed: 2.00
+      max_planar_speed: 2.00
       max_wheel_speed: 2.00
       max_time_ratio: 1.10
       min_time_slack: 0.50
@@ -383,13 +379,14 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: false
     feedback: "OPEN_LOOP"
-    # Keep these at the NUC linear limit. The STM32 has a separate 4.00 m/s
-    # hard cap, so any other command source still has a lower-level guard.
+    # Keep these at the NUC linear limit. The STM32 repeats the matching
+    # 2.00 m/s planar and wheel-surface hard caps as a lower-level guard.
     max_velocity: [2.00, 2.00, 0.80]
     min_velocity: [-2.00, -2.00, -0.80]
-    # Limit normal acceleration and braking for the raised arm's higher centre
-    # of gravity. Collision Monitor emergency stops still command zero.
-    max_accel: [1.5, 1.5, 1.8]
+    # Humble MPPI has no ax/ay/az parameters, so this is the effective normal
+    # acceleration and braking envelope. Collision Monitor emergency stops
+    # still command zero.
+    max_accel: [1.7, 1.7, 1.8]
     max_decel: [-1.3, -1.3, -2.0]
     odom_topic: /odom
     odom_duration: 0.1

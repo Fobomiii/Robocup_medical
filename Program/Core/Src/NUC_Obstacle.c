@@ -40,7 +40,7 @@
  * clears the velocity itself once the link is genuinely gone, so this value
  * only has to absorb scheduler jitter, not detect a dead link. */
 #define NAV_VELOCITY_TIMEOUT_MS 600U
-#define NAV_STM32_MAX_LINEAR_MM_S 4000
+#define NAV_STM32_MAX_LINEAR_MM_S 2000
 #define NAV_POSE_PERIOD_MS   20U
 #define NAV_WHEEL_ODOM_PERIOD_MS 20U
 #define NAV_WHEEL_DIAGNOSTICS_PERIOD_MS 50U
@@ -131,9 +131,8 @@ static volatile NUC_NavStatus s_nav_status;
 static NUC_NavScanResult s_nav_scan_result;
 static volatile uint8_t s_nav_scan_pending;
 
-/* Final linear-speed guard on the STM32 side. The NUC currently limits each
- * body-axis component to 2000 mm/s, while this lower-level guard allows up to
- * 4.00 m/s for any future command source. */
+/* Per-axis guard on the STM32 side. DJI_Chassis_SetVelocityCommand applies the
+ * final circular 2000 mm/s body-speed limit before X-drive wheel allocation. */
 static int16_t clamp_nav_linear_speed(int16_t speed_mm_s)
 {
   if (speed_mm_s > NAV_STM32_MAX_LINEAR_MM_S)
