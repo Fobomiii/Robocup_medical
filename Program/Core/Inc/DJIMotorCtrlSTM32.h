@@ -27,7 +27,7 @@ public:
    * One control step: kinematics + ESP speed loop + send 0x200.
    * Call at begin() frequency from chassisTask.
    */
-  void Update(float Vx, float Vy, float W);
+  void Update(float Vx, float Vy, float W, bool immediate_stop = false);
 
   uint16_t freq() const { return frq_; }
 
@@ -35,6 +35,9 @@ private:
   FDCAN_HandleTypeDef* can_;
   uint16_t frq_;
   bool started_;
+  float last_vx_;
+  float last_vy_;
+  float last_w_;
 };
 
 class M2006Motor {
@@ -118,6 +121,9 @@ void DJI_Motor_ArmStart(void);
 
 void DJI_Chassis_SetCommand(float vx, float vy, float w);
 
+/** Bypass the normal velocity ramp and command an immediate chassis stop. */
+void DJI_Chassis_SetCommandImmediate(float vx, float vy, float w);
+
 /**
  * Set the per-wheel integrated-position correction used by the speed loop.
  * Changing the gain also re-bases all four wheel position targets to the
@@ -138,8 +144,11 @@ void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
  * Returns a bit mask for motor IDs 1..4; 0x0F means all wheels are online.
  */
 uint8_t DJI_Chassis_GetMeasuredVelocity(float *forward_mm_s,
-                                        float *left_mm_s,
-                                        float *yaw_ccw_cdeg_s);
+                                         float *left_mm_s,
+                                         float *yaw_ccw_cdeg_s);
+
+/** Number of failed FDCAN chassis-current enqueue attempts since boot. */
+uint32_t DJI_Chassis_GetCanTxErrorCount(void);
 
 /** Atomically snapshot per-wheel targets, feedback and controller output. */
 uint8_t DJI_Chassis_GetWheelDiagnostics(

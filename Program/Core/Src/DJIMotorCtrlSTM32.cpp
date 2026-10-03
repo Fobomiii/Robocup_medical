@@ -179,7 +179,7 @@ struct MotorFb {
 /* -------------------------------------------------------------------------- */
 class DjiCanBus {
 public:
-  DjiCanBus() : h_(NULL), ready_(false) {}
+  DjiCanBus() : h_(NULL), ready_(false), tx_error_count_(0U) {}
 
   void attach(FDCAN_HandleTypeDef* h)
   {
@@ -190,7 +190,9 @@ public:
     dwt_init_once();
 
     PidParam speed_default;
-    speed_default.kp = 6.f;
+    // First controlled speed-loop increase: improve wheel-speed tracking
+    // during lateral braking without jumping directly to an aggressive gain.
+    speed_default.kp = 6.5f;
     speed_default.ki = 1.f;
     speed_default.kd = 0.01f;
     speed_default.dead_zone = 1.f;
@@ -216,6 +218,7 @@ public:
   }
 
   bool ready() const { return ready_; }
+  uint32_t txErrorCount() const { return tx_error_count_; }
 
   MotorFb& motor(uint8_t id)
   {
@@ -310,12 +313,15 @@ private:
     data[5] = (uint8_t)(c & 0xFF);
     data[6] = (uint8_t)(d >> 8);
     data[7] = (uint8_t)(d & 0xFF);
-    (void)HAL_FDCAN_AddMessageToTxFifoQ(h_, &hdr, data);
+    if (HAL_FDCAN_AddMessageToTxFifoQ(h_, &hdr, data) != HAL_OK) {
+      tx_error_count_++;
+    }
   }
 
   FDCAN_HandleTypeDef* h_;
   MotorFb motors_[8];
   bool ready_;
+  volatile uint32_t tx_error_count_;
 };
 
 static DjiCanBus g_chassis_bus;
@@ -338,12 +344,29 @@ static const float kInvSqrt2 = 0.70710678118654752440f;
 static const float kSqrt2 = 1.41421356237309504880f;
 static const float kWheelDiameterMm = 152.0f;
 static const float kTurnRadiusMm = 250.0f;
-static const float kMaxPlanarSpeedMmS = 2000.0f;
-static const float kMaxWheelSurfaceSpeedMmS = 2000.0f;
+static const float kMaxPlanarSpeedMmS = 3000.0f;
+static const float kMaxWheelSurfaceSpeedMmS = 3000.0f;
 static const int16_t kCurrentSaturationThreshold = 9900;
+/* Body-command ramp in wheel-RPM-equivalent units.  350 RPM/s is about
+ * 2.8 m/s^2 at the 152 mm wheel.  Immediate safety stops bypass this ramp. */
+static const float kBodyAccelRpmPerS = 350.0f;
+static const float kYawAccelRpmPerS = 600.0f;
+
+static float slew_command(float target, float current, float max_delta)
+{
+  float delta = target - current;
+  if (delta > max_delta) {
+    return current + max_delta;
+  }
+  if (delta < -max_delta) {
+    return current - max_delta;
+  }
+  return target;
+}
 
 CHASSIS::CHASSIS(FDCAN_HandleTypeDef* hfdcan)
-  : can_(hfdcan), frq_(1000), started_(false)
+  : can_(hfdcan), frq_(1000), started_(false),
+    last_vx_(0.f), last_vy_(0.f), last_w_(0.f)
 {
 }
 
@@ -356,6 +379,9 @@ void CHASSIS::begin(uint16_t frq_hz)
     frq_hz = 1000;
   }
   frq_ = frq_hz;
+  last_vx_ = 0.f;
+  last_vy_ = 0.f;
+  last_w_ = 0.f;
   g_chassis_bus.attach(can_);
   for (uint8_t id = 1; id <= 4; ++id) {
     MotorFb& m = g_chassis_bus.motor(id);
@@ -366,28 +392,17 @@ void CHASSIS::begin(uint16_t frq_hz)
   started_ = true;
 }
 
-void CHASSIS::Update(float Vx, float Vy, float W)
+void CHASSIS::Update(float Vx, float Vy, float W, bool immediate_stop)
 {
   if (!started_) {
     return;
   }
 
   float out_rpm[4];
+  float max_abs_rpm;
+  float wheel_scale;
   const float max_wheel_rpm =
       kMaxWheelSurfaceSpeedMmS * 60.0f / (kPi * kWheelDiameterMm);
-  out_rpm[0] = (Vx+Vy) * kInvSqrt2 + W;
-  out_rpm[1] = (-Vx+Vy) * kInvSqrt2 + W;
-  out_rpm[2] = (-Vx-Vy) * kInvSqrt2 + W;
-  out_rpm[3] = (Vx-Vy) * kInvSqrt2 + W;
-
-  for (int i = 0; i < 4; ++i) {
-    if (out_rpm[i] > max_wheel_rpm) {
-      out_rpm[i] = max_wheel_rpm;
-    } else if (out_rpm[i] < -max_wheel_rpm) {
-      out_rpm[i] = -max_wheel_rpm;
-    }
-  }
-
   static uint32_t last_us = 0;
   uint32_t now = micros_u32();
   float dt = 1e-6f * (float)(now - last_us);
@@ -395,6 +410,43 @@ void CHASSIS::Update(float Vx, float Vy, float W)
     dt = 1.f / (float)frq_;
   }
   last_us = now;
+
+  if (immediate_stop) {
+    Vx = 0.f;
+    Vy = 0.f;
+    W = 0.f;
+    last_vx_ = 0.f;
+    last_vy_ = 0.f;
+    last_w_ = 0.f;
+  } else {
+    Vx = slew_command(Vx, last_vx_, kBodyAccelRpmPerS * dt);
+    Vy = slew_command(Vy, last_vy_, kBodyAccelRpmPerS * dt);
+    W = slew_command(W, last_w_, kYawAccelRpmPerS * dt);
+    last_vx_ = Vx;
+    last_vy_ = Vy;
+    last_w_ = W;
+  }
+
+  out_rpm[0] = (Vx+Vy) * kInvSqrt2 + W;
+  out_rpm[1] = (-Vx+Vy) * kInvSqrt2 + W;
+  out_rpm[2] = (-Vx-Vy) * kInvSqrt2 + W;
+  out_rpm[3] = (Vx-Vy) * kInvSqrt2 + W;
+
+  /* Scale all four wheels together so saturation preserves the requested
+   * X-drive direction instead of clipping individual wheels independently. */
+  max_abs_rpm = 0.f;
+  for (int i = 0; i < 4; ++i) {
+    float abs_rpm = fabsf(out_rpm[i]);
+    if (abs_rpm > max_abs_rpm) {
+      max_abs_rpm = abs_rpm;
+    }
+  }
+  if (max_abs_rpm > max_wheel_rpm) {
+    wheel_scale = max_wheel_rpm / max_abs_rpm;
+    for (int i = 0; i < 4; ++i) {
+      out_rpm[i] *= wheel_scale;
+    }
+  }
 
   int16_t cur[4];
   for (int i = 0; i < 4; ++i) {
@@ -652,12 +704,32 @@ M2006Motor arm(&hfdcan2, 1, 36.f);
 static volatile float s_cmd_vx = 0.f;
 static volatile float s_cmd_vy = 0.f;
 static volatile float s_cmd_w = 0.f;
+static volatile uint8_t s_cmd_immediate_stop = 0U;
 
 extern "C" void DJI_Chassis_SetCommand(float vx, float vy, float w)
 {
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
   s_cmd_vx = vx;
   s_cmd_vy = vy;
   s_cmd_w = w;
+  s_cmd_immediate_stop = 0U;
+  if (primask == 0U) {
+    __enable_irq();
+  }
+}
+
+extern "C" void DJI_Chassis_SetCommandImmediate(float vx, float vy, float w)
+{
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  s_cmd_vx = vx;
+  s_cmd_vy = vy;
+  s_cmd_w = w;
+  s_cmd_immediate_stop = 1U;
+  if (primask == 0U) {
+    __enable_irq();
+  }
 }
 
 extern "C" void DJI_Chassis_SetSpeedLocationGain(float gain)
@@ -767,6 +839,11 @@ extern "C" uint8_t DJI_Chassis_GetMeasuredVelocity(float *forward_mm_s,
   return online_mask;
 }
 
+extern "C" uint32_t DJI_Chassis_GetCanTxErrorCount(void)
+{
+  return g_chassis_bus.txErrorCount();
+}
+
 extern "C" uint8_t DJI_Chassis_GetWheelDiagnostics(
     DJI_ChassisWheelDiagnostics *diagnostics)
 {
@@ -841,7 +918,20 @@ extern "C" void DJI_Motor_ChassisTask(void)
   uint32_t tick = osKernelGetTickCount();
   uint32_t period = 1000U / chassis.freq();
   for (;;) {
-    chassis.Update(s_cmd_vx, s_cmd_vy, s_cmd_w);
+    float vx;
+    float vy;
+    float w;
+    uint8_t immediate_stop;
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    vx = s_cmd_vx;
+    vy = s_cmd_vy;
+    w = s_cmd_w;
+    immediate_stop = s_cmd_immediate_stop;
+    if (primask == 0U) {
+      __enable_irq();
+    }
+    chassis.Update(vx, vy, w, immediate_stop != 0U);
     tick += (period == 0) ? 1U : period;
     osDelayUntil(tick);
   }

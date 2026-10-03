@@ -45,7 +45,7 @@ def generate_launch_description():
     # parameter so bt_navigator receives the installed XML's absolute path.
     nav2_params_file = RewrittenYaml(
         source_file=params_file,
-        param_rewrites={"default_bt_xml_filename": bt_xml_file},
+        param_rewrites={"default_nav_to_pose_bt_xml": bt_xml_file},
         convert_types=True,
     )
 
@@ -87,6 +87,50 @@ def generate_launch_description():
                 name="robot_state_publisher",
                 output="screen",
                 parameters=[{"use_sim_time": False, "robot_description": robot_description}],
+            ),
+            Node(
+                package="obstacle_detector",
+                executable="lidar_self_filter",
+                name="lidar_safety_filter",
+                output="screen",
+                parameters=[
+                    {
+                        # Collision Monitor gets its own short processing path:
+                        # transform plus robot/noise rejection only. It must
+                        # never wait for ground RANSAC or cone clustering.
+                        "input_topic": "/livox/lidar",
+                        "output_topic": "/livox/lidar_safety",
+                        "status_topic": "/medical_nav/lidar_safety_filter_status",
+                        "target_frame": "base_link",
+                        # Static height rejection replaces expensive ground
+                        # fitting on the emergency-stop path. Competition
+                        # cones, people and boxes retain abundant returns.
+                        "output_min_z": 0.12,
+                        "output_max_z": 0.60,
+                        "self_radius": 0.26,
+                        "self_min_z": -0.05,
+                        "self_max_z": 0.65,
+                        "top_plate_filter_enabled": True,
+                        "top_plate_center_x": 0.0,
+                        "top_plate_center_y": 0.0,
+                        "top_plate_side_length": 0.18,
+                        "top_plate_margin": 0.03,
+                        "top_plate_min_z": 0.52,
+                        "top_plate_max_z": 0.65,
+                        "arm_filter_enabled": True,
+                        "arm_x_min": 0.10,
+                        "arm_x_max": 0.40,
+                        "arm_half_width": 0.14,
+                        "arm_min_z": 0.45,
+                        "arm_max_z": 0.82,
+                        "ground_filter_enabled": False,
+                        "reject_livox_noise": True,
+                        "livox_noise_mask": 15,
+                        "gate_on_stm32_ready": True,
+                    }
+                ],
+                respawn=True,
+                respawn_delay=2.0,
             ),
             Node(
                 package="obstacle_detector",
@@ -160,6 +204,10 @@ def generate_launch_description():
                         "ground_plane_hold_s": 1.0,
                         "reject_livox_noise": True,
                         "livox_noise_mask": 15,
+                        # A deliberate STM32 RESET removes odom TF for about
+                        # three seconds. Keep Livox alive, but do not forward
+                        # clouds into Nav2 until bridge telemetry is stable.
+                        "gate_on_stm32_ready": True,
                     }
                 ],
                 respawn=True,
@@ -180,17 +228,22 @@ def generate_launch_description():
                         "cone_height": 0.65,
                         "physical_base_radius": 0.155,
                         "base_radius": 0.18,
-                        # Densify only the synthetic disk so Collision Monitor
-                        # reliably reaches its point threshold at the rim.
+                        # Densify only the synthetic disk so both costmaps
+                        # reliably retain the cone footprint at the rim.
                         "disk_spacing": 0.04,
                         "min_z": 0.08,
+                        # Reject sparse/flat fragments, then merge adjacent
+                        # returns before creating one disk per physical cone.
+                        "min_points": 5,
+                        "min_vertical_span": 0.12,
+                        "center_merge_distance": 0.28,
                         # Reject compact clusters that never reach the ground.
                         # The mounted arm sits at 0.64-0.70 m and fits the
                         # cone cluster test, so without this it gets a false
                         # base disk at z=0.12 m in front of the robot.
                         "min_base_z": 0.35,
-                        # Detect and expand competition cones early enough for
-                        # the 2 Hz global replanner at the 2.0 m/s speed limit.
+                        # Detect and expand competition cones up to two seconds
+                        # ahead at the widened 3.0 m/s translation limit.
                         "max_range": 6.0,
                         # Hold only synthetic cone-base disks briefly. The
                         # source cloud remains frame-by-frame so people do
@@ -198,6 +251,44 @@ def generate_launch_description():
                         "persistence_s": 0.60,
                         "persistence_frame": "odom",
                         "persistence_match_distance": 0.40,
+                        # Livox timestamps can lead odom TF slightly. Accept
+                        # latest TF only for a bounded future gap; a frozen or
+                        # genuinely stale TF is still rejected.
+                        "tf_future_fallback_enabled": True,
+                        "tf_future_fallback_max_gap_s": 0.20,
+                    }
+                ],
+                respawn=True,
+                respawn_delay=2.0,
+            ),
+            Node(
+                package="obstacle_detector",
+                executable="blind_zone_visualizer",
+                name="blind_zone_visualizer",
+                output="screen",
+                parameters=[
+                    {
+                        # The four aluminium profiles follow the X-drive wheel
+                        # axes and cast four body-fixed Mid360 shadow strips.
+                        "frame_id": "base_link",
+                        "marker_topic": "/medical_nav/blind_zones",
+                        "status_topic": "/medical_nav/blind_zone_status",
+                        "cmd_vel_topic": "/cmd_vel",
+                        "angles_deg": [45.0, 135.0, -135.0, -45.0],
+                        "origin_x_m": 0.0,
+                        "origin_y_m": 0.0,
+                        "start_distance_m": 0.23,
+                        "width_m": 0.18,
+                        # Length follows the 1.3 m/s^2 braking envelope; at
+                        # 2 m/s it is about 2.29 m including delay and margin.
+                        "min_length_m": 0.80,
+                        "max_length_m": 2.50,
+                        "braking_decel_m_s2": 1.30,
+                        "reaction_time_s": 0.25,
+                        "safety_margin_m": 0.25,
+                        "half_width_deg": 7.0,
+                        "cmd_timeout_s": 0.50,
+                        "publish_rate_hz": 10.0,
                     }
                 ],
                 respawn=True,
@@ -217,35 +308,70 @@ def generate_launch_description():
                         "goal_handoff_hold_s": 0.5,
                         "navigator_following_hold_s": 0.3,
                         "navigator_status_timeout_s": 1.2,
+                        # The STM32 is intentionally hard-reset between runs
+                        # after the unpowered chassis has been pushed home.
+                        # Require fresh stationary telemetry before reopening
+                        # motion and the lidar navigation pipeline.
+                        "stm32_telemetry_timeout_s": 0.25,
+                        "stm32_recovery_hold_s": 0.75,
+                        "stm32_recovery_max_linear_m_s": 0.03,
+                        "stm32_recovery_max_angular_rad_s": 0.05,
                         # Continuously limit post-safety wheel acceleration.
                         # Stops and reductions still pass immediately.
-                        "gate_release_wheel_accel_m_s2": 2.5,
+                        "gate_release_wheel_accel_m_s2": 2.8,
                         "gate_release_yaw_radius_m": 0.25,
                         # Retained for deployed-parameter compatibility; the
                         # continuous limiter no longer needs re-arming.
                         "gate_release_rearm_drop_m_s": 0.25,
                         # Standard X-drive: body translation is capped on a
-                        # 2.0 m/s circle and projected onto the 45-degree
+                        # 3.0 m/s circle and projected onto the 45-degree
                         # wheel axes with the physical 1/sqrt(2) factor.
-                        "max_planar_speed_m_s": 2.0,
-                        "max_wheel_speed_m_s": 2.0,
-                        # MPPI supplies both commands.  Translating wz is a
-                        # small heading-hold correction; near-stationary wz is
-                        # an intentional active rotation with a separate cap.
-                        "heading_correction_max_wz_rad_s": 0.20,
+                        "max_planar_speed_m_s": 3.0,
+                        "max_wheel_speed_m_s": 3.0,
+                        # MPPI supplies vx/vy. Bed 1, Bed 3 and Home replace
+                        # MPPI wz with an independent HWT101CT yaw PID; nurse
+                        # navigation keeps MPPI wz for QR scan viewpoints.
+                        "heading_correction_max_wz_rad_s": 0.30,
                         "active_rotation_max_wz_rad_s": 0.80,
                         "active_rotation_linear_threshold_m_s": 0.05,
+                        "heading_hold_enabled": True,
+                        "heading_hold_task_states": [3, 6, 9],
+                        "heading_hold_target_deg": 0.0,
+                        "heading_hold_kp": 1.5,
+                        "heading_hold_ki": 0.0,
+                        "heading_hold_kd": 0.0,
+                        "heading_hold_deadband_deg": 1.0,
+                        "heading_hold_max_wz_rad_s": 0.30,
+                        "heading_hold_integral_limit_rad_s": 0.05,
+                        # Above 1.0 m/s in reverse, blend toward a stronger
+                        # HWT-yaw PD profile. At 2.5 m/s it can arrest the
+                        # measured negative yaw rate before error reaches the
+                        # previous 7-12 degree range. Forward and low-speed
+                        # behavior retain the validated base P controller.
+                        "heading_hold_reverse_min_speed_m_s": 1.0,
+                        "heading_hold_reverse_full_speed_m_s": 2.5,
+                        "heading_hold_reverse_kp": 2.2,
+                        # The 20 kg chassis needed about 0.36 s to reverse its
+                        # measured yaw rate after the wheels had responded.
+                        # Increase rate damping so correction starts before a
+                        # large heading error develops; keep Kp and the yaw
+                        # ceiling unchanged to avoid introducing oscillation.
+                        "heading_hold_reverse_kd": 0.45,
+                        "heading_hold_reverse_max_wz_rad_s": 0.40,
+                        # Once full-speed reverse is reached, retain the
+                        # reverse PD through braking until yaw error and yaw
+                        # rate have both remained settled for 200 ms.
+                        "heading_hold_reverse_hold_settle_s": 0.20,
+                        "heading_hold_yaw_rate_deadband_rad_s": 0.02,
                         "nurse_scan_stop_linear_m_s": 0.03,
                         "nurse_scan_stop_angular_rad_s": 0.05,
                         "nurse_scan_stop_settle_s": 0.15,
                         "wheel_odom_timeout_s": 0.15,
                         "ekf_ops_position_std_m": 0.02,
-                        "ekf_hwt_yaw_std_rad": 0.015,
                         "ekf_wheel_forward_std_m_s": 0.08,
                         "ekf_wheel_lateral_std_m_s": 0.16,
                         "ekf_wheel_yaw_std_rad_s": 0.12,
                         "ekf_linear_accel_std_m_s2": 1.5,
-                        "ekf_yaw_accel_std_rad_s2": 1.5,
                         # Pre-generated bedside announcements at maximum
                         # ALSA mixer volume.
                         "tts_bed1_audio_file": "/home/fzurobot/Downloads/1_.mp3",
@@ -262,7 +388,7 @@ def generate_launch_description():
                         # Per-axis protocol guard after circular body-speed and
                         # physical X-drive wheel projection. STM32 repeats the
                         # same hard safety caps.
-                        "max_speed_mm_s": 2000.0,
+                        "max_speed_mm_s": 3000.0,
                         "dry_run": ParameterValue(dry_run, value_type=bool),
                         "enforce_task_gate": ParameterValue(
                             enforce_task_gate, value_type=bool
@@ -382,19 +508,38 @@ def generate_launch_description():
                         "pose_topic": "/medical_nav/robot_pose",
                         "output_topic": "/speed_limit",
                         "status_topic": "/medical_nav/corner_speed_status",
-                        "max_speed_m_s": 2.0,
+                        "controller_selector_topic": "/controller_selector",
+                        "heading_hold_controller_id": "FollowPathHeadingHold",
+                        "max_speed_m_s": 3.0,
+                        # Bed 1/3 <-> Home uses FollowPathHeadingHold and may
+                        # carry more speed through genuine path bends. Nurse
+                        # and Bed 1 <-> Bed 3 retain the conservative profile.
                         "min_corner_speed_m_s": 1.0,
                         "lateral_accel_m_s2": 1.40,
-                        "braking_decel_m_s2": 1.30,
-                        "lookahead_distance_m": 1.50,
-                        # Average path tangents over a wider span so MPPI's
-                        # short local-plan kinks do not create false corners.
-                        "tangent_span_m": 0.50,
+                        "heading_hold_min_corner_speed_m_s": 1.10,
+                        "heading_hold_lateral_accel_m_s2": 1.60,
+                        # Match the stronger normal braking envelope so the
+                        # limiter can retain cruise speed closer to a turn.
+                        "braking_decel_m_s2": 1.80,
+                        "lookahead_distance_m": 3.50,
+                        # Average over 0.75 m on each side so short replanning
+                        # kinks do not appear as persistent route corners.
+                        "tangent_span_m": 0.75,
                         "sample_step_m": 0.10,
-                        # Keep genuine Bed 1-3 bends while ignoring minor
-                        # direction changes and near-field sampling noise.
-                        "min_turn_angle_deg": 30.0,
+                        # Ignore the recurring 30-34 degree local-plan bends;
+                        # genuine avoidance and Bed 1-3 turns remain limited.
+                        "min_turn_angle_deg": 35.0,
                         "braking_margin_m": 0.05,
+                        # The same X-shaped aluminium shadows used by the
+                        # global planner. If the transformed MPPI path cuts a
+                        # dogleg and again overlaps a blind strip for 0.6 m,
+                        # retain a low-speed visibility fallback.
+                        "blind_zone_enabled": True,
+                        "blind_zone_angles_deg": [45.0, 135.0, -135.0, -45.0],
+                        "blind_zone_half_width_deg": 7.0,
+                        "blind_zone_min_overlap_m": 0.60,
+                        "blind_zone_lookahead_m": 2.0,
+                        "blind_zone_speed_m_s": 0.70,
                         "path_timeout_s": 1.50,
                         "pose_timeout_s": 0.50,
                         "smoothing_wait_s": 0.25,
@@ -415,24 +560,31 @@ def generate_launch_description():
                         "output_topic": "/cmd_vel_home_limited",
                         "pose_topic": "/medical_nav/robot_pose",
                         "task_state_topic": "/medical_nav/task_state",
+                        "wheel_odom_topic": "/medical_nav/wheel_odom",
+                        "status_topic": "/medical_nav/bed_approach_status",
                         "field_config": field_map,
                         "home_task_state": 9,
                         "bed1_task_state": 3,
                         "bed3_task_state": 6,
-                        "max_speed_m_s": 2.0,
-                        # With vmax=2.0 m/s, terminal=0.10 m/s at 0.10 m,
-                        # this begins the home-only envelope at exactly 1.50 m.
-                        "soft_decel_m_s2": 1.425,
+                        "max_speed_m_s": 3.0,
+                        # With vmax=3.0 m/s, terminal=0.10 m/s at 0.10 m,
+                        # keep full speed until 1.00 m, then follow a continuous
+                        # home-only braking envelope. This preserves roughly
+                        # the previous 4.99 m/s^2 equivalent deceleration.
+                        "soft_decel_m_s2": 4.9875,
                         "terminal_speed_m_s": 0.10,
                         "terminal_distance_m": 0.10,
-                        # Bed approaches retain full speed in open space, then
-                        # cap planar vx/vy together before Nav2 hands control
-                        # to the STM32 laser docking correction.
-                        "bed_max_speed_m_s": 2.0,
-                        "bed_soft_decel_m_s2": 1.2,
-                        "bed_terminal_speed_m_s": 0.15,
-                        "bed_terminal_distance_m": 0.20,
+                        "decel_start_distance_m": 1.00,
+                        # Bed approaches use independent map-X/map-Y envelopes.
+                        # The measured wheel velocity reserves 220 ms of
+                        # response distance before the physical braking term.
+                        "bed_max_speed_m_s": 3.0,
+                        "bed_forward_decel_m_s2": 2.0,
+                        "bed_side_decel_m_s2": 2.2,
+                        "bed_reaction_time_s": 0.22,
+                        "bed_braking_margin_m": 0.03,
                         "pose_timeout_s": 0.5,
+                        "wheel_odom_timeout_s": 0.15,
                     }
                 ],
                 respawn=True,

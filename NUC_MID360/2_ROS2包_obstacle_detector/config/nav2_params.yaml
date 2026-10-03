@@ -70,8 +70,8 @@ bt_navigator:
     transform_tolerance: 0.5
     # obstacle.launch.py rewrites this to the installed absolute path. The
     # custom tree retains Nav2's recovery flow and replans the live route at
-    # 1 Hz without starving the lidar safety pipeline.
-    default_bt_xml_filename: "navigate_to_pose_1hz.xml"
+    # 1 Hz so retained routes do not restart FollowPath twice per second.
+    default_nav_to_pose_bt_xml: "navigate_to_pose_1hz.xml"
     plugin_lib_names:
       - nav2_compute_path_to_pose_action_bt_node
       - nav2_compute_path_through_poses_action_bt_node
@@ -119,7 +119,11 @@ controller_server:
     failure_tolerance: 0.3
     progress_checker_plugin: "progress_checker"
     goal_checker_plugins: ["general_goal_checker"]
-    controller_plugins: ["FollowPath"]
+    controller_plugins: [
+      "FollowPathNurse",
+      "FollowPathHeadingHold",
+      "FollowPathLateralHold"
+    ]
     odom_topic: /odom
 
     progress_checker:
@@ -133,137 +137,77 @@ controller_server:
       xy_goal_tolerance: 0.10
       yaw_goal_tolerance: 0.10
 
-    FollowPath:
+    # Nurse-station scan profile: MPPI owns vx, vy and wz so it can turn
+    # toward each QR viewpoint. Lateral sampling is kept moderate because the
+    # scan path is short and should not inherit the Bed 1-3 exploration cost.
+    FollowPathNurse:
       plugin: "nav2_mppi_controller::MPPIController"
-
-      # MPPI is a sampling controller: it rolls out thousands of trajectories
-      # every cycle and keeps the collision-free one closest to the plan, so
-      # avoidance falls out of the cost function instead of a separate rule.
-      # A 2.0 s horizon retains early avoidance while leaving enough CPU for
-      # the filtered lidar and Collision Monitor to remain below timeout.
       time_steps: 40
       model_dt: 0.05
-      # 1600 samples with a 2.5 s horizon saturated the NUC during navigation
-      # and made safety point clouds 0.3-0.6 s stale.
       batch_size: 1200
-      # Explore enough of the 2.0 m/s command range. The previous narrow
-      # distribution converged around 0.2-0.3 m/s even on an open path.
       vx_std: 0.30
-      # The X-drive has the same 2.0 m/s body-speed capability in every
-      # direction.  Sample lateral motion strongly enough to build a Bed 1-3
-      # transfer without waiting for many low-speed MPPI iterations.
       vy_std: 0.28
-      # Sample angular motion conservatively. The chassis should translate
-      # holonomically instead of rotating to exploit its faster body X axis.
       wz_std: 0.15
-
-      vx_max: 2.00
-      vx_min: -2.0
-      vy_max: 2.00
-      # This remains the active-rotation ceiling.  stm32_bridge separately
-      # caps wz to 0.20 rad/s while translating for heading hold.
+      vx_max: 3.00
+      vx_min: -3.00
+      vy_max: 3.00
       wz_max: 0.80
-      # Humble MPPI does not expose acceleration-limit parameters. The
-      # velocity_smoother below enforces the chassis acceleration and braking
-      # envelope on MPPI's output before it reaches the safety chain.
-
       iteration_count: 1
-      # Keep three metres of the global path available to the 2.0 s rollout.
-      # The enlarged 8 m local costmap can evaluate this look-ahead without
-      # trajectories immediately reaching the rolling-window boundary.
-      prune_distance: 3.0
+      prune_distance: 3.5
       transform_tolerance: 0.3
-      # Prefer the best-progressing samples slightly more decisively while
-      # retaining enough averaging to avoid command chatter.
       temperature: 0.25
       gamma: 0.015
-      # Use the actual holonomic model. GoalAngleCritic still encourages the
-      # requested final heading, while the bounded vy range permits sideways
-      # correction during transit.
       motion_model: "Omni"
-      # Publish MPPI's sampled/optimal trajectories and the transformed global
-      # plan so the Bed 1-3 turn geometry can be compared with the raw plan.
-      # The i9-13900HX has sufficient headroom for this diagnostic profile;
-      # controller-loop timing remains the field acceptance criterion.
       visualize: true
       regenerate_noises: false
       TrajectoryVisualizer:
         trajectory_step: 5
         time_step: 3
-
-      # Ackermann constraints are zeroed: this is a holonomic base.
       AckermannConstraints:
         min_turning_r: 0.0
-
       critics: [
         "ConstraintCritic", "CostCritic", "GoalCritic", "GoalAngleCritic",
         "PathAlignCritic", "PathFollowCritic", "PathAngleCritic",
         "TwirlingCritic"
       ]
-
       ConstraintCritic:
         enabled: true
         cost_power: 1
         cost_weight: 4.0
-
-      # Keep a strong local obstacle penalty so normal tracking error is
-      # corrected before the chassis enters an inflated-cost band.
       CostCritic:
         enabled: true
         cost_power: 1
         cost_weight: 12.0
         critical_cost: 60.0
-        # Check the robot centre here so MPPI can still command an escape when
-        # the physical footprint starts inside an inflated/lethal region.
-        # Cone-base expansion and Collision Monitor remain independent guards.
         consider_footprint: false
         collision_cost: 1000000.0
-        # Match the clearance planner's goal exemption. A larger value lets
-        # MPPI ignore obstacle preference too early and cut inside the safe
-        # global route during the final metre.
         near_goal_distance: 0.50
-
       GoalCritic:
         enabled: true
         cost_power: 1
         cost_weight: 4.0
         threshold_to_consider: 1.4
-
       GoalAngleCritic:
         enabled: true
         cost_power: 1
-        # Keep the requested task yaw throughout the field. This lets the omni
-        # chassis follow diagonal paths with vx/vy while bed and home travel
-        # retain yaw=0 instead of rotating only after reaching the goal.
         cost_weight: 10.0
         threshold_to_consider: 10.0
-
       PathAlignCritic:
         enabled: true
         cost_power: 1
-        # Align against a nearer portion of the global path. The previous
-        # one-metre look-ahead could cut inside a bend with an omni command.
         cost_weight: 10.0
         max_path_occupancy_ratio: 0.05
         trajectory_point_step: 3
         threshold_to_consider: 0.35
         offset_from_furthest: 10
         use_path_orientations: false
-
       PathFollowCritic:
         enabled: true
         cost_power: 1
-        # Reward useful progress over the 2 s prediction horizon. With the
-        # 0.05 m path spacing, an offset of five biased the optimizer toward
-        # the measured 0.2-0.3 m/s command range.
         cost_weight: 10.0
         offset_from_furthest: 8
         threshold_to_consider: 0.8
-
       PathAngleCritic:
-        # The omni chassis may translate in any direction while holding yaw.
-        # Leave path-position tracking to PathAlign/PathFollow; GoalAngleCritic
-        # holds the task-requested yaw independently of the path tangent.
         enabled: false
         cost_power: 1
         cost_weight: 1.5
@@ -271,10 +215,180 @@ controller_server:
         threshold_to_consider: 0.5
         max_angle_to_furthest: 1.0
         mode: 1
-
       TwirlingCritic:
-        # Penalize unnecessary angular velocity without restricting diagonal
-        # translation. Keep wz available for drift correction and nurse views.
+        enabled: true
+        twirling_cost_power: 1
+        twirling_cost_weight: 10.0
+
+    # Bed/Home travel profile: MPPI explores translation only. Its small wz
+    # envelope keeps the rollout model near the fixed 0-degree task heading;
+    # stm32_bridge replaces the outgoing wz with the HWT101CT PID command.
+    # Bias exploration toward the longitudinal field legs and keep rewarding
+    # path progress closer to the goal; the approach limiter below retains
+    # authority over the final stopping envelope.
+    FollowPathHeadingHold:
+      plugin: "nav2_mppi_controller::MPPIController"
+      # A 1.5 s longitudinal rollout prevents the final approach from
+      # converging to approximately remaining_distance / 2.0 s. At the
+      # 3.0 m/s ceiling it still evaluates 4.5 m ahead, beyond the 2.25 m
+      # braking distance enforced by the downstream 2.0 m/s^2 envelope.
+      time_steps: 30
+      model_dt: 0.05
+      batch_size: 1200
+      vx_std: 0.80
+      vy_std: 0.28
+      wz_std: 0.02
+      vx_max: 3.00
+      vx_min: -3.00
+      vy_max: 3.00
+      wz_max: 0.05
+      iteration_count: 1
+      prune_distance: 3.5
+      transform_tolerance: 0.3
+      temperature: 0.25
+      gamma: 0.015
+      motion_model: "Omni"
+      visualize: true
+      regenerate_noises: false
+      TrajectoryVisualizer:
+        trajectory_step: 5
+        time_step: 3
+      AckermannConstraints:
+        min_turning_r: 0.0
+      critics: [
+        "ConstraintCritic", "CostCritic", "GoalCritic", "GoalAngleCritic",
+        "PathAlignCritic", "PathFollowCritic", "PathAngleCritic",
+        "TwirlingCritic"
+      ]
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+      CostCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 12.0
+        critical_cost: 60.0
+        consider_footprint: false
+        collision_cost: 1000000.0
+        near_goal_distance: 0.50
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+        threshold_to_consider: 1.4
+      GoalAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 10.0
+        threshold_to_consider: 10.0
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 10.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 3
+        threshold_to_consider: 0.35
+        offset_from_furthest: 10
+        use_path_orientations: false
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 16.0
+        offset_from_furthest: 8
+        threshold_to_consider: 0.50
+      PathAngleCritic:
+        enabled: false
+        cost_power: 1
+        cost_weight: 1.5
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+        max_angle_to_furthest: 1.0
+        mode: 1
+      TwirlingCritic:
+        enabled: true
+        twirling_cost_power: 1
+        twirling_cost_weight: 10.0
+
+    # Bed 1 -> Bed 3 profile: retain the fixed-heading rollout, but widen vy
+    # sampling so the 45-degree X-drive finds lateral cone-avoidance paths in
+    # fewer MPPI iterations without imposing that search on other legs.
+    FollowPathLateralHold:
+      plugin: "nav2_mppi_controller::MPPIController"
+      time_steps: 40
+      model_dt: 0.05
+      batch_size: 1200
+      vx_std: 0.30
+      vy_std: 0.40
+      wz_std: 0.02
+      vx_max: 3.00
+      vx_min: -3.00
+      vy_max: 3.00
+      wz_max: 0.05
+      iteration_count: 1
+      prune_distance: 3.5
+      transform_tolerance: 0.3
+      temperature: 0.25
+      gamma: 0.015
+      motion_model: "Omni"
+      visualize: true
+      regenerate_noises: false
+      TrajectoryVisualizer:
+        trajectory_step: 5
+        time_step: 3
+      AckermannConstraints:
+        min_turning_r: 0.0
+      critics: [
+        "ConstraintCritic", "CostCritic", "GoalCritic", "GoalAngleCritic",
+        "PathAlignCritic", "PathFollowCritic", "PathAngleCritic",
+        "TwirlingCritic"
+      ]
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+      CostCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 12.0
+        critical_cost: 60.0
+        consider_footprint: false
+        collision_cost: 1000000.0
+        near_goal_distance: 0.50
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+        threshold_to_consider: 1.4
+      GoalAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 10.0
+        threshold_to_consider: 10.0
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 10.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 3
+        threshold_to_consider: 0.35
+        offset_from_furthest: 10
+        use_path_orientations: false
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 10.0
+        offset_from_furthest: 8
+        threshold_to_consider: 0.8
+      PathAngleCritic:
+        enabled: false
+        cost_power: 1
+        cost_weight: 1.5
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+        max_angle_to_furthest: 1.0
+        mode: 1
+      TwirlingCritic:
         enabled: true
         twirling_cost_power: 1
         twirling_cost_weight: 10.0
@@ -293,22 +407,28 @@ planner_server:
       allow_unknown: false
       max_planning_time: 1.5
 
-      # Model the physical 45-degree X-drive feasible set.  Body translation
-      # is capped by a 2.0 m/s circle; wheel travel uses the matching
-      # (|Vx|+|Vy|)/sqrt(2) projection and a 2.0 m/s physical wheel cap.
-      forward_speed: 2.00
-      reverse_speed: 2.00
-      lateral_speed: 2.00
-      max_planar_speed: 2.00
-      max_wheel_speed: 2.00
+      # Model the physical 45-degree X-drive feasible set. Body translation
+      # is capped by a 3.0 m/s circle; wheel travel uses the matching
+      # (|Vx|+|Vy|)/sqrt(2) projection and a 3.0 m/s physical wheel cap.
+      forward_speed: 3.00
+      reverse_speed: 3.00
+      lateral_speed: 3.00
+      max_planar_speed: 3.00
+      max_wheel_speed: 3.00
       max_time_ratio: 1.10
-      min_time_slack: 0.50
+      # At 3 m/s, 0.50 s allowed up to 1.5 m of extra detour. Keep only
+      # 0.25 s so clearance search cannot turn short field legs into long
+      # zigzags while the 10% proportional budget remains available.
+      min_time_slack: 0.25
 
       # Safety risk is a secondary objective inside that bounded time budget;
       # it never turns a short corridor into an unbounded 17x distance cost.
       costmap_weight: 3.0
-      preferred_clearance: 0.55
-      clearance_weight: 8.0
+      # Prefer enough separation that the real nurse station and the Bed 3
+      # cone are handled by the global route instead of repeated Approach
+      # throttling. The unchanged time budget still bounds any detour.
+      preferred_clearance: 0.65
+      clearance_weight: 12.0
       clearance_power: 2.0
       density_radius: 0.60
       density_weight: 5.0
@@ -323,12 +443,27 @@ planner_server:
       # slower than the source polyline; reject only physically slower cuts.
       simplification_time_tolerance: 1.01
 
-      # Keep the currently executing route through small live-costmap changes.
-      # Switch only for at least 5% lower integrated risk OR at least 1 second
-      # less remaining travel time. An invalidated route still switches at once.
-      route_switch_risk_improvement: 0.05
-      route_switch_time_improvement: 1.0
+      # Keep the final simplified/blind-zone-shaped route while it remains
+      # collision-free. Switch only when at least 0.50 s faster, or at least
+      # 55% safer without becoming slower. A blocked retained route still
+      # switches immediately.
+      route_switch_risk_improvement: 0.55
+      route_switch_time_improvement: 0.50
+      route_switch_max_slowdown: 0.00
       route_reuse_max_distance: 0.50
+
+      # Four aluminium profiles follow the 45-degree X-drive wheel axes and
+      # form four Mid360 shadow strips. A long simplified path segment that
+      # falls inside one strip receives a collision-checked lateral dogleg,
+      # creating parallax without changing the fixed task heading.
+      blind_zone_enabled: true
+      blind_zone_angles_deg: [45.0, 135.0, -135.0, -45.0]
+      blind_zone_half_width_deg: 7.0
+      blind_zone_margin_deg: 3.0
+      blind_zone_min_segment_length: 1.0
+      blind_zone_min_lateral_offset: 0.18
+      blind_zone_lateral_offset: 0.32
+      blind_zone_max_detour_time_ratio: 1.25
 
 smoother_server:
   ros__parameters:
@@ -339,9 +474,9 @@ smoother_server:
       # Round the clearance planner's safe polyline corners before MPPI sees
       # them. The smoother checks the global costmap, so it cannot trade the
       # nurse-station clearance for a shorter curve.
-      # Keep enough rounding to remove abrupt diagonal-to-straight commands,
-      # while staying closer to the clearance planner's verified route so a
-      # 135-degree interior corner does not become an unnecessarily long arc.
+      # Keep the original, conservative geometry weights so the 20 kg chassis
+      # does not overshoot the final Bed 3 turn. The behavior tree grants this
+      # profile more computation time without changing its path authority.
       w_data: 0.20
       w_smooth: 0.35
       tolerance: 1.0e-10
@@ -380,14 +515,20 @@ velocity_smoother:
     scale_velocities: false
     feedback: "OPEN_LOOP"
     # Keep these at the NUC linear limit. The STM32 repeats the matching
-    # 2.00 m/s planar and wheel-surface hard caps as a lower-level guard.
-    max_velocity: [2.00, 2.00, 0.80]
-    min_velocity: [-2.00, -2.00, -0.80]
+    # 3.00 m/s planar and wheel-surface hard caps as a lower-level guard.
+    max_velocity: [3.00, 3.00, 0.80]
+    min_velocity: [-3.00, -3.00, -0.80]
     # Humble MPPI has no ax/ay/az parameters, so this is the effective normal
     # acceleration and braking envelope. Collision Monitor emergency stops
     # still command zero.
-    max_accel: [1.7, 1.7, 1.8]
-    max_decel: [-1.3, -1.3, -2.0]
+    # ROS body axes: X forward/backward, Y left/right. Long lateral legs
+    # showed MPPI reversing vy while the smoother still commanded motion
+    # toward the bed for 0.73 s at the former 1.3 m/s^2 braking limit.
+    # Raise longitudinal acceleration so HeadingHold reaches its 3.0 m/s
+    # cruise speed sooner. Stronger lateral braking arrests Bed 1-3 overshoot;
+    # max_decel values must remain negative.
+    max_accel: [2.5, 2.2, 1.8]
+    max_decel: [-2.0, -2.6, -2.0]
     odom_topic: /odom
     odom_duration: 0.1
 
@@ -415,7 +556,10 @@ collision_monitor:
       action_type: "approach"
       time_before_collision: 1.0
       simulation_time_step: 0.1
-      max_points: 3
+      # Require a small cluster before predictive slowdown so isolated lidar
+      # returns do not repeatedly throttle the chassis. The tighter stop zone
+      # deliberately retains its three-point trigger below.
+      max_points: 5
       visualize: True
       enabled: True
 
@@ -432,9 +576,11 @@ collision_monitor:
 
     livox:
       type: "pointcloud"
-      topic: /livox/lidar_nav
+      # Emergency collision checking bypasses ground RANSAC and cone
+      # clustering. Planner costmaps still use the enriched lidar_nav cloud.
+      topic: /livox/lidar_safety
       max_height: 0.60
-      min_height: 0.08
+      min_height: 0.12
       enabled: True
 
 local_costmap:
@@ -446,13 +592,13 @@ local_costmap:
       robot_base_frame: base_link
       use_sim_time: false
       rolling_window: true
-      # Keep a clearing-only band before returns leave the rolling window.
-      # This prevents a fast-moving person from leaving a marked cell at the
-      # edge: mark through 2.4 m, clear through 2.9 m, map edge at 3.0 m.
-      # An 8 m rolling window gives the 2 s MPPI rollout up to 4 m of local
-      # obstacle context, instead of truncating faster trajectories at 3 m.
-      width: 8
-      height: 8
+      # Keep a 0.5 m clearing-only band before returns leave the rolling
+      # window. This prevents a fast-moving person from leaving a marked cell
+      # at the edge: mark through 5.5 m, clear through the 6.0 m map radius.
+      # A 14 m rolling window keeps a complete 3.0 m/s, 2 s MPPI rollout plus
+      # the chassis footprint inside the local map during sustained cruise.
+      width: 14
+      height: 14
       resolution: 0.05
       # Measured chassis radius: 23 cm. The inflation layer below adds the
       # navigation clearance; do not fold that clearance into robot_radius.
@@ -497,9 +643,11 @@ local_costmap:
           marking: True
           data_type: "PointCloud2"
           observation_persistence: 0.0
-          raytrace_max_range: 3.5
+          # Match the larger rolling window: clear stale returns to the map
+          # edge and retain enough marked range for 2.6-2.8 m/s cruise.
+          raytrace_max_range: 6.0
           raytrace_min_range: 0.10
-          obstacle_max_range: 3.0
+          obstacle_max_range: 5.5
           obstacle_min_range: 0.10
 
       always_send_full_costmap: True
@@ -554,8 +702,8 @@ global_costmap:
           raytrace_max_range: 5.0
           raytrace_min_range: 0.10
           # Use the previously field-tested range and retain a 0.5 m
-          # clearing-only band. At 2.0 m/s, 4.5 m still gives over two seconds
-          # for the 2 Hz global replanner before the local safety layers act.
+          # clearing-only band. At 3.0 m/s, 4.5 m gives 1.5 seconds for the
+          # 2 Hz global replanner before the local safety layers act.
           obstacle_max_range: 4.5
           obstacle_min_range: 0.10
       inflation_layer:

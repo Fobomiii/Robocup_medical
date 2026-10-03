@@ -169,9 +169,8 @@ uint8_t NUC_Nav_GetWaypoint(uint8_t index, NUC_NavWaypoint *waypoint);
  * Read the latest fresh Nav2 body velocity command.
  * Units/signs follow ROS: forward mm/s, left mm/s, counter-clockwise cdeg/s.
  * Returns 0 and writes zeros when no valid command arrived in the last 600 ms.
- * The caller acts on a 0 by stepping the chassis straight to zero, so this
- * window must stay wider than the longest stall the NUC publishes through
- * (0.462 s measured); see NAV_VELOCITY_TIMEOUT_MS in NUC_Obstacle.c.
+ * The caller feeds that zero into the STM32 chassis deceleration ramp; pose,
+ * yaw and wheel-health failures use an immediate stop separately.
  */
 uint8_t NUC_Nav_GetVelocityCommand(int16_t *forward_mm_s,
                                    int16_t *left_mm_s,

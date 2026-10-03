@@ -15,6 +15,8 @@
 #include <math.h>
 #include <string.h>
 
+#define OPS_MAX_POSE_AGE_MS 100U
+
 volatile Union_OPS OPS;
 
 static uint8_t s_rx_byte;
@@ -140,6 +142,15 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
   {
     HWT101_OnUartError();
   }
+  else if (huart->Instance == USART3)
+  {
+    /* Do not keep using the last pose after a UART framing/overrun error. */
+    s_have_frame = 0U;
+    s_last_frame_ms = 0U;
+    s_count = 0U;
+    s_i = 0U;
+    (void)HAL_UART_Receive_IT(&huart3, &s_rx_byte, 1);
+  }
   else if (huart->Instance == UART8)
   {
     NUC_Obstacle_OnUartError();
@@ -220,7 +231,7 @@ uint8_t OPS_IsOnline(void)
 {
   if (s_have_frame == 0U)
     return 0;
-  return (HAL_GetTick() - s_last_frame_ms) < 200U ? 1U : 0U;
+  return (HAL_GetTick() - s_last_frame_ms) < OPS_MAX_POSE_AGE_MS ? 1U : 0U;
 }
 
 uint8_t OPS_FrameReady(void)

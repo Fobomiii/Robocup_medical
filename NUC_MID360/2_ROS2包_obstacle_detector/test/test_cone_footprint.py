@@ -4,7 +4,11 @@ import unittest
 
 import numpy as np
 
-from obstacle_detector.cone_footprint_core import expand_cone_footprints
+from obstacle_detector.cone_footprint_core import (
+    expand_cone_footprints,
+    future_timestamp_gap_s,
+    merge_centers,
+)
 
 
 class ConeFootprintTest(unittest.TestCase):
@@ -22,6 +26,29 @@ class ConeFootprintTest(unittest.TestCase):
         self.assertIn("MultiThreadedExecutor(num_threads=2)", source)
         self.assertIn("executor.spin()", source)
 
+    def test_small_future_tf_gap_is_measured(self):
+        gap = future_timestamp_gap_s(100, 180_000_000, 100, 100_000_000)
+
+        self.assertAlmostEqual(gap, 0.08)
+
+    def test_latest_tf_newer_than_request_is_not_future_fallback(self):
+        gap = future_timestamp_gap_s(100, 100_000_000, 100, 180_000_000)
+
+        self.assertIsNone(gap)
+
+    def test_tf_fallback_is_bounded_and_observable(self):
+        from pathlib import Path
+
+        source = (
+            Path(__file__).resolve().parents[1]
+            / "obstacle_detector"
+            / "cone_footprint.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("gap_s <= self.tf_future_fallback_max_gap_s", source)
+        self.assertIn('"tf_future_fallbacks"', source)
+        self.assertIn('"tf_lookup_failures"', source)
+
     def test_compact_vertical_return_adds_known_base_disk(self):
         cone = np.array(
             [
@@ -29,6 +56,7 @@ class ConeFootprintTest(unittest.TestCase):
                 [1.01, 0.05, 0.20],
                 [1.00, -0.03, 0.34],
                 [1.02, 0.03, 0.48],
+                [1.01, 0.00, 0.42],
             ],
             dtype=np.float32,
         )
@@ -51,7 +79,7 @@ class ConeFootprintTest(unittest.TestCase):
         axis_x = 1.20
         physical_radius = 0.155
         cone_height = 0.65
-        heights = np.array([0.15, 0.25, 0.35, 0.45], dtype=np.float32)
+        heights = np.array([0.15, 0.22, 0.30, 0.38, 0.46], dtype=np.float32)
         surface_radii = physical_radius * (1.0 - heights / cone_height)
         cone = np.column_stack(
             (axis_x - surface_radii, np.zeros_like(heights), heights)
@@ -120,6 +148,51 @@ class ConeFootprintTest(unittest.TestCase):
 
         self.assertEqual(centers, [])
         np.testing.assert_array_equal(expanded, noise)
+
+    def test_nearby_cluster_centers_merge_into_one_cone(self):
+        centers = merge_centers([(1.0, 0.0), (1.17, 0.08)], 0.28)
+
+        self.assertEqual(len(centers), 1)
+        self.assertAlmostEqual(centers[0][0], 1.085, places=3)
+        self.assertAlmostEqual(centers[0][1], 0.04, places=3)
+
+    def test_separate_cones_keep_separate_centers(self):
+        centers = merge_centers([(1.0, 0.0), (1.45, 0.0)], 0.28)
+
+        self.assertEqual(len(centers), 2)
+
+    def test_fewer_than_five_points_is_not_expanded(self):
+        sparse = np.array(
+            [
+                [1.00, -0.04, 0.12],
+                [1.01, 0.04, 0.20],
+                [1.00, -0.02, 0.34],
+                [1.02, 0.02, 0.50],
+            ],
+            dtype=np.float32,
+        )
+
+        expanded, centers = expand_cone_footprints(sparse)
+
+        self.assertEqual(centers, [])
+        np.testing.assert_array_equal(expanded, sparse)
+
+    def test_vertical_span_below_point_twelve_is_not_expanded(self):
+        flat = np.array(
+            [
+                [1.00, -0.04, 0.20],
+                [1.01, 0.04, 0.22],
+                [1.00, -0.02, 0.24],
+                [1.02, 0.02, 0.27],
+                [1.01, 0.00, 0.30],
+            ],
+            dtype=np.float32,
+        )
+
+        expanded, centers = expand_cone_footprints(flat)
+
+        self.assertEqual(centers, [])
+        np.testing.assert_array_equal(expanded, flat)
 
 
 if __name__ == "__main__":

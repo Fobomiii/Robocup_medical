@@ -24,29 +24,18 @@
 #define NAV_MAX_PAYLOAD      48U
 #define NAV_FRAME_MAX_LEN    (2U + 4U + NAV_MAX_PAYLOAD + 2U)
 #define NAV_ONLINE_MS        500U
-/* This gate zeroes the chassis target the instant it trips, with no ramp of
- * any kind downstream, so the timeout has to outlast every gap the NUC can
- * produce while the robot is still moving deliberately.
- *
- * Measured on the live topic chain: the collision monitor runs its point
- * cloud work inline and stalls /cmd_vel_safe for up to 0.462 s, then bursts
- * at 83 Hz to catch up. At 250 ms this gate fired mid-brake and stepped a
- * 1.2 m/s reverse command to zero in one 10 ms main-loop tick -- roughly
- * 90 m/s^2, about 70x the -1.3 m/s^2 the NUC's velocity smoother had planned,
- * and enough to tip the raised arm's centre of gravity over backwards.
- *
- * 600 ms clears the worst measured gap by 138 ms and still sits above the
- * 500 ms NAV_ONLINE_MS link check, which is the real deadman: NUC_Nav_Service
- * clears the velocity itself once the link is genuinely gone, so this value
- * only has to absorb scheduler jitter, not detect a dead link. */
+/* This gate absorbs the longest measured NUC command gap.  Expiry feeds a
+ * zero command into the STM32 chassis ramp; pose/yaw or wheel-health failures
+ * use the separate immediate-stop path in main.c. */
 #define NAV_VELOCITY_TIMEOUT_MS 600U
-#define NAV_STM32_MAX_LINEAR_MM_S 2000
+#define NAV_STM32_MAX_LINEAR_MM_S 3000
 #define NAV_POSE_PERIOD_MS   20U
 #define NAV_WHEEL_ODOM_PERIOD_MS 20U
 #define NAV_WHEEL_DIAGNOSTICS_PERIOD_MS 50U
 #define NAV_GOAL_PERIOD_MS   250U
 #define NAV_TTS_PERIOD_MS    250U
 #define NAV_STP23L_PERIOD_MS 100U
+#define NAV_TX_QUEUE_LEN     8U
 
 #define NAV_MSG_POSE         0x10U
 #define NAV_MSG_GOAL_REQUEST 0x11U
@@ -130,9 +119,29 @@ static volatile uint32_t s_nav_last_velocity_ms;
 static volatile NUC_NavStatus s_nav_status;
 static NUC_NavScanResult s_nav_scan_result;
 static volatile uint8_t s_nav_scan_pending;
+static volatile uint8_t s_nav_rx_seq;
+static volatile uint8_t s_nav_rx_seq_valid;
+static volatile uint8_t s_nav_velocity_stamp_valid;
+static uint8_t s_nav_tx_queue[NAV_TX_QUEUE_LEN][NAV_FRAME_MAX_LEN];
+static uint8_t s_nav_tx_length[NAV_TX_QUEUE_LEN];
+static volatile uint8_t s_nav_tx_head;
+static volatile uint8_t s_nav_tx_tail;
+static volatile uint8_t s_nav_tx_count;
+static volatile uint8_t s_nav_tx_busy;
+static volatile uint32_t s_nav_tx_drop_count;
+
+static uint8_t nav_seq_is_newer(uint8_t sequence, uint8_t previous)
+{
+  return ((int8_t)(sequence - previous) > 0) ? 1U : 0U;
+}
+
+static uint8_t nav_stamp_is_newer(uint16_t stamp, uint16_t previous)
+{
+  return ((int16_t)(stamp - previous) > 0) ? 1U : 0U;
+}
 
 /* Per-axis guard on the STM32 side. DJI_Chassis_SetVelocityCommand applies the
- * final circular 2000 mm/s body-speed limit before X-drive wheel allocation. */
+ * final circular 3000 mm/s body-speed limit before X-drive wheel allocation. */
 static int16_t clamp_nav_linear_speed(int16_t speed_mm_s)
 {
   if (speed_mm_s > NAV_STM32_MAX_LINEAR_MM_S)
@@ -216,35 +225,121 @@ static uint16_t nav_crc16(const uint8_t *data, uint8_t length)
   return crc;
 }
 
-static HAL_StatusTypeDef nav_send_frame(uint8_t type, const uint8_t *payload,
-                                        uint8_t payload_len)
+static void nav_tx_kick(void)
 {
-  uint8_t frame[NAV_FRAME_MAX_LEN];
+  uint8_t queue_index;
+  uint8_t frame_len;
+  HAL_StatusTypeDef status;
+  uint32_t primask = __get_PRIMASK();
+
+  __disable_irq();
+  if ((s_nav_tx_busy != 0U) || (s_nav_tx_count == 0U))
+  {
+    if (primask == 0U)
+    {
+      __enable_irq();
+    }
+    return;
+  }
+  queue_index = s_nav_tx_head;
+  frame_len = s_nav_tx_length[queue_index];
+  s_nav_tx_busy = 1U;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+
+  status = HAL_UART_Transmit_IT(&huart8,
+                                s_nav_tx_queue[queue_index], frame_len);
+  if (status != HAL_OK)
+  {
+    primask = __get_PRIMASK();
+    __disable_irq();
+    s_nav_tx_busy = 0U;
+    s_nav_tx_drop_count++;
+    if (primask == 0U)
+    {
+      __enable_irq();
+    }
+  }
+}
+
+static HAL_StatusTypeDef nav_send_frame(uint8_t type, const uint8_t *payload,
+                                         uint8_t payload_len)
+{
   uint8_t body_len;
   uint8_t frame_len;
   uint16_t crc;
+  uint8_t queue_index;
+  uint32_t primask;
 
   if (payload_len > NAV_MAX_PAYLOAD)
   {
     return HAL_ERROR;
   }
 
-  frame[0] = NAV_SYNC_1;
-  frame[1] = NAV_SYNC_2;
-  frame[2] = NAV_VERSION;
-  frame[3] = type;
-  frame[4] = s_nav_tx_seq++;
-  frame[5] = payload_len;
+  frame_len = (uint8_t)(8U + payload_len);
+  primask = __get_PRIMASK();
+  __disable_irq();
+  if (s_nav_tx_count >= NAV_TX_QUEUE_LEN)
+  {
+    s_nav_tx_drop_count++;
+    if (primask == 0U)
+    {
+      __enable_irq();
+    }
+    return HAL_BUSY;
+  }
+
+  queue_index = s_nav_tx_tail;
+  s_nav_tx_queue[queue_index][0] = NAV_SYNC_1;
+  s_nav_tx_queue[queue_index][1] = NAV_SYNC_2;
+  s_nav_tx_queue[queue_index][2] = NAV_VERSION;
+  s_nav_tx_queue[queue_index][3] = type;
+  s_nav_tx_queue[queue_index][4] = s_nav_tx_seq++;
+  s_nav_tx_queue[queue_index][5] = payload_len;
   if (payload_len > 0U && payload != NULL)
   {
-    memcpy(&frame[6], payload, payload_len);
+    memcpy(&s_nav_tx_queue[queue_index][6], payload, payload_len);
   }
   body_len = (uint8_t)(4U + payload_len);
-  crc = nav_crc16(&frame[2], body_len);
-  frame[6U + payload_len] = (uint8_t)(crc >> 8);
-  frame[7U + payload_len] = (uint8_t)crc;
-  frame_len = (uint8_t)(8U + payload_len);
-  return HAL_UART_Transmit(&huart8, frame, frame_len, 10U);
+  crc = nav_crc16(&s_nav_tx_queue[queue_index][2], body_len);
+  s_nav_tx_queue[queue_index][6U + payload_len] = (uint8_t)(crc >> 8);
+  s_nav_tx_queue[queue_index][7U + payload_len] = (uint8_t)crc;
+  s_nav_tx_length[queue_index] = frame_len;
+  s_nav_tx_tail = (uint8_t)((s_nav_tx_tail + 1U) % NAV_TX_QUEUE_LEN);
+  s_nav_tx_count++;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+
+  nav_tx_kick();
+  return HAL_OK;
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  uint32_t primask;
+
+  if (huart->Instance != UART8)
+  {
+    return;
+  }
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  if (s_nav_tx_count > 0U)
+  {
+    s_nav_tx_head = (uint8_t)((s_nav_tx_head + 1U) % NAV_TX_QUEUE_LEN);
+    s_nav_tx_count--;
+  }
+  s_nav_tx_busy = 0U;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+  nav_tx_kick();
 }
 
 static void nav_parse_frame(void)
@@ -259,6 +354,28 @@ static void nav_parse_frame(void)
   {
     return;
   }
+
+  /* Reject duplicate/late protocol frames.  The sender sequence is shared by
+   * all navigation messages and is reset after a real link gap. */
+  if ((s_nav_rx_seq_valid != 0U) &&
+      (nav_seq_is_newer(s_nav_buf[4], s_nav_rx_seq) == 0U))
+  {
+    /* A late/duplicate velocity frame must not keep an old motion command
+     * alive.  Leave non-velocity telemetry untouched, but invalidate the
+     * command mailbox until a fresh sequence and timestamp arrive. */
+    if (s_nav_buf[3] == NAV_MSG_VEL_CMD)
+    {
+      s_nav_forward_mm_s = 0;
+      s_nav_left_mm_s = 0;
+      s_nav_yaw_ccw_cdeg_s = 0;
+      s_nav_velocity_stamp_cs = 0U;
+      s_nav_velocity_stamp_valid = 0U;
+      s_nav_last_velocity_ms = 0U;
+    }
+    return;
+  }
+  s_nav_rx_seq = s_nav_buf[4];
+  s_nav_rx_seq_valid = 1U;
   s_nav_last_valid_ms = HAL_GetTick();
   g_nuc_online = 1U;
 
@@ -333,11 +450,17 @@ static void nav_parse_frame(void)
   }
   else if (type == NAV_MSG_VEL_CMD && payload_len == 8U)
   {
-    s_nav_forward_mm_s = read_i16_be(&payload[0]);
-    s_nav_left_mm_s = read_i16_be(&payload[2]);
-    s_nav_yaw_ccw_cdeg_s = read_i16_be(&payload[4]);
-    s_nav_velocity_stamp_cs = read_u16_be(&payload[6]);
-    s_nav_last_velocity_ms = HAL_GetTick();
+    uint16_t velocity_stamp = read_u16_be(&payload[6]);
+    if ((s_nav_velocity_stamp_valid == 0U) ||
+        (nav_stamp_is_newer(velocity_stamp, s_nav_velocity_stamp_cs) != 0U))
+    {
+      s_nav_forward_mm_s = read_i16_be(&payload[0]);
+      s_nav_left_mm_s = read_i16_be(&payload[2]);
+      s_nav_yaw_ccw_cdeg_s = read_i16_be(&payload[4]);
+      s_nav_velocity_stamp_cs = velocity_stamp;
+      s_nav_velocity_stamp_valid = 1U;
+      s_nav_last_velocity_ms = HAL_GetTick();
+    }
   }
   else if (type == NAV_MSG_SCAN_RESULT && payload_len >= 6U)
   {
@@ -580,6 +703,14 @@ void NUC_Obstacle_Init(void)
   s_nav_last_wheel_odom_tx_ms = 0U;
   s_nav_last_wheel_diagnostics_tx_ms = 0U;
   s_nav_last_tts_tx_ms = 0U;
+  s_nav_rx_seq = 0U;
+  s_nav_rx_seq_valid = 0U;
+  s_nav_velocity_stamp_valid = 0U;
+  s_nav_tx_head = 0U;
+  s_nav_tx_tail = 0U;
+  s_nav_tx_count = 0U;
+  s_nav_tx_busy = 0U;
+  s_nav_tx_drop_count = 0U;
   s_nav_requested_goal = NUC_NAV_GOAL_NONE;
   s_nav_request_id = 0U;
   s_nav_tts_request_id = 0U;
@@ -589,6 +720,7 @@ void NUC_Obstacle_Init(void)
   s_nav_left_mm_s = 0;
   s_nav_yaw_ccw_cdeg_s = 0;
   s_nav_velocity_stamp_cs = 0U;
+  s_nav_velocity_stamp_valid = 0U;
   s_nav_last_velocity_ms = 0U;
   s_nav_status = NUC_NAV_IDLE;
   s_nav_scan_pending = 0U;
@@ -597,6 +729,8 @@ void NUC_Obstacle_Init(void)
   g_nuc_history_idx = 0;
   memset(s_buf, 0, sizeof(s_buf));
   memset(s_nav_buf, 0, sizeof(s_nav_buf));
+  memset(s_nav_tx_queue, 0, sizeof(s_nav_tx_queue));
+  memset(s_nav_tx_length, 0, sizeof(s_nav_tx_length));
   memset(s_nav_paths, 0, sizeof(s_nav_paths));
   memset(&s_nav_scan_result, 0, sizeof(s_nav_scan_result));
   (void)HAL_UART_AbortReceive_IT(&huart8);
@@ -644,8 +778,26 @@ uint8_t NUC_Obstacle_WaitForOnline(uint32_t timeout_ms)
 
 void NUC_Obstacle_OnUartError(void)
 {
+  uint32_t primask;
+
   g_nuc_uart_error_count++;
   g_nuc_last_uart_error = huart8.ErrorCode;
+
+  /* Drop a frame that may have been only partially transmitted.  The next
+   * periodic service call will restart the queue without blocking the motion
+   * task in a HAL timeout. */
+  primask = __get_PRIMASK();
+  __disable_irq();
+  if ((s_nav_tx_busy != 0U) && (s_nav_tx_count > 0U))
+  {
+    s_nav_tx_head = (uint8_t)((s_nav_tx_head + 1U) % NAV_TX_QUEUE_LEN);
+    s_nav_tx_count--;
+  }
+  s_nav_tx_busy = 0U;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
 
   /* ORE/RTO abort interrupt reception; restart it after HAL marks the
      receive state ready. Frame/noise errors are recoverable in HAL and keep
@@ -708,6 +860,7 @@ void NUC_Nav_RequestGoal(NUC_NavGoal goal)
   {
     s_nav_requested_goal = goal;
     s_nav_status = NUC_NAV_WAIT_PATH;
+    NUC_Nav_ClearVelocity();
     s_nav_request_id++;
     if (s_nav_request_id == 0U)
     {
@@ -761,6 +914,21 @@ void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
 {
   uint32_t now = HAL_GetTick();
 
+  nav_tx_kick();
+
+  if (s_nav_last_valid_ms == 0U ||
+      (now - s_nav_last_valid_ms) >= NAV_ONLINE_MS)
+  {
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    s_nav_rx_seq_valid = 0U;
+    s_nav_velocity_stamp_valid = 0U;
+    if (primask == 0U)
+    {
+      __enable_irq();
+    }
+  }
+
   /* If the NUC/ROS stack restarts during a goal, stop immediately and put the
    * same request back on the wire once the serial bridge returns. */
   if (s_nav_requested_goal != NUC_NAV_GOAL_NONE &&
@@ -768,6 +936,14 @@ void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
       (s_nav_last_valid_ms == 0U ||
        (now - s_nav_last_valid_ms) >= NAV_ONLINE_MS))
   {
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    s_nav_rx_seq_valid = 0U;
+    s_nav_velocity_stamp_valid = 0U;
+    if (primask == 0U)
+    {
+      __enable_irq();
+    }
     s_nav_status = NUC_NAV_WAIT_PATH;
     nav_status = NUC_NAV_WAIT_PATH;
     s_nav_last_goal_tx_ms = 0U;
@@ -990,6 +1166,7 @@ void NUC_Nav_ClearVelocity(void)
   s_nav_left_mm_s = 0;
   s_nav_yaw_ccw_cdeg_s = 0;
   s_nav_velocity_stamp_cs = 0U;
+  s_nav_velocity_stamp_valid = 0U;
   s_nav_last_velocity_ms = 0U;
   if (primask == 0U)
   {

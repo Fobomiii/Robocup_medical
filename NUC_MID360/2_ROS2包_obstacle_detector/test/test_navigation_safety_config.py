@@ -21,72 +21,144 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         cls.config = yaml.safe_load(PARAMS.read_text(encoding="utf-8"))
 
     def test_mppi_leaves_capacity_for_lidar_safety(self):
-        follow_path = self.config["controller_server"]["ros__parameters"][
-            "FollowPath"
+        params = self.config["controller_server"]["ros__parameters"]
+        controller_names = [
+            "FollowPathNurse",
+            "FollowPathHeadingHold",
+            "FollowPathLateralHold",
         ]
-        self.assertEqual(follow_path["time_steps"], 40)
-        self.assertEqual(follow_path["model_dt"], 0.05)
+        self.assertEqual(params["controller_plugins"], controller_names)
+        for controller_name in controller_names:
+            follow_path = params[controller_name]
+            self.assertEqual(
+                follow_path["plugin"],
+                "nav2_mppi_controller::MPPIController",
+            )
+            self.assertEqual(follow_path["model_dt"], 0.05)
+            self.assertEqual(follow_path["batch_size"], 1200)
+            for unsupported in ("ax_max", "ax_min", "ay_max", "az_max"):
+                self.assertNotIn(unsupported, follow_path)
+            self.assertEqual(follow_path["prune_distance"], 3.5)
+            self.assertEqual(follow_path["temperature"], 0.25)
+            self.assertEqual(
+                follow_path["PathFollowCritic"]["offset_from_furthest"], 8
+            )
+            self.assertEqual(
+                follow_path["PathAlignCritic"]["cost_weight"], 10.0
+            )
+            self.assertFalse(
+                follow_path["CostCritic"]["consider_footprint"]
+            )
+            self.assertTrue(follow_path["visualize"])
+
+        nurse = params["FollowPathNurse"]
+        heading = params["FollowPathHeadingHold"]
+        lateral = params["FollowPathLateralHold"]
+        self.assertEqual(nurse["time_steps"], 40)
+        self.assertEqual(lateral["time_steps"], 40)
+        self.assertEqual(heading["time_steps"], 30)
         self.assertAlmostEqual(
-            follow_path["time_steps"] * follow_path["model_dt"], 2.0
+            heading["time_steps"] * heading["model_dt"], 1.5
         )
-        self.assertEqual(follow_path["batch_size"], 1200)
-        self.assertEqual(follow_path["vx_std"], 0.30)
-        self.assertEqual(follow_path["vy_std"], 0.28)
-        self.assertEqual(follow_path["wz_std"], 0.15)
-        # The Humble MPPI plugin does not declare acceleration parameters;
-        # acceleration and braking are enforced by velocity_smoother.
-        for unsupported in ("ax_max", "ax_min", "ay_max", "az_max"):
-            self.assertNotIn(unsupported, follow_path)
-        self.assertEqual(follow_path["prune_distance"], 3.0)
-        self.assertEqual(follow_path["temperature"], 0.25)
+        self.assertAlmostEqual(
+            nurse["time_steps"] * nurse["model_dt"], 2.0
+        )
+        self.assertAlmostEqual(
+            lateral["time_steps"] * lateral["model_dt"], 2.0
+        )
+        self.assertEqual(nurse["vx_std"], 0.30)
+        self.assertEqual(heading["vx_std"], 0.80)
+        self.assertEqual(lateral["vx_std"], 0.30)
         self.assertEqual(
-            follow_path["PathFollowCritic"]["offset_from_furthest"], 8
+            heading["PathFollowCritic"]["cost_weight"], 16.0
         )
-        self.assertEqual(follow_path["PathAlignCritic"]["cost_weight"], 10.0)
-        self.assertEqual(follow_path["PathAngleCritic"]["cost_weight"], 1.5)
-        self.assertFalse(follow_path["CostCritic"]["consider_footprint"])
-        self.assertTrue(follow_path["visualize"])
         self.assertEqual(
-            follow_path["TrajectoryVisualizer"]["trajectory_step"], 5
+            heading["PathFollowCritic"]["threshold_to_consider"], 0.50
         )
-        self.assertEqual(follow_path["TrajectoryVisualizer"]["time_step"], 3)
+        self.assertEqual(
+            nurse["PathFollowCritic"]["cost_weight"], 10.0
+        )
+        self.assertEqual(
+            lateral["PathFollowCritic"]["cost_weight"], 10.0
+        )
+        self.assertEqual((nurse["vy_std"], nurse["wz_std"]), (0.28, 0.15))
+        self.assertEqual(nurse["wz_max"], 0.80)
+        self.assertEqual(
+            (heading["vy_std"], heading["wz_std"], heading["wz_max"]),
+            (0.28, 0.02, 0.05),
+        )
+        self.assertEqual(
+            (lateral["vy_std"], lateral["wz_std"], lateral["wz_max"]),
+            (0.40, 0.02, 0.05),
+        )
+        self.assertGreater(lateral["vy_std"], heading["vy_std"])
+
+    def test_intentional_stm32_reset_gates_motion_and_lidar(self):
+        launch_source = (
+            PACKAGE / "launch" / "obstacle.launch.py"
+        ).read_text(encoding="utf-8")
+        bridge = (
+            PACKAGE / "obstacle_detector" / "stm32_bridge.py"
+        ).read_text(encoding="utf-8")
+        lidar_filter = (
+            PACKAGE / "obstacle_detector" / "lidar_transform.py"
+        ).read_text(encoding="utf-8")
+        navigator = (
+            PACKAGE / "obstacle_detector" / "medical_navigator.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('"gate_on_stm32_ready": True', launch_source)
+        self.assertIn('"stm32_telemetry_timeout_s": 0.25', launch_source)
+        self.assertIn('"stm32_recovery_hold_s": 0.75', launch_source)
+        self.assertIn('"/medical_nav/stm32_ready"', bridge)
+        self.assertIn("Stm32ReadinessGate", bridge)
+        self.assertIn("stm32_gate_drops", lidar_filter)
+        self.assertIn("waiting_for_stm32_recovery", navigator)
 
     def test_omni_controller_holds_task_yaw_during_translation(self):
-        follow_path = self.config["controller_server"]["ros__parameters"]["FollowPath"]
-        self.assertEqual(follow_path["motion_model"], "Omni")
-        self.assertEqual(follow_path["vx_min"], -2.00)
-        self.assertEqual(follow_path["vy_max"], 2.0)
-        self.assertFalse(follow_path["PathAngleCritic"]["enabled"])
-        self.assertEqual(follow_path["PathAngleCritic"]["mode"], 1)
-        self.assertTrue(follow_path["GoalAngleCritic"]["enabled"])
-        self.assertEqual(follow_path["GoalAngleCritic"]["cost_weight"], 10.0)
-        self.assertEqual(
-            follow_path["GoalAngleCritic"]["threshold_to_consider"], 10.0
-        )
-        self.assertIn("TwirlingCritic", follow_path["critics"])
-        self.assertTrue(follow_path["TwirlingCritic"]["enabled"])
-        self.assertEqual(
-            follow_path["TwirlingCritic"]["twirling_cost_weight"], 10.0
-        )
+        params = self.config["controller_server"]["ros__parameters"]
+        for controller_name in params["controller_plugins"]:
+            follow_path = params[controller_name]
+            self.assertEqual(follow_path["motion_model"], "Omni")
+            self.assertEqual(follow_path["vx_max"], 3.00)
+            self.assertEqual(follow_path["vx_min"], -3.00)
+            self.assertEqual(follow_path["vy_max"], 3.00)
+            self.assertFalse(follow_path["PathAngleCritic"]["enabled"])
+            self.assertEqual(follow_path["PathAngleCritic"]["mode"], 1)
+            self.assertTrue(follow_path["GoalAngleCritic"]["enabled"])
+            self.assertEqual(
+                follow_path["GoalAngleCritic"]["cost_weight"], 10.0
+            )
+            self.assertIn("TwirlingCritic", follow_path["critics"])
 
     def test_collision_monitor_restores_field_tested_single_stage_profile(self):
         normal_smoother = self.config["velocity_smoother"]["ros__parameters"]
         monitor = self.config["collision_monitor"]["ros__parameters"]
+        local_costmap = self.config["local_costmap"]["local_costmap"][
+            "ros__parameters"
+        ]
 
         # Ordinary motion is ramp-limited before entering the safety chain.
-        self.assertEqual(normal_smoother["max_accel"], [1.7, 1.7, 1.8])
-        self.assertEqual(normal_smoother["max_decel"], [-1.3, -1.3, -2.0])
+        self.assertEqual(normal_smoother["max_accel"], [2.5, 2.2, 1.8])
+        self.assertEqual(normal_smoother["max_decel"], [-2.0, -2.6, -2.0])
+        self.assertEqual(normal_smoother["max_velocity"], [3.0, 3.0, 0.8])
+        self.assertEqual(normal_smoother["min_velocity"], [-3.0, -3.0, -0.8])
+        self.assertEqual((local_costmap["width"], local_costmap["height"]), (14, 14))
+        local_livox = local_costmap["obstacle_layer"]["livox"]
+        self.assertEqual(local_livox["obstacle_max_range"], 5.5)
+        self.assertEqual(local_livox["raytrace_max_range"], 6.0)
         self.assertNotIn("collision_monitor_predictive", self.config)
         self.assertEqual(monitor["polygons"], ["ApproachPolygon", "StopPolygon"])
         self.assertEqual(monitor["cmd_vel_in_topic"], "/cmd_vel_home_limited")
         self.assertEqual(monitor["cmd_vel_out_topic"], "/cmd_vel_safe")
+        self.assertEqual(monitor["source_timeout"], 0.3)
         self.assertNotIn("safety_velocity_smoother", self.config)
 
         approach = monitor["ApproachPolygon"]
         self.assertEqual(approach["action_type"], "approach")
         self.assertEqual(approach["time_before_collision"], 1.0)
         self.assertEqual(approach["simulation_time_step"], 0.1)
-        self.assertEqual(approach["max_points"], 3)
+        self.assertEqual(approach["max_points"], 5)
 
         stop = monitor["StopPolygon"]
         self.assertEqual(stop["action_type"], "stop")
@@ -111,37 +183,85 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             launch_source,
         )
         self.assertIn('"output_topic": "/speed_limit"', launch_source)
-        self.assertIn('"lookahead_distance_m": 1.50', launch_source)
-        self.assertIn('"braking_decel_m_s2": 1.30', launch_source)
+        self.assertIn(
+            '"controller_selector_topic": "/controller_selector"',
+            launch_source,
+        )
+        self.assertIn(
+            '"heading_hold_controller_id": "FollowPathHeadingHold"',
+            launch_source,
+        )
+        self.assertIn('"lookahead_distance_m": 3.50', launch_source)
+        self.assertIn('"braking_decel_m_s2": 1.80', launch_source)
         self.assertIn('"min_corner_speed_m_s": 1.0', launch_source)
-        self.assertIn('"tangent_span_m": 0.50', launch_source)
-        self.assertIn('"min_turn_angle_deg": 30.0', launch_source)
+        self.assertIn(
+            '"heading_hold_min_corner_speed_m_s": 1.10', launch_source
+        )
+        self.assertIn(
+            '"heading_hold_lateral_accel_m_s2": 1.60', launch_source
+        )
+        self.assertIn('"tangent_span_m": 0.75', launch_source)
+        self.assertIn('"min_turn_angle_deg": 35.0', launch_source)
         self.assertIn('"input_topic": "/cmd_vel"', launch_source)
         self.assertIn('"output_topic": "/cmd_vel_home_limited"', launch_source)
         self.assertIn('"home_task_state": 9', launch_source)
         self.assertIn('"bed1_task_state": 3', launch_source)
         self.assertIn('"bed3_task_state": 6', launch_source)
-        self.assertIn('"max_speed_m_s": 2.0', launch_source)
-        self.assertIn('"soft_decel_m_s2": 1.425', launch_source)
+        self.assertIn('"max_speed_m_s": 3.0', launch_source)
+        self.assertIn('"soft_decel_m_s2": 4.9875', launch_source)
         self.assertIn('"terminal_speed_m_s": 0.10', launch_source)
         self.assertIn('"terminal_distance_m": 0.10', launch_source)
-        self.assertIn('"bed_max_speed_m_s": 2.0', launch_source)
-        self.assertIn('"bed_soft_decel_m_s2": 1.2', launch_source)
-        self.assertIn('"bed_terminal_speed_m_s": 0.15', launch_source)
-        self.assertIn('"bed_terminal_distance_m": 0.20', launch_source)
+        self.assertIn('"decel_start_distance_m": 1.00', launch_source)
+        self.assertIn('"bed_max_speed_m_s": 3.0', launch_source)
+        self.assertIn('"wheel_odom_topic": "/medical_nav/wheel_odom"', launch_source)
+        self.assertIn('"status_topic": "/medical_nav/bed_approach_status"', launch_source)
+        self.assertIn('"bed_forward_decel_m_s2": 2.0', launch_source)
+        self.assertIn('"bed_side_decel_m_s2": 2.2', launch_source)
+        self.assertIn('"bed_reaction_time_s": 0.22', launch_source)
+        self.assertIn('"bed_braking_margin_m": 0.03', launch_source)
         self.assertIn('"pose_timeout_s": 0.5', launch_source)
-        self.assertIn('"gate_release_wheel_accel_m_s2": 2.5', launch_source)
+        self.assertIn('"gate_release_wheel_accel_m_s2": 2.8', launch_source)
         self.assertIn('"gate_release_yaw_radius_m": 0.25', launch_source)
-        self.assertIn('"max_planar_speed_m_s": 2.0', launch_source)
-        self.assertIn('"max_wheel_speed_m_s": 2.0', launch_source)
+        self.assertIn('"max_planar_speed_m_s": 3.0', launch_source)
+        self.assertIn('"max_wheel_speed_m_s": 3.0', launch_source)
+        self.assertIn('"max_speed_mm_s": 3000.0', launch_source)
         self.assertIn(
-            '"heading_correction_max_wz_rad_s": 0.20', launch_source
+            '"heading_correction_max_wz_rad_s": 0.30', launch_source
         )
         self.assertIn(
             '"active_rotation_max_wz_rad_s": 0.80', launch_source
         )
         self.assertIn(
             '"active_rotation_linear_threshold_m_s": 0.05', launch_source
+        )
+        self.assertIn('"heading_hold_enabled": True', launch_source)
+        self.assertIn(
+            '"heading_hold_task_states": [3, 6, 9]', launch_source
+        )
+        self.assertIn('"heading_hold_target_deg": 0.0', launch_source)
+        self.assertIn('"heading_hold_kp": 1.5', launch_source)
+        self.assertIn('"heading_hold_ki": 0.0', launch_source)
+        self.assertIn('"heading_hold_kd": 0.0', launch_source)
+        self.assertIn('"heading_hold_deadband_deg": 1.0', launch_source)
+        self.assertIn(
+            '"heading_hold_max_wz_rad_s": 0.30', launch_source
+        )
+        self.assertIn(
+            '"heading_hold_reverse_min_speed_m_s": 1.0', launch_source
+        )
+        self.assertIn(
+            '"heading_hold_reverse_full_speed_m_s": 2.5', launch_source
+        )
+        self.assertIn('"heading_hold_reverse_kp": 2.2', launch_source)
+        self.assertIn('"heading_hold_reverse_kd": 0.45', launch_source)
+        self.assertIn(
+            '"heading_hold_reverse_max_wz_rad_s": 0.40', launch_source
+        )
+        self.assertIn(
+            '"heading_hold_reverse_hold_settle_s": 0.20', launch_source
+        )
+        self.assertIn(
+            '"heading_hold_yaw_rate_deadband_rad_s": 0.02', launch_source
         )
         self.assertIn(
             '"gate_release_rearm_drop_m_s": 0.25', launch_source
@@ -166,16 +286,16 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             setup_source,
         )
 
-    def test_behavior_trees_replan_at_two_hertz(self):
+    def test_behavior_trees_use_bounded_replanning_rates(self):
         root = ET.parse(BT_XML).getroot()
         rate_controllers = root.findall(".//RateController")
         self.assertEqual(len(rate_controllers), 1)
-        self.assertEqual(float(rate_controllers[0].attrib["hz"]), 2.0)
+        self.assertEqual(float(rate_controllers[0].attrib["hz"]), 1.0)
         smoothers = root.findall(".//SmoothPath")
         self.assertEqual(len(smoothers), 1)
         self.assertEqual(smoothers[0].attrib["smoother_id"], "simple_smoother")
         self.assertEqual(
-            float(smoothers[0].attrib["max_smoothing_duration"]), 0.20
+            float(smoothers[0].attrib["max_smoothing_duration"]), 0.35
         )
         smooth_fallback = root.find(".//Fallback[@name='SmoothOrKeepOriginal']")
         self.assertIsNotNone(smooth_fallback)
@@ -192,15 +312,36 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertEqual(smoother["w_smooth"], 0.35)
         self.assertNotIn("error_code_id", BT_XML.read_text(encoding="utf-8"))
 
+        recovery = root.find(".//ReactiveFallback[@name='RecoveryFallback']")
+        self.assertIsNotNone(recovery)
+        refresh = recovery.find("Sequence[@name='ClearCostmapsAndRefresh']")
+        self.assertIsNotNone(refresh)
+        self.assertEqual(len(refresh.findall("ClearEntireCostmap")), 2)
+        self.assertEqual(refresh.findall("Wait"), [])
+        self.assertEqual(root.findall(".//Spin"), [])
+        self.assertEqual(root.findall(".//BackUp"), [])
+        self.assertEqual(root.findall(".//RoundRobin"), [])
+
         nurse_root = ET.parse(NURSE_BT_XML).getroot()
         nurse_rate_controllers = nurse_root.findall(".//RateController")
         self.assertEqual(len(nurse_rate_controllers), 1)
         self.assertEqual(float(nurse_rate_controllers[0].attrib["hz"]), 2.0)
+        self.assertEqual(
+            root.find(".//ControllerSelector").attrib["default_controller"],
+            "FollowPathHeadingHold",
+        )
+        self.assertEqual(
+            nurse_root.find(".//ControllerSelector").attrib[
+                "default_controller"
+            ],
+            "FollowPathNurse",
+        )
 
         bt_params = self.config["bt_navigator"]["ros__parameters"]
         self.assertEqual(
-            bt_params["default_bt_xml_filename"], BT_XML.name
+            bt_params["default_nav_to_pose_bt_xml"], BT_XML.name
         )
+        self.assertNotIn("default_bt_xml_filename", bt_params)
 
         launch_source = (PACKAGE / "launch" / "obstacle.launch.py").read_text(
             encoding="utf-8"
@@ -227,6 +368,14 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             navigator,
         )
         self.assertIn("request.behavior_tree = self.nurse_bt_xml", navigator)
+        self.assertIn('"/controller_selector"', navigator)
+        self.assertIn("controller_for_route(", navigator)
+        self.assertIn(
+            "self.create_timer(0.2, self._publish_controller_selection)",
+            navigator,
+        )
+        self.assertIn('"controller_id": self.active_controller_id', navigator)
+        self.assertIn('"controller_route": {', navigator)
 
     def test_global_far_noise_is_not_retained(self):
         global_livox = self.config["global_costmap"]["global_costmap"][
@@ -244,8 +393,8 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         ]
         planner_params = self.config["planner_server"]["ros__parameters"]
 
-        self.assertEqual(local_params["width"], 8)
-        self.assertEqual(local_params["height"], 8)
+        self.assertEqual(local_params["width"], 14)
+        self.assertEqual(local_params["height"], 14)
         self.assertEqual(local_params["robot_radius"], 0.23)
         self.assertEqual(global_params["robot_radius"], 0.23)
         local_footprint = ast.literal_eval(local_params["footprint"])
@@ -264,8 +413,8 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertEqual(global_livox["obstacle_max_range"], 4.5)
         self.assertEqual(global_livox["raytrace_max_range"], 5.0)
         self.assertEqual(local_livox["observation_persistence"], 0.0)
-        self.assertEqual(local_livox["obstacle_max_range"], 3.0)
-        self.assertEqual(local_livox["raytrace_max_range"], 3.5)
+        self.assertEqual(local_livox["obstacle_max_range"], 5.5)
+        self.assertEqual(local_livox["raytrace_max_range"], 6.0)
 
     def test_real_chassis_output_remains_default(self):
         launch_source = (PACKAGE / "launch" / "obstacle.launch.py").read_text(
@@ -276,7 +425,10 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             launch_source,
         )
         self.assertIn("RewrittenYaml", launch_source)
-        self.assertIn('"default_bt_xml_filename": bt_xml_file', launch_source)
+        self.assertIn(
+            '"default_nav_to_pose_bt_xml": bt_xml_file', launch_source
+        )
+        self.assertNotIn('"default_bt_xml_filename": bt_xml_file', launch_source)
 
     def test_lidar_odometry_starts_in_monitor_only_mode(self):
         guard = self.config["lidar_odometry_guard"]["ros__parameters"]
@@ -303,7 +455,8 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         ]["obstacle_layer"]["livox"]
 
         self.assertEqual(guard["cloud_topic"], "/livox/lidar_filtered")
-        self.assertEqual(monitor["livox"]["topic"], "/livox/lidar_nav")
+        self.assertEqual(monitor["livox"]["topic"], "/livox/lidar_safety")
+        self.assertEqual(monitor["livox"]["min_height"], 0.12)
         self.assertEqual(local_livox["topic"], "/livox/lidar_nav")
         self.assertEqual(global_livox["topic"], "/livox/lidar_nav")
 
@@ -311,13 +464,70 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('executable="cone_footprint_compensator"', launch_source)
+        self.assertEqual(launch_source.count('executable="lidar_self_filter"'), 2)
+        self.assertIn('name="lidar_safety_filter"', launch_source)
+        self.assertIn('"output_topic": "/livox/lidar_safety"', launch_source)
+        self.assertIn(
+            '"status_topic": "/medical_nav/lidar_safety_filter_status"',
+            launch_source,
+        )
+        self.assertIn('"output_min_z": 0.12', launch_source)
+        self.assertIn('"ground_filter_enabled": False', launch_source)
         self.assertIn('"cone_height": 0.65', launch_source)
         self.assertIn('"physical_base_radius": 0.155', launch_source)
         self.assertIn('"base_radius": 0.18', launch_source)
         self.assertIn('"disk_spacing": 0.04', launch_source)
+        self.assertIn('"min_points": 5', launch_source)
+        self.assertIn('"min_vertical_span": 0.12', launch_source)
+        self.assertIn('"center_merge_distance": 0.28', launch_source)
         self.assertIn('"max_range": 6.0', launch_source)
         self.assertIn('"persistence_s": 0.60', launch_source)
         self.assertIn('"persistence_frame": "odom"', launch_source)
+        self.assertIn('"tf_future_fallback_enabled": True', launch_source)
+        self.assertIn('"tf_future_fallback_max_gap_s": 0.20', launch_source)
+
+    def test_navigation_cloud_chain_drops_backlog_for_low_latency(self):
+        qos_source = (
+            PACKAGE / "obstacle_detector" / "qos_profiles.py"
+        ).read_text(encoding="utf-8")
+        lidar_filter = (
+            PACKAGE / "obstacle_detector" / "lidar_transform.py"
+        ).read_text(encoding="utf-8")
+        cone_compensator = (
+            PACKAGE / "obstacle_detector" / "cone_footprint.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("history=HistoryPolicy.KEEP_LAST", qos_source)
+        self.assertIn("depth=1", qos_source)
+        self.assertIn(
+            "reliability=ReliabilityPolicy.BEST_EFFORT", qos_source
+        )
+        self.assertIn("durability=DurabilityPolicy.VOLATILE", qos_source)
+        self.assertGreaterEqual(
+            lidar_filter.count("low_latency_sensor_qos()"), 2
+        )
+        self.assertGreaterEqual(
+            cone_compensator.count("low_latency_sensor_qos()"), 2
+        )
+        self.assertNotIn("qos_profile_sensor_data", lidar_filter)
+        self.assertNotIn("qos_profile_sensor_data", cone_compensator)
+
+    def test_x_drive_blind_zones_are_visible_and_speed_guarded(self):
+        launch_source = (PACKAGE / "launch" / "obstacle.launch.py").read_text(
+            encoding="utf-8"
+        )
+        setup_source = (PACKAGE / "setup.py").read_text(encoding="utf-8")
+        rviz_source = (
+            PACKAGE.parent / "3_可视化工具" / "medical_nav.rviz"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('executable="blind_zone_visualizer"', launch_source)
+        self.assertIn('"angles_deg": [45.0, 135.0, -135.0, -45.0]', launch_source)
+        self.assertIn('"blind_zone_speed_m_s": 0.70', launch_source)
+        self.assertIn('"blind_zone_min_overlap_m": 0.60', launch_source)
+        self.assertIn("blind_zone_visualizer =", setup_source)
+        self.assertIn("X-Drive Lidar Blind Zones", rviz_source)
+        self.assertIn("/medical_nav/blind_zones", rviz_source)
 
     def test_goal_handoff_has_independent_stop_guards(self):
         root = PACKAGE.parents[1]
@@ -360,6 +570,9 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"sent_cmd"', bridge)
         self.assertIn('"gate_release"', bridge)
         self.assertIn('"mode": "continuous_asymmetric"', bridge)
+        self.assertIn('"heading_yaw_priority"', bridge)
+        self.assertIn("priority_yaw=heading_yaw_priority", bridge)
+        self.assertIn('"reverse_hold_active"', bridge)
         self.assertIn('"transport_sent"', bridge)
         self.assertIn(
             "# Diagnostics must never interrupt the velocity command path.",
@@ -438,7 +651,7 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('"nurse_scan_stop_linear_m_s": 0.03', launch_source)
         self.assertIn('"nurse_scan_stop_settle_s": 0.15', launch_source)
 
-    def test_bed_docking_tracks_while_moving_with_split_fallback(self):
+    def test_bed_docking_requires_slow_stable_corridor_handoff(self):
         root = PACKAGE.parents[1]
         medical_task = (root / "Program" / "Core" / "Src" / "MedicalTask.c").read_text(
             encoding="utf-8"
@@ -447,10 +660,21 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn("MEDICAL_DOCK_SAMPLE_TRIM_COUNT 1U", medical_task)
         self.assertIn("MEDICAL_DOCK_SAMPLE_SETTLE_MS 100U", medical_task)
         self.assertIn("MEDICAL_DOCK_SAMPLE_TIMEOUT_MS 1500U", medical_task)
-        self.assertIn("MEDICAL_DOCK_TRACK_MIN_SAMPLES 3U", medical_task)
+        self.assertIn("MEDICAL_DOCK_TRACK_MIN_SAMPLES 5U", medical_task)
         self.assertIn("MEDICAL_DOCK_TRACK_SPREAD_MM 40.0f", medical_task)
-        self.assertIn("MEDICAL_DOCK_TRACK_RADIUS_MM 800.0f", medical_task)
+        self.assertIn("MEDICAL_DOCK_TRACK_RADIUS_MM 350.0f", medical_task)
         self.assertIn("MEDICAL_DOCK_TRACK_YAW_DEG 3.0f", medical_task)
+        self.assertIn(
+            "MEDICAL_DOCK_HANDOFF_MAX_SPEED_MM_S 450.0f", medical_task
+        )
+        self.assertIn("MEDICAL_DOCK_HANDOFF_STABLE_MS 150U", medical_task)
+        self.assertIn(
+            "MEDICAL_DOCK_SAFE_FORWARD_HALF_WIDTH_MM 300.0f", medical_task
+        )
+        self.assertIn(
+            "MEDICAL_DOCK_SAFE_APPROACH_DEPTH_MM 350.0f", medical_task
+        )
+        self.assertIn("MEDICAL_DOCK_SAFE_OVERSHOOT_MM 40.0f", medical_task)
         self.assertIn("MEDICAL_DOCK_TIMEOUT_MS 3000U", medical_task)
         self.assertIn("MEDICAL_DOCK_SIDE_SPLIT_THRESHOLD_MM 1600U", medical_task)
         self.assertIn("MEDICAL_DOCK_LASER_MAX_CORRECTION_MM 400.0f", medical_task)
@@ -465,14 +689,15 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             r"return STP23L_GetSampleA\(distance_mm, frame_sequence\);",
         )
         self.assertIn("medical_is_bed_navigation_state() != 0U", medical_task)
+        self.assertIn("medical_docking_in_safe_corridor", medical_task)
+        self.assertIn("medical_docking_handoff_target", medical_task)
         self.assertIn("medical_docking_capture_targets", medical_task)
         self.assertIn("medical_docking_get_tracked_target", medical_task)
         self.assertIn("medical_docking_finish_or_correct_tracked", medical_task)
         self.assertRegex(
             medical_task,
             r"medical_is_bed_navigation_state\(\) != 0U[\s\S]*?"
-            r"medical_docking_capture_targets[\s\S]*?"
-            r"medical_docking_get_tracked_target[\s\S]*?"
+            r"medical_docking_handoff_target[\s\S]*?"
             r"medical_set_state[\s\S]*?"
             r"medical_docking_start_absolute_move[\s\S]*?return 1U;",
         )
@@ -536,13 +761,13 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn("kSqrt2 = 1.41421356237309504880f", motor_control)
         self.assertIn("(Vx+Vy) * kInvSqrt2 + W", motor_control)
         self.assertIn("0.25f * kSqrt2", motor_control)
-        self.assertIn("kMaxPlanarSpeedMmS = 2000.0f", motor_control)
-        self.assertIn("kMaxWheelSurfaceSpeedMmS = 2000.0f", motor_control)
-        self.assertIn("speed_default.kp = 6.f;", motor_control)
+        self.assertIn("kMaxPlanarSpeedMmS = 3000.0f", motor_control)
+        self.assertIn("kMaxWheelSurfaceSpeedMmS = 3000.0f", motor_control)
+        self.assertIn("speed_default.kp = 6.5f;", motor_control)
         self.assertIn("speed_default.ki = 1.f;", motor_control)
         self.assertIn("speed_default.kd = 0.01f;", motor_control)
         self.assertIn("speed_default.max_out = 10000.f;", motor_control)
-        self.assertIn("#define NAV_STM32_MAX_LINEAR_MM_S 2000", nav_transport)
+        self.assertIn("#define NAV_STM32_MAX_LINEAR_MM_S 3000", nav_transport)
 
     def test_bed_workflow_uses_bounded_fast_docking(self):
         root = PACKAGE.parents[1]

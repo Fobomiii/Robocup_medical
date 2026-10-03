@@ -13,10 +13,20 @@ from nav2_msgs.msg import SpeedLimit
 from nav_msgs.msg import Path
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy
+from rclpy.qos import (
+    QoSDurabilityPolicy,
+    QoSProfile,
+    QoSReliabilityPolicy,
+)
 from std_msgs.msg import String
 
-from .corner_speed_core import CornerSpeedDecision, Point2D, corner_speed_limit
+from .corner_speed_core import (
+    BlindZoneSpeedDecision,
+    CornerSpeedDecision,
+    Point2D,
+    blind_zone_speed_limit,
+    corner_speed_limit,
+)
 
 
 class CornerSpeedLimiter(Node):
@@ -42,8 +52,18 @@ class CornerSpeedLimiter(Node):
                 "status_topic", "/medical_nav/corner_speed_status"
             ).value
         )
+        self.controller_selector_topic = str(
+            self.declare_parameter(
+                "controller_selector_topic", "/controller_selector"
+            ).value
+        )
+        self.heading_hold_controller_id = str(
+            self.declare_parameter(
+                "heading_hold_controller_id", "FollowPathHeadingHold"
+            ).value
+        )
         self.max_speed_m_s = float(
-            self.declare_parameter("max_speed_m_s", 2.0).value
+            self.declare_parameter("max_speed_m_s", 3.0).value
         )
         self.min_corner_speed_m_s = float(
             self.declare_parameter("min_corner_speed_m_s", 1.0).value
@@ -51,11 +71,21 @@ class CornerSpeedLimiter(Node):
         self.lateral_accel_m_s2 = float(
             self.declare_parameter("lateral_accel_m_s2", 1.40).value
         )
+        self.heading_hold_min_corner_speed_m_s = float(
+            self.declare_parameter(
+                "heading_hold_min_corner_speed_m_s", 1.10
+            ).value
+        )
+        self.heading_hold_lateral_accel_m_s2 = float(
+            self.declare_parameter(
+                "heading_hold_lateral_accel_m_s2", 1.60
+            ).value
+        )
         self.braking_decel_m_s2 = float(
             self.declare_parameter("braking_decel_m_s2", 1.30).value
         )
         self.lookahead_distance_m = float(
-            self.declare_parameter("lookahead_distance_m", 1.50).value
+            self.declare_parameter("lookahead_distance_m", 3.50).value
         )
         self.tangent_span_m = float(
             self.declare_parameter("tangent_span_m", 0.35).value
@@ -68,6 +98,27 @@ class CornerSpeedLimiter(Node):
         )
         self.braking_margin_m = float(
             self.declare_parameter("braking_margin_m", 0.05).value
+        )
+        self.blind_zone_enabled = bool(
+            self.declare_parameter("blind_zone_enabled", True).value
+        )
+        self.blind_zone_angles_rad = tuple(
+            math.radians(float(value))
+            for value in self.declare_parameter(
+                "blind_zone_angles_deg", [45.0, 135.0, -135.0, -45.0]
+            ).value
+        )
+        self.blind_zone_half_width_rad = math.radians(
+            float(self.declare_parameter("blind_zone_half_width_deg", 7.0).value)
+        )
+        self.blind_zone_min_overlap_m = float(
+            self.declare_parameter("blind_zone_min_overlap_m", 0.60).value
+        )
+        self.blind_zone_lookahead_m = float(
+            self.declare_parameter("blind_zone_lookahead_m", 2.0).value
+        )
+        self.blind_zone_speed_m_s = float(
+            self.declare_parameter("blind_zone_speed_m_s", 0.70).value
         )
         self.path_timeout_s = float(
             self.declare_parameter("path_timeout_s", 1.50).value
@@ -88,11 +139,16 @@ class CornerSpeedLimiter(Node):
         self.smoothed_path_received_s = 0.0
         self.pose_x_m: Optional[float] = None
         self.pose_y_m: Optional[float] = None
+        self.pose_yaw_rad: Optional[float] = None
         self.pose_received_s = 0.0
+        self.active_controller_id: Optional[str] = None
         self.last_status_s = 0.0
 
         path_qos = QoSProfile(depth=1)
         path_qos.reliability = QoSReliabilityPolicy.RELIABLE
+        selector_qos = QoSProfile(depth=1)
+        selector_qos.reliability = QoSReliabilityPolicy.RELIABLE
+        selector_qos.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
         self.limit_pub = self.create_publisher(SpeedLimit, self.output_topic, 10)
         self.status_pub = self.create_publisher(String, self.status_topic, 10)
         self.create_subscription(Path, self.raw_path_topic, self._raw_path, path_qos)
@@ -100,13 +156,24 @@ class CornerSpeedLimiter(Node):
             Path, self.smoothed_path_topic, self._smoothed_path, path_qos
         )
         self.create_subscription(PoseStamped, self.pose_topic, self._pose, 10)
+        self.create_subscription(
+            String,
+            self.controller_selector_topic,
+            self._controller_selection,
+            selector_qos,
+        )
         self.create_timer(1.0 / update_rate_hz, self._update)
 
         self.get_logger().info(
             "Corner speed limiter ready | "
             f"lookahead={self.lookahead_distance_m:.2f} m "
             f"decel={self.braking_decel_m_s2:.2f} m/s^2 "
-            f"corner_min={self.min_corner_speed_m_s:.2f} m/s"
+            f"default={self.lateral_accel_m_s2:.2f} m/s^2/"
+            f"{self.min_corner_speed_m_s:.2f} m/s "
+            f"heading={self.heading_hold_lateral_accel_m_s2:.2f} m/s^2/"
+            f"{self.heading_hold_min_corner_speed_m_s:.2f} m/s "
+            f"blind={'on' if self.blind_zone_enabled else 'off'}/"
+            f"{self.blind_zone_speed_m_s:.2f} m/s"
         )
 
     @staticmethod
@@ -129,16 +196,46 @@ class CornerSpeedLimiter(Node):
     def _pose(self, message: PoseStamped) -> None:
         self.pose_x_m = float(message.pose.position.x)
         self.pose_y_m = float(message.pose.position.y)
+        orientation = message.pose.orientation
+        self.pose_yaw_rad = math.atan2(
+            2.0 * (
+                orientation.w * orientation.z
+                + orientation.x * orientation.y
+            ),
+            1.0
+            - 2.0
+            * (
+                orientation.y * orientation.y
+                + orientation.z * orientation.z
+            ),
+        )
         self.pose_received_s = time.monotonic()
 
+    def _controller_selection(self, message: String) -> None:
+        self.active_controller_id = str(message.data)
+
+    def _corner_profile(self) -> tuple[str, float, float]:
+        if self.active_controller_id == self.heading_hold_controller_id:
+            return (
+                "heading_hold",
+                self.heading_hold_min_corner_speed_m_s,
+                self.heading_hold_lateral_accel_m_s2,
+            )
+        return (
+            "default",
+            self.min_corner_speed_m_s,
+            self.lateral_accel_m_s2,
+        )
+
     def _decision(self, path_points: list[Point2D]) -> CornerSpeedDecision:
+        _, min_corner_speed_m_s, lateral_accel_m_s2 = self._corner_profile()
         return corner_speed_limit(
             path_points,
             self.pose_x_m,
             self.pose_y_m,
             max_speed_m_s=self.max_speed_m_s,
-            min_corner_speed_m_s=self.min_corner_speed_m_s,
-            lateral_accel_m_s2=self.lateral_accel_m_s2,
+            min_corner_speed_m_s=min_corner_speed_m_s,
+            lateral_accel_m_s2=lateral_accel_m_s2,
             braking_decel_m_s2=self.braking_decel_m_s2,
             lookahead_distance_m=self.lookahead_distance_m,
             tangent_span_m=self.tangent_span_m,
@@ -147,9 +244,28 @@ class CornerSpeedLimiter(Node):
             braking_margin_m=self.braking_margin_m,
         )
 
+    def _blind_decision(self, path_points: list[Point2D]) -> BlindZoneSpeedDecision:
+        if not self.blind_zone_enabled:
+            return BlindZoneSpeedDecision(self.max_speed_m_s, 0.0, None, None)
+        return blind_zone_speed_limit(
+            path_points,
+            self.pose_x_m,
+            self.pose_y_m,
+            self.pose_yaw_rad,
+            max_speed_m_s=self.max_speed_m_s,
+            blind_speed_m_s=self.blind_zone_speed_m_s,
+            blind_angles_rad=self.blind_zone_angles_rad,
+            half_width_rad=self.blind_zone_half_width_rad,
+            min_overlap_m=self.blind_zone_min_overlap_m,
+            lookahead_distance_m=self.blind_zone_lookahead_m,
+        )
+
     def _path_decisions(
         self, now_s: float
-    ) -> list[tuple[str, CornerSpeedDecision]]:
+    ) -> list[tuple[str, CornerSpeedDecision, BlindZoneSpeedDecision]]:
+        def decisions_for(source: str, path: list[Point2D]):
+            return (source, self._decision(path), self._blind_decision(path))
+
         raw_fresh = (
             self.raw_path is not None
             and now_s - self.raw_path_received_s <= self.path_timeout_s
@@ -159,16 +275,18 @@ class CornerSpeedLimiter(Node):
             and now_s - self.smoothed_path_received_s <= self.path_timeout_s
         )
         if raw_fresh and self.smoothed_path_received_s >= self.raw_path_received_s:
-            return [("smoothed", self._decision(self.smoothed_path))]
+            return [decisions_for("smoothed", self.smoothed_path)]
         if raw_fresh and now_s - self.raw_path_received_s < self.smoothing_wait_s:
-            decisions = [("raw", self._decision(self.raw_path))]
+            decisions = [decisions_for("raw", self.raw_path)]
             if smoothed_fresh:
-                decisions.append(("previous_smoothed", self._decision(self.smoothed_path)))
+                decisions.append(
+                    decisions_for("previous_smoothed", self.smoothed_path)
+                )
             return decisions
         if raw_fresh:
-            return [("raw_fallback", self._decision(self.raw_path))]
+            return [decisions_for("raw_fallback", self.raw_path)]
         if smoothed_fresh:
-            return [("smoothed", self._decision(self.smoothed_path))]
+            return [decisions_for("smoothed", self.smoothed_path)]
         return []
 
     def _publish_limit(self, speed_limit_m_s: float) -> None:
@@ -186,16 +304,31 @@ class CornerSpeedLimiter(Node):
         now_s: float,
         source: str,
         decision: CornerSpeedDecision,
+        blind_decision: BlindZoneSpeedDecision,
     ) -> None:
         if now_s - self.last_status_s < 0.20:
             return
         self.last_status_s = now_s
         message = String()
+        profile, min_corner_speed_m_s, lateral_accel_m_s2 = self._corner_profile()
         message.data = json.dumps(
             {
                 "source": source,
-                "limited": decision.speed_limit_m_s < self.max_speed_m_s - 1.0e-3,
-                "limit_m_s": round(decision.speed_limit_m_s, 3),
+                "controller_id": self.active_controller_id,
+                "profile": profile,
+                "min_corner_speed_m_s": round(min_corner_speed_m_s, 3),
+                "lateral_accel_m_s2": round(lateral_accel_m_s2, 3),
+                "limited": min(
+                    decision.speed_limit_m_s, blind_decision.speed_limit_m_s
+                ) < self.max_speed_m_s - 1.0e-3,
+                "limit_m_s": round(
+                    min(
+                        decision.speed_limit_m_s,
+                        blind_decision.speed_limit_m_s,
+                    ),
+                    3,
+                ),
+                "corner_limit_m_s": round(decision.speed_limit_m_s, 3),
                 "corner_distance_m": (
                     None
                     if decision.corner_distance_m is None
@@ -203,6 +336,27 @@ class CornerSpeedLimiter(Node):
                 ),
                 "turn_deg": round(math.degrees(decision.turn_angle_rad), 1),
                 "curvature_m_inv": round(decision.curvature_m_inv, 3),
+                "blind_zone_limited": (
+                    blind_decision.speed_limit_m_s < self.max_speed_m_s - 1.0e-3
+                ),
+                "blind_zone_limit_m_s": round(
+                    blind_decision.speed_limit_m_s, 3
+                ),
+                "blind_zone_overlap_m": round(
+                    blind_decision.overlap_distance_m, 3
+                ),
+                "blind_zone_angle_deg": (
+                    None
+                    if blind_decision.nearest_blind_angle_rad is None
+                    else round(
+                        math.degrees(blind_decision.nearest_blind_angle_rad), 1
+                    )
+                ),
+                "path_body_heading_deg": (
+                    None
+                    if blind_decision.path_heading_rad is None
+                    else round(math.degrees(blind_decision.path_heading_rad), 1)
+                ),
             },
             separators=(",", ":"),
         )
@@ -213,26 +367,43 @@ class CornerSpeedLimiter(Node):
         pose_fresh = (
             self.pose_x_m is not None
             and self.pose_y_m is not None
+            and self.pose_yaw_rad is not None
             and now_s - self.pose_received_s <= self.pose_timeout_s
         )
         if not pose_fresh:
             decision = CornerSpeedDecision(self.max_speed_m_s, None, 0.0, 0.0)
+            blind_decision = BlindZoneSpeedDecision(
+                self.max_speed_m_s, 0.0, None, None
+            )
             self._publish_limit(decision.speed_limit_m_s)
-            self._publish_status(now_s, "no_fresh_pose", decision)
+            self._publish_status(
+                now_s, "no_fresh_pose", decision, blind_decision
+            )
             return
 
         decisions = self._path_decisions(now_s)
         if not decisions:
             decision = CornerSpeedDecision(self.max_speed_m_s, None, 0.0, 0.0)
+            blind_decision = BlindZoneSpeedDecision(
+                self.max_speed_m_s, 0.0, None, None
+            )
             self._publish_limit(decision.speed_limit_m_s)
-            self._publish_status(now_s, "no_fresh_path", decision)
+            self._publish_status(
+                now_s, "no_fresh_path", decision, blind_decision
+            )
             return
 
-        source, decision = min(
-            decisions, key=lambda item: item[1].speed_limit_m_s
+        source, decision, blind_decision = min(
+            decisions,
+            key=lambda item: min(
+                item[1].speed_limit_m_s, item[2].speed_limit_m_s
+            ),
         )
-        self._publish_limit(decision.speed_limit_m_s)
-        self._publish_status(now_s, source, decision)
+        combined_limit = min(
+            decision.speed_limit_m_s, blind_decision.speed_limit_m_s
+        )
+        self._publish_limit(combined_limit)
+        self._publish_status(now_s, source, decision, blind_decision)
 
 
 def main(args=None) -> None:

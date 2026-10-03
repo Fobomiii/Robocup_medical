@@ -9,12 +9,13 @@ import numpy as np
 import rclpy
 from rclpy.duration import Duration
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2 as pc2
-from std_msgs.msg import Header, String
+from std_msgs.msg import Bool, Header, String
 from tf2_ros import Buffer, TransformException, TransformListener
+
+from .qos_profiles import low_latency_sensor_qos
 
 
 def quaternion_matrix(x: float, y: float, z: float, w: float) -> np.ndarray:
@@ -263,7 +264,9 @@ class LidarSelfFilter(Node):
 
         self.declare_parameter("input_topic", "/livox/lidar")
         self.declare_parameter("output_topic", "/livox/lidar_filtered")
+        self.declare_parameter("status_topic", "/medical_nav/lidar_filter_status")
         self.declare_parameter("target_frame", "base_link")
+        self.declare_parameter("output_min_z", -10.0)
         self.declare_parameter("output_max_z", 0.55)
         self.declare_parameter("self_radius", 0.26)
         self.declare_parameter("self_min_z", -0.05)
@@ -302,11 +305,14 @@ class LidarSelfFilter(Node):
         # Livox tag low nibble contains spatial/intensity noise confidence;
         # upper bits describe return number and must remain accepted.
         self.declare_parameter("livox_noise_mask", 15)
+        self.declare_parameter("gate_on_stm32_ready", True)
 
         get = lambda name: self.get_parameter(name).value
         self.input_topic = str(get("input_topic"))
         self.output_topic = str(get("output_topic"))
+        self.status_topic = str(get("status_topic"))
         self.target_frame = str(get("target_frame"))
+        self.output_min_z = float(get("output_min_z"))
         self.output_max_z = float(get("output_max_z"))
         self.self_radius = float(get("self_radius"))
         self.self_min_z = float(get("self_min_z"))
@@ -340,9 +346,12 @@ class LidarSelfFilter(Node):
         self.ground_plane_hold_s = float(get("ground_plane_hold_s"))
         self.reject_livox_noise = bool(get("reject_livox_noise"))
         self.livox_noise_mask = int(get("livox_noise_mask"))
+        self.gate_on_stm32_ready = bool(get("gate_on_stm32_ready"))
 
-        if not math.isfinite(self.output_max_z):
-            raise ValueError("output_max_z must be finite")
+        if not math.isfinite(self.output_min_z) or not math.isfinite(self.output_max_z):
+            raise ValueError("output z limits must be finite")
+        if self.output_min_z >= self.output_max_z:
+            raise ValueError("output_min_z must be lower than output_max_z")
         if self.self_radius <= 0.0:
             raise ValueError("self_radius must be positive")
         if self.self_min_z >= self.self_max_z:
@@ -395,6 +404,7 @@ class LidarSelfFilter(Node):
         self.points_self = 0
         self.points_arm = 0
         self.points_ground = 0
+        self.points_below_output = 0
         self.arm_forward_extent = 0.0
         self.ground_plane = None
         self.ground_plane_source = "none"
@@ -404,18 +414,30 @@ class LidarSelfFilter(Node):
         self.ground_fallbacks = 0
         self.tag_available = False
         self.tf_drop_count = 0
+        self.stm32_ready = not self.gate_on_stm32_ready
+        self.stm32_gate_drops = 0
+        self.last_processing_ms = 0.0
+        self.max_processing_ms = 0.0
+        self.last_output_age_s = 0.0
+        self.max_output_age_s = 0.0
 
         self.publisher = self.create_publisher(
-            PointCloud2, self.output_topic, qos_profile_sensor_data
+            PointCloud2, self.output_topic, low_latency_sensor_qos()
         )
         self.status_publisher = self.create_publisher(
-            String, "/medical_nav/lidar_filter_status", 10
+            String, self.status_topic, 10
         )
         self.create_subscription(
             PointCloud2,
             self.input_topic,
             self._cloud_callback,
-            qos_profile_sensor_data,
+            low_latency_sensor_qos(),
+        )
+        self.create_subscription(
+            Bool,
+            "/medical_nav/stm32_ready",
+            self._stm32_ready,
+            10,
         )
         self.create_timer(2.0, self._publish_status)
 
@@ -432,11 +454,33 @@ class LidarSelfFilter(Node):
             f"Self filter {self.input_topic} -> {self.output_topic} in "
             f"{self.target_frame}: radius={self.self_radius:.3f} m, "
             f"z=[{self.self_min_z:.2f}, {self.self_max_z:.2f}] m, "
-            f"output_z<={self.output_max_z:.2f} m, "
+            f"output_z=[{self.output_min_z:.2f}, {self.output_max_z:.2f}] m, "
             f"top_plate={'on' if self.top_plate_filter_enabled else 'off'}, "
             f"arm={arm_description}, "
-            f"ground={'on' if self.ground_filter_enabled else 'off'}"
+            f"ground={'on' if self.ground_filter_enabled else 'off'}, "
+            f"stm32_gate={'on' if self.gate_on_stm32_ready else 'off'}, "
+            "cloud_qos=best_effort/keep_last(1)"
         )
+
+    def _stm32_ready(self, message: Bool) -> None:
+        ready = bool(message.data) or not self.gate_on_stm32_ready
+        if ready == self.stm32_ready:
+            return
+        self.stm32_ready = ready
+        if not ready:
+            # Never reuse a floor estimate or transformed cloud state across a
+            # reset followed by manual repositioning to the start point.
+            self.cached_ground_plane = None
+            self.cached_ground_plane_time = 0.0
+            self.ground_plane = None
+            self.ground_plane_source = "stm32_gate"
+            self.get_logger().warn(
+                "STM32 unavailable; suppressing navigation point clouds"
+            )
+        else:
+            self.get_logger().info(
+                "STM32 recovered; resuming navigation point clouds"
+            )
 
     def _load_transform(self, source_frame: str) -> bool:
         if source_frame == self.cached_source_frame and self.rotation is not None:
@@ -464,6 +508,10 @@ class LidarSelfFilter(Node):
         return True
 
     def _cloud_callback(self, message: PointCloud2) -> None:
+        callback_started_ns = time.perf_counter_ns()
+        if not self.stm32_ready:
+            self.stm32_gate_drops += 1
+            return
         source_frame = message.header.frame_id.lstrip("/")
         if not source_frame or not self._load_transform(source_frame):
             return
@@ -565,12 +613,27 @@ class LidarSelfFilter(Node):
                 else:
                     ground_plane_source = "none"
             without_self = without_self[keep_ground]
-        filtered = np.ascontiguousarray(without_self, dtype=np.float32)
+        keep_output_height = without_self[:, 2] >= self.output_min_z
+        below_output_count = len(without_self) - int(
+            np.count_nonzero(keep_output_height)
+        )
+        filtered = np.ascontiguousarray(
+            without_self[keep_output_height], dtype=np.float32
+        )
 
         header = Header()
         header.stamp = message.header.stamp
         header.frame_id = self.target_frame
         self.publisher.publish(pc2.create_cloud_xyz32(header, filtered))
+
+        stamp_ns = (
+            int(message.header.stamp.sec) * 1_000_000_000
+            + int(message.header.stamp.nanosec)
+        )
+        output_age_s = max(
+            0.0, (self.get_clock().now().nanoseconds - stamp_ns) / 1.0e9
+        )
+        processing_ms = (time.perf_counter_ns() - callback_started_ns) / 1.0e6
 
         self.cloud_count += 1
         self.points_in = points_in
@@ -581,8 +644,13 @@ class LidarSelfFilter(Node):
         self.points_self = len(xyz) - int(np.count_nonzero(keep_self))
         self.points_arm = arm_removed
         self.points_ground = ground_count
+        self.points_below_output = below_output_count
         self.ground_plane = plane
         self.ground_plane_source = ground_plane_source
+        self.last_processing_ms = processing_ms
+        self.max_processing_ms = max(self.max_processing_ms, processing_ms)
+        self.last_output_age_s = output_age_s
+        self.max_output_age_s = max(self.max_output_age_s, output_age_s)
 
     def _publish_status(self) -> None:
         message = String()
@@ -597,11 +665,20 @@ class LidarSelfFilter(Node):
                 "points_self": self.points_self,
                 "points_arm": self.points_arm,
                 "points_ground": self.points_ground,
+                "points_below_output": self.points_below_output,
                 "ground_plane_source": self.ground_plane_source,
                 "ground_fit_failures": self.ground_fit_failures,
                 "ground_fallbacks": self.ground_fallbacks,
                 "tf_drops": self.tf_drop_count,
+                "stm32_ready": self.stm32_ready,
+                "stm32_gate_enabled": self.gate_on_stm32_ready,
+                "stm32_gate_drops": self.stm32_gate_drops,
                 "output_max_z_m": self.output_max_z,
+                "output_min_z_m": self.output_min_z,
+                "processing_ms": round(self.last_processing_ms, 3),
+                "max_processing_ms": round(self.max_processing_ms, 3),
+                "output_age_s": round(self.last_output_age_s, 4),
+                "max_output_age_s": round(self.max_output_age_s, 4),
                 "self_radius_m": self.self_radius,
                 "top_plate_filter": self.top_plate_filter_enabled,
                 "top_plate": (

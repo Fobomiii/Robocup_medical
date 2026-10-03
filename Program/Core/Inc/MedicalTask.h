@@ -65,7 +65,9 @@ uint8_t MedicalTask_AllowsMotion(void);
 uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
                                    float pos_x,
                                    float pos_y,
-                                   float yaw_clockwise_deg);
+                                   float yaw_clockwise_deg,
+                                   float measured_forward_mm_s,
+                                   float measured_left_mm_s);
 
 #ifdef __cplusplus
 }

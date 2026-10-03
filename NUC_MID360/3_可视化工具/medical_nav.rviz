@@ -117,6 +117,21 @@ Visualization Manager:
         Depth: 1
       Visual Enabled: true
       Collision Enabled: false
+    - Class: rviz_default_plugins/MarkerArray
+      Name: X-Drive Lidar Blind Zones
+      Enabled: true
+      Topic:
+        Value: /medical_nav/blind_zones
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Depth: 10
+      Namespaces:
+        lidar_blind_chassis: true
+        lidar_blind_label: true
+        lidar_blind_motion: true
+        lidar_blind_strip: true
+      Queue Size: 10
     - Class: rviz_default_plugins/TF
       Name: TF
       Enabled: true

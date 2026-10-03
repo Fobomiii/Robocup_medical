@@ -18,6 +18,14 @@ class CornerSpeedDecision:
     curvature_m_inv: float
 
 
+@dataclass(frozen=True)
+class BlindZoneSpeedDecision:
+    speed_limit_m_s: float
+    overlap_distance_m: float
+    nearest_blind_angle_rad: Optional[float]
+    path_heading_rad: Optional[float]
+
+
 def _distance(first: Point2D, second: Point2D) -> float:
     return math.hypot(second[0] - first[0], second[1] - first[1])
 
@@ -107,16 +115,89 @@ def _angle_difference(first_rad: float, second_rad: float) -> float:
     )
 
 
+def blind_zone_speed_limit(
+    path_points: Sequence[Point2D],
+    robot_x_m: float,
+    robot_y_m: float,
+    robot_yaw_rad: float,
+    *,
+    max_speed_m_s: float = 3.0,
+    blind_speed_m_s: float = 0.70,
+    blind_angles_rad: Sequence[float] = (
+        math.radians(45.0),
+        math.radians(135.0),
+        math.radians(-135.0),
+        math.radians(-45.0),
+    ),
+    half_width_rad: float = math.radians(7.0),
+    min_overlap_m: float = 0.60,
+    lookahead_distance_m: float = 2.0,
+) -> BlindZoneSpeedDecision:
+    """Cap speed when the path follows an X-shaped lidar shadow for too long."""
+
+    if max_speed_m_s <= 0.0 or blind_speed_m_s <= 0.0:
+        raise ValueError("blind-zone speeds must be positive")
+    if half_width_rad <= 0.0 or min_overlap_m <= 0.0 or lookahead_distance_m <= 0.0:
+        raise ValueError("blind-zone geometry must be positive")
+    if not blind_angles_rad:
+        return BlindZoneSpeedDecision(max_speed_m_s, 0.0, None, None)
+
+    forward_path = _path_ahead(path_points, robot_x_m, robot_y_m)
+    if len(forward_path) < 2:
+        return BlindZoneSpeedDecision(max_speed_m_s, 0.0, None, None)
+
+    longest_overlap = 0.0
+    current_overlap = 0.0
+    travelled = 0.0
+    best_blind_angle = None
+    best_path_heading = None
+    for start, end in zip(forward_path, forward_path[1:]):
+        segment_length = _distance(start, end)
+        if segment_length <= 1.0e-9:
+            continue
+        remaining = lookahead_distance_m - travelled
+        if remaining <= 0.0:
+            break
+        considered_length = min(segment_length, remaining)
+        map_heading = _heading(start, end)
+        body_heading = math.atan2(
+            math.sin(map_heading - robot_yaw_rad),
+            math.cos(map_heading - robot_yaw_rad),
+        )
+        nearest_angle = min(
+            blind_angles_rad,
+            key=lambda angle: _angle_difference(body_heading, angle),
+        )
+        error = _angle_difference(body_heading, nearest_angle)
+        if error <= half_width_rad:
+            current_overlap += considered_length
+            if current_overlap > longest_overlap:
+                longest_overlap = current_overlap
+                best_blind_angle = nearest_angle
+                best_path_heading = body_heading
+        else:
+            current_overlap = 0.0
+        travelled += considered_length
+
+    limited = longest_overlap >= min_overlap_m
+    return BlindZoneSpeedDecision(
+        min(max_speed_m_s, blind_speed_m_s) if limited else max_speed_m_s,
+        longest_overlap,
+        best_blind_angle,
+        best_path_heading,
+    )
+
+
 def corner_speed_limit(
     path_points: Sequence[Point2D],
     robot_x_m: float,
     robot_y_m: float,
     *,
-    max_speed_m_s: float = 2.0,
+    max_speed_m_s: float = 3.0,
     min_corner_speed_m_s: float = 1.0,
     lateral_accel_m_s2: float = 1.40,
     braking_decel_m_s2: float = 1.30,
-    lookahead_distance_m: float = 1.50,
+    lookahead_distance_m: float = 3.50,
     tangent_span_m: float = 0.35,
     sample_step_m: float = 0.10,
     min_turn_angle_rad: float = math.radians(25.0),

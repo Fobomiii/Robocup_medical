@@ -12,12 +12,13 @@
 #define HWT_RX_BUF_SIZE  64U
 #define HWT_FRAME_LEN    11U
 #define HWT_RX_RESTART_INTERVAL_MS 50U
+#define HWT_YAW_MAX_AGE_MS 100U
 
 static uint8_t s_rx_dma[HWT_RX_BUF_SIZE] __attribute__((aligned(32)));
 static volatile float    s_yaw;
 static volatile float    s_wz;
 static volatile uint16_t s_ver;
-static volatile uint32_t s_last_ms;
+static volatile uint32_t s_last_yaw_ms;
 static volatile uint32_t s_last_restart_ms;
 
 volatile float   hwt_zangle = 0.f;  /* Keil Debug: HWT101 航向角 (°) */
@@ -51,7 +52,6 @@ static void parse_frame(const uint8_t *f)
   {
     /* ?????: Wx Wy Wz T ???? Wz ?? offset 6 */
     s_wz = (float)rd_i16(&f[6]) / 32768.f * 2000.f;
-    s_last_ms = HAL_GetTick();
     hwt_online = 1U;
   }
   else if (f[1] == 0x53U)
@@ -61,7 +61,7 @@ static void parse_frame(const uint8_t *f)
     hwt_zangle = s_yaw;
     pos_z = -s_yaw;
     s_ver = (uint16_t)rd_i16(&f[8]);
-    s_last_ms = HAL_GetTick();
+    s_last_yaw_ms = HAL_GetTick();
     hwt_online = 1U;
   }
 }
@@ -132,7 +132,7 @@ void HWT101_Init(void)
   s_yaw = 0.f;
   s_wz = 0.f;
   s_ver = 0;
-  s_last_ms = 0;
+  s_last_yaw_ms = 0U;
   s_last_restart_ms = 0U;
   hwt_zangle = 0.f;
   pos_z = 0.f;
@@ -163,6 +163,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 void HWT101_OnUartError(void)
 {
   hwt_online = 0U;
+  s_last_yaw_ms = 0U;
   (void)hwt_restart_rx();
 }
 
@@ -170,7 +171,7 @@ uint8_t HWT101_IsOnline(void)
 {
   uint32_t now = HAL_GetTick();
 
-  if (s_last_ms == 0U)
+  if (s_last_yaw_ms == 0U)
   {
     hwt_online = 0U;
     if ((now - s_last_restart_ms) >= HWT_RX_RESTART_INTERVAL_MS)
@@ -179,7 +180,9 @@ uint8_t HWT101_IsOnline(void)
     }
     return 0U;
   }
-  hwt_online = ((now - s_last_ms) < 500U) ? 1U : 0U;
+  /* Motion gating uses the age of the yaw frame itself.  A fresh Wz frame
+   * must not make an old yaw sample appear valid. */
+  hwt_online = ((now - s_last_yaw_ms) < HWT_YAW_MAX_AGE_MS) ? 1U : 0U;
   if ((hwt_online == 0U) &&
       ((now - s_last_restart_ms) >= HWT_RX_RESTART_INTERVAL_MS))
   {

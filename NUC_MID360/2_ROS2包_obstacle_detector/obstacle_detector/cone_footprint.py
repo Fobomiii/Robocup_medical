@@ -11,15 +11,19 @@ import rclpy
 from rclpy.duration import Duration
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2 as pc2
 from std_msgs.msg import Header, String
 from tf2_ros import Buffer, TransformException, TransformListener
 
-from obstacle_detector.cone_footprint_core import expand_cone_footprints, footprint_disk
+from obstacle_detector.cone_footprint_core import (
+    expand_cone_footprints,
+    footprint_disk,
+    future_timestamp_gap_s,
+)
 from obstacle_detector.lidar_transform import quaternion_matrix, transform_points, xyz_from_cloud
+from obstacle_detector.qos_profiles import low_latency_sensor_qos
 
 
 class ConeFootprintCompensator(Node):
@@ -34,9 +38,10 @@ class ConeFootprintCompensator(Node):
         self.declare_parameter("min_range", 0.30)
         self.declare_parameter("max_range", 4.5)
         self.declare_parameter("cluster_cell", 0.08)
-        self.declare_parameter("min_points", 3)
+        self.declare_parameter("min_points", 5)
         self.declare_parameter("max_span", 0.32)
-        self.declare_parameter("min_vertical_span", 0.06)
+        self.declare_parameter("min_vertical_span", 0.12)
+        self.declare_parameter("center_merge_distance", 0.28)
         self.declare_parameter("disk_spacing", 0.04)
         self.declare_parameter("disk_height", 0.12)
         # A cone always has returns at ground level.  A compact cluster whose
@@ -49,6 +54,11 @@ class ConeFootprintCompensator(Node):
         self.declare_parameter("persistence_s", 0.60)
         self.declare_parameter("persistence_frame", "odom")
         self.declare_parameter("persistence_match_distance", 0.40)
+        # Exact cloud-time TF remains preferred. If the cloud is only slightly
+        # newer than the latest odom TF, use that latest TF instead of dropping
+        # persistence for the frame. Never bridge a genuinely stale TF gap.
+        self.declare_parameter("tf_future_fallback_enabled", True)
+        self.declare_parameter("tf_future_fallback_max_gap_s", 0.20)
 
         get = lambda name: self.get_parameter(name).value
         self.input_topic = str(get("input_topic"))
@@ -64,6 +74,7 @@ class ConeFootprintCompensator(Node):
             "min_points": int(get("min_points")),
             "max_span": float(get("max_span")),
             "min_vertical_span": float(get("min_vertical_span")),
+            "center_merge_distance": float(get("center_merge_distance")),
             "disk_spacing": float(get("disk_spacing")),
             "disk_height": float(get("disk_height")),
             "min_base_z": float(get("min_base_z")),
@@ -71,6 +82,10 @@ class ConeFootprintCompensator(Node):
         self.persistence_s = float(get("persistence_s"))
         self.persistence_frame = str(get("persistence_frame")).lstrip("/")
         self.persistence_match_distance = float(get("persistence_match_distance"))
+        self.tf_future_fallback_enabled = bool(get("tf_future_fallback_enabled"))
+        self.tf_future_fallback_max_gap_s = float(
+            get("tf_future_fallback_max_gap_s")
+        )
         if self.parameters["base_radius"] <= 0.0:
             raise ValueError("base_radius must be positive")
         if self.parameters["physical_base_radius"] <= 0.0:
@@ -81,6 +96,12 @@ class ConeFootprintCompensator(Node):
             raise ValueError("cone_height must exceed min_z")
         if self.parameters["cluster_cell"] <= 0.0:
             raise ValueError("cluster_cell must be positive")
+        if self.parameters["min_points"] < 1:
+            raise ValueError("min_points must be positive")
+        if self.parameters["min_vertical_span"] <= 0.0:
+            raise ValueError("min_vertical_span must be positive")
+        if self.parameters["center_merge_distance"] <= 0.0:
+            raise ValueError("center_merge_distance must be positive")
         if self.parameters["min_base_z"] < self.parameters["min_z"]:
             raise ValueError("min_base_z must not be below min_z")
         if self.parameters["disk_spacing"] <= 0.0:
@@ -91,16 +112,26 @@ class ConeFootprintCompensator(Node):
             raise ValueError("persistence_frame must not be empty")
         if self.persistence_match_distance <= 0.0:
             raise ValueError("persistence_match_distance must be positive")
+        if self.tf_future_fallback_max_gap_s <= 0.0:
+            raise ValueError("tf_future_fallback_max_gap_s must be positive")
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self._held_centers: list[dict[str, object]] = []
         self._last_tf_warning = 0.0
+        self._last_tf_fallback_log = 0.0
+        self.tf_future_fallback_count = 0
+        self.tf_lookup_failure_count = 0
+        self.tf_last_fallback_gap_s: float | None = None
+        self.tf_last_rejected_gap_s: float | None = None
         self.cloud_count = 0
+        self.raw_cluster_count = 0
         self.detected_count = 0
         self.held_count = 0
+        self._current_centers_base: list[tuple[float, float]] = []
+        self._held_centers_base: list[tuple[float, float]] = []
         self.publisher = self.create_publisher(
-            PointCloud2, self.output_topic, qos_profile_sensor_data
+            PointCloud2, self.output_topic, low_latency_sensor_qos()
         )
         self.status_publisher = self.create_publisher(
             String, "/medical_nav/cone_compensation_status", 10
@@ -109,15 +140,48 @@ class ConeFootprintCompensator(Node):
             PointCloud2,
             self.input_topic,
             self._cloud_callback,
-            qos_profile_sensor_data,
+            low_latency_sensor_qos(),
         )
-        self.create_timer(2.0, self._publish_status)
+        self.create_timer(0.2, self._publish_status)
         self.get_logger().info(
             f"Cone footprint {self.input_topic} -> {self.output_topic}: "
             f"height={self.parameters['cone_height']:.3f} m, "
             f"base_radius={self.parameters['base_radius']:.3f} m, "
-            f"persistence={self.persistence_s:.2f} s"
+            f"merge_distance={self.parameters['center_merge_distance']:.3f} m, "
+            f"persistence={self.persistence_s:.2f} s, "
+            f"TF future fallback<={self.tf_future_fallback_max_gap_s:.3f} s, "
+            "cloud_qos=best_effort/keep_last(1)"
         )
+
+    def _merge_held_tracks(self) -> None:
+        """Coalesce duplicate fixed-frame tracks without extending lifetime."""
+        merge_distance = self.parameters["center_merge_distance"]
+        pending = list(self._held_centers)
+        merged: list[dict[str, object]] = []
+        while pending:
+            group = [pending.pop(0)]
+            changed = True
+            while changed:
+                changed = False
+                group_centers = [np.asarray(item["center"]) for item in group]
+                for pending_index, item in enumerate(pending):
+                    center = np.asarray(item["center"])
+                    if any(
+                        float(np.linalg.norm(center - existing)) <= merge_distance
+                        for existing in group_centers
+                    ):
+                        pending.pop(pending_index)
+                        group.append(item)
+                        changed = True
+                        break
+            centers = np.asarray([item["center"] for item in group], dtype=np.float32)
+            merged.append(
+                {
+                    "center": np.median(centers, axis=0).astype(np.float32),
+                    "seen": max(float(item["seen"]) for item in group),
+                }
+            )
+        self._held_centers = merged
 
     @staticmethod
     def _transform_for(transform) -> tuple[np.ndarray, np.ndarray]:
@@ -147,10 +211,62 @@ class ConeFootprintCompensator(Node):
                 timeout=Duration(seconds=0.05),
             ).transform
         except TransformException as error:
+            # A Livox cloud can arrive tens of milliseconds ahead of the most
+            # recent odom TF. Fall back only when the latest transform proves
+            # this is a small future gap. Past extrapolation, missing frames,
+            # and stale/frozen TF remain failures.
+            if (
+                self.tf_future_fallback_enabled
+                and stamp is not None
+                and (stamp.sec or stamp.nanosec)
+            ):
+                try:
+                    latest = self.tf_buffer.lookup_transform(
+                        target_frame,
+                        source_frame,
+                        Time(),
+                        timeout=Duration(seconds=0.05),
+                    )
+                    gap_s = future_timestamp_gap_s(
+                        stamp.sec,
+                        stamp.nanosec,
+                        latest.header.stamp.sec,
+                        latest.header.stamp.nanosec,
+                    )
+                    self.tf_last_rejected_gap_s = gap_s
+                    if (
+                        gap_s is not None
+                        and gap_s <= self.tf_future_fallback_max_gap_s
+                    ):
+                        self.tf_future_fallback_count += 1
+                        self.tf_last_fallback_gap_s = gap_s
+                        self.tf_last_rejected_gap_s = None
+                        now = time.monotonic()
+                        if now - self._last_tf_fallback_log > 5.0:
+                            self.get_logger().info(
+                                "Cone compensation used latest TF for "
+                                f"{source_frame}->{target_frame}: "
+                                f"future gap={gap_s:.3f} s"
+                            )
+                            self._last_tf_fallback_log = now
+                        return latest.transform
+                except TransformException:
+                    self.tf_last_rejected_gap_s = None
+
+            self.tf_lookup_failure_count += 1
             now = time.monotonic()
             if now - self._last_tf_warning > 2.0:
+                gap_detail = (
+                    ""
+                    if self.tf_last_rejected_gap_s is None
+                    else (
+                        f"; latest gap={self.tf_last_rejected_gap_s:.3f} s "
+                        f"exceeds {self.tf_future_fallback_max_gap_s:.3f} s"
+                    )
+                )
                 self.get_logger().warning(
-                    f"Cone compensation TF {source_frame}->{target_frame} unavailable: {error}"
+                    f"Cone compensation TF {source_frame}->{target_frame} "
+                    f"unavailable: {error}{gap_detail}"
                 )
                 self._last_tf_warning = now
             return False
@@ -199,16 +315,22 @@ class ConeFootprintCompensator(Node):
             if now - float(item["seen"]) <= self.persistence_s
         ]
         if self.persistence_s <= 0.0:
+            self._held_centers = []
             self.held_count = 0
+            self._held_centers_base = []
             return []
 
         current_fixed = self._to_persistence_frame(centers, source_frame, stamp)
         if current_fixed is None:
-            self.held_count = 0
+            self.held_count = len(self._held_centers)
+            self._held_centers_base = []
             return []
 
-        # Match detections in a fixed frame so a moving robot does not turn a
-        # previous base_link coordinate into a false obstacle trail.
+        # Merge old duplicates first, then match in a fixed frame so robot
+        # motion cannot turn one cone into a trail. Very close detections may
+        # update the same track; wider matches remain one-to-one so two real
+        # cones near each other are not collapsed through a shared track.
+        self._merge_held_tracks()
         matched_tracks: set[int] = set()
         for point in current_fixed:
             match = None
@@ -219,11 +341,14 @@ class ConeFootprintCompensator(Node):
                         float(point[1] - item["center"][1]),
                     ))
                     for index, item in enumerate(self._held_centers)
-                    if index not in matched_tracks
                 ]
                 if candidates:
                     nearest, distance = min(candidates, key=lambda pair: pair[1])
-                    if distance <= self.persistence_match_distance:
+                    can_reuse = (
+                        distance <= self.parameters["center_merge_distance"]
+                        or nearest not in matched_tracks
+                    )
+                    if distance <= self.persistence_match_distance and can_reuse:
                         matched_tracks.add(nearest)
                         match = self._held_centers[nearest]
             if match is None:
@@ -231,19 +356,28 @@ class ConeFootprintCompensator(Node):
                     {"center": point.astype(np.float32), "seen": now}
                 )
             else:
-                match["center"] = point.astype(np.float32)
+                previous = np.asarray(match["center"], dtype=np.float32)
+                match["center"] = (0.5 * previous + 0.5 * point).astype(np.float32)
                 match["seen"] = now
+
+        self._merge_held_tracks()
 
         if not self._held_centers:
             self.held_count = 0
+            self._held_centers_base = []
             return []
         active_fixed = np.asarray(
             [item["center"] for item in self._held_centers], dtype=np.float32
         )
         active_base = self._from_persistence_frame(active_fixed, source_frame)
         if active_base is None:
-            self.held_count = 0
+            self.held_count = len(self._held_centers)
+            self._held_centers_base = []
             return []
+
+        self._held_centers_base = [
+            (float(point[0]), float(point[1])) for point in active_base
+        ]
 
         extras = []
         for point in active_base:
@@ -255,13 +389,15 @@ class ConeFootprintCompensator(Node):
                 if nearest < self.parameters["disk_spacing"] * 0.75:
                     continue
             extras.append((float(point[0]), float(point[1])))
-        self.held_count = len(extras)
+        self.held_count = len(self._held_centers)
         return extras
 
     def _cloud_callback(self, message: PointCloud2) -> None:
         xyz = xyz_from_cloud(message)
         source_frame = message.header.frame_id.lstrip("/") or "base_link"
-        expanded, centers = expand_cone_footprints(xyz, **self.parameters)
+        expanded, centers, raw_cluster_count = expand_cone_footprints(
+            xyz, **self.parameters, return_diagnostics=True
+        )
         extras = self._persistent_extras(centers, source_frame, message.header.stamp)
         if extras:
             expanded = np.vstack(
@@ -284,20 +420,67 @@ class ConeFootprintCompensator(Node):
         header.frame_id = message.header.frame_id
         self.publisher.publish(pc2.create_cloud_xyz32(header, expanded))
         self.cloud_count += 1
+        self.raw_cluster_count = raw_cluster_count
         self.detected_count = len(centers)
+        self._current_centers_base = list(centers)
 
     def _publish_status(self) -> None:
+        current = sorted(
+            self._current_centers_base,
+            key=lambda point: math.hypot(point[0], point[1]),
+        )
+        held_base = sorted(
+            self._held_centers_base,
+            key=lambda point: math.hypot(point[0], point[1]),
+        )
+        held_pairs = list(zip(self._held_centers_base, self._held_centers))
+        held_pairs.sort(key=lambda pair: math.hypot(*pair[0]))
+        held_odom = [
+            (float(item["center"][0]), float(item["center"][1]))
+            for _, item in held_pairs
+        ]
+
+        def rounded(points):
+            return [[round(x, 3), round(y, 3)] for x, y in points[:8]]
+
         message = String()
         message.data = json.dumps(
             {
                 "clouds": self.cloud_count,
-                "cones": self.detected_count,
-                "held_cones": self.held_count,
+                "raw_clusters": self.raw_cluster_count,
+                "merged_cones": self.detected_count,
+                "held_tracks": self.held_count,
+                "current_centers_base": rounded(current),
+                "held_centers_odom": rounded(held_odom),
+                "nearest_current_cone_m": (
+                    round(math.hypot(*current[0]), 3) if current else None
+                ),
+                "nearest_held_cone_m": (
+                    round(math.hypot(*held_base[0]), 3) if held_base else None
+                ),
                 "base_radius_m": self.parameters["base_radius"],
                 "physical_base_radius_m": self.parameters["physical_base_radius"],
                 "cone_height_m": self.parameters["cone_height"],
+                "min_points": self.parameters["min_points"],
+                "min_vertical_span_m": self.parameters["min_vertical_span"],
+                "center_merge_distance_m": self.parameters["center_merge_distance"],
                 "persistence_s": self.persistence_s,
-            }
+                "tf_future_fallback_enabled": self.tf_future_fallback_enabled,
+                "tf_future_fallback_max_gap_s": self.tf_future_fallback_max_gap_s,
+                "tf_future_fallbacks": self.tf_future_fallback_count,
+                "tf_lookup_failures": self.tf_lookup_failure_count,
+                "tf_last_fallback_gap_s": (
+                    None
+                    if self.tf_last_fallback_gap_s is None
+                    else round(self.tf_last_fallback_gap_s, 4)
+                ),
+                "tf_last_rejected_gap_s": (
+                    None
+                    if self.tf_last_rejected_gap_s is None
+                    else round(self.tf_last_rejected_gap_s, 4)
+                ),
+            },
+            separators=(",", ":"),
         )
         self.status_publisher.publish(message)
 

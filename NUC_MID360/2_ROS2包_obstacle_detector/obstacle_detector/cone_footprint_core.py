@@ -5,6 +5,65 @@ import math
 import numpy as np
 
 
+def future_timestamp_gap_s(
+    requested_sec: int,
+    requested_nanosec: int,
+    latest_sec: int,
+    latest_nanosec: int,
+) -> float | None:
+    """Return a non-negative future-extrapolation gap, otherwise ``None``."""
+    requested_ns = int(requested_sec) * 1_000_000_000 + int(requested_nanosec)
+    latest_ns = int(latest_sec) * 1_000_000_000 + int(latest_nanosec)
+    gap_ns = requested_ns - latest_ns
+    if gap_ns < 0:
+        return None
+    return gap_ns / 1_000_000_000.0
+
+
+def merge_centers(
+    centers: list[tuple[float, float]] | np.ndarray,
+    merge_distance: float,
+) -> list[tuple[float, float]]:
+    """Merge nearby candidate centers into one physical-cone center.
+
+    Clustering is transitive, so several fragments of the same cone cannot
+    survive merely because the first and last fragments are slightly farther
+    apart than ``merge_distance``.  The median keeps an outlying fragment from
+    pulling the synthetic footprint toward a bed or wall.
+    """
+    if merge_distance <= 0.0:
+        raise ValueError("merge_distance must be positive")
+    if len(centers) == 0:
+        return []
+
+    points = np.asarray(centers, dtype=np.float64).reshape((-1, 2))
+    unvisited = set(range(len(points)))
+    groups: list[list[int]] = []
+    while unvisited:
+        seed = unvisited.pop()
+        group = [seed]
+        pending = [seed]
+        while pending:
+            current = pending.pop()
+            neighbors = [
+                index
+                for index in unvisited
+                if float(np.linalg.norm(points[current] - points[index]))
+                <= merge_distance
+            ]
+            for index in neighbors:
+                unvisited.remove(index)
+                pending.append(index)
+                group.append(index)
+        groups.append(group)
+
+    merged = []
+    for group in groups:
+        center = np.median(points[group], axis=0)
+        merged.append((float(center[0]), float(center[1])))
+    return merged
+
+
 def compact_clusters(
     xyz: np.ndarray,
     min_z: float,
@@ -136,13 +195,15 @@ def expand_cone_footprints(
     min_range: float = 0.30,
     max_range: float = 4.5,
     cluster_cell: float = 0.08,
-    min_points: int = 3,
+    min_points: int = 5,
     max_span: float = 0.32,
-    min_vertical_span: float = 0.06,
+    min_vertical_span: float = 0.12,
+    center_merge_distance: float = 0.28,
     disk_spacing: float = 0.04,
     disk_height: float = 0.12,
     min_base_z: float = 0.35,
-) -> tuple[np.ndarray, list[tuple[float, float]]]:
+    return_diagnostics: bool = False,
+):
     """Append known cone-base disks while preserving the filtered cloud."""
     clusters = compact_clusters(
         xyz,
@@ -157,17 +218,21 @@ def expand_cone_footprints(
         min_base_z,
     )
     if not clusters:
-        return np.ascontiguousarray(xyz, dtype=np.float32), []
+        result = (np.ascontiguousarray(xyz, dtype=np.float32), [])
+        return (*result, 0) if return_diagnostics else result
 
-    disks = []
-    centers = []
+    raw_centers = []
     for cluster in clusters:
         center_x, center_y = cone_axis_center(
             cluster,
             physical_base_radius,
             cone_height,
         )
-        centers.append((center_x, center_y))
+        raw_centers.append((center_x, center_y))
+
+    centers = merge_centers(raw_centers, center_merge_distance)
+    disks = []
+    for center_x, center_y in centers:
         disks.append(
             footprint_disk(
                 center_x,
@@ -179,4 +244,5 @@ def expand_cone_footprints(
         )
 
     expanded = np.vstack([xyz, *disks]).astype(np.float32, copy=False)
-    return np.ascontiguousarray(expanded), centers
+    result = (np.ascontiguousarray(expanded), centers)
+    return (*result, len(raw_centers)) if return_diagnostics else result

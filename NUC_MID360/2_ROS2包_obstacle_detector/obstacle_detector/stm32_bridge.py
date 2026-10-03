@@ -32,7 +32,7 @@ from geometry_msgs.msg import PoseStamped, TransformStamped, Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Range
-from std_msgs.msg import String, UInt8
+from std_msgs.msg import Bool, String, UInt8
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
 from .nav_protocol import (
@@ -76,7 +76,9 @@ from .nav_protocol import (
 )
 from .bridge_safety import (
     GateReleaseLimiter,
+    HeadingHoldController,
     SettledStopDetector,
+    Stm32ReadinessGate,
     limit_xdrive_command,
     medical_mission_restarted,
     navigation_motion_is_authorized,
@@ -130,26 +132,44 @@ class Stm32Bridge(Node):
         self.declare_parameter("goal_handoff_hold_s", 0.5)
         self.declare_parameter("navigator_following_hold_s", 0.3)
         self.declare_parameter("navigator_status_timeout_s", 1.2)
-        self.declare_parameter("gate_release_wheel_accel_m_s2", 2.5)
+        self.declare_parameter("gate_release_wheel_accel_m_s2", 2.8)
         self.declare_parameter("gate_release_yaw_radius_m", 0.25)
         self.declare_parameter("gate_release_rearm_drop_m_s", 0.25)
-        self.declare_parameter("max_planar_speed_m_s", 2.0)
-        self.declare_parameter("max_wheel_speed_m_s", 2.0)
-        self.declare_parameter("heading_correction_max_wz_rad_s", 0.20)
+        self.declare_parameter("max_planar_speed_m_s", 3.0)
+        self.declare_parameter("max_wheel_speed_m_s", 3.0)
+        self.declare_parameter("heading_correction_max_wz_rad_s", 0.30)
         self.declare_parameter("active_rotation_max_wz_rad_s", 0.80)
         self.declare_parameter("active_rotation_linear_threshold_m_s", 0.05)
+        self.declare_parameter("heading_hold_enabled", True)
+        self.declare_parameter("heading_hold_task_states", [3, 6, 9])
+        self.declare_parameter("heading_hold_target_deg", 0.0)
+        self.declare_parameter("heading_hold_kp", 1.5)
+        self.declare_parameter("heading_hold_ki", 0.0)
+        self.declare_parameter("heading_hold_kd", 0.0)
+        self.declare_parameter("heading_hold_deadband_deg", 1.0)
+        self.declare_parameter("heading_hold_max_wz_rad_s", 0.30)
+        self.declare_parameter("heading_hold_integral_limit_rad_s", 0.05)
+        self.declare_parameter("heading_hold_reverse_min_speed_m_s", 1.0)
+        self.declare_parameter("heading_hold_reverse_full_speed_m_s", 2.5)
+        self.declare_parameter("heading_hold_reverse_kp", 2.2)
+        self.declare_parameter("heading_hold_reverse_kd", 0.45)
+        self.declare_parameter("heading_hold_reverse_max_wz_rad_s", 0.40)
+        self.declare_parameter("heading_hold_reverse_hold_settle_s", 0.20)
+        self.declare_parameter("heading_hold_yaw_rate_deadband_rad_s", 0.02)
         self.declare_parameter("nurse_scan_stop_linear_m_s", 0.03)
         self.declare_parameter("nurse_scan_stop_angular_rad_s", 0.05)
         self.declare_parameter("nurse_scan_stop_settle_s", 0.15)
         self.declare_parameter("twist_filter_alpha", 0.35)
         self.declare_parameter("wheel_odom_timeout_s", 0.15)
+        self.declare_parameter("stm32_telemetry_timeout_s", 0.25)
+        self.declare_parameter("stm32_recovery_hold_s", 0.75)
+        self.declare_parameter("stm32_recovery_max_linear_m_s", 0.03)
+        self.declare_parameter("stm32_recovery_max_angular_rad_s", 0.05)
         self.declare_parameter("ekf_ops_position_std_m", 0.02)
-        self.declare_parameter("ekf_hwt_yaw_std_rad", 0.015)
         self.declare_parameter("ekf_wheel_forward_std_m_s", 0.08)
         self.declare_parameter("ekf_wheel_lateral_std_m_s", 0.16)
         self.declare_parameter("ekf_wheel_yaw_std_rad_s", 0.12)
         self.declare_parameter("ekf_linear_accel_std_m_s2", 1.5)
-        self.declare_parameter("ekf_yaw_accel_std_rad_s2", 1.5)
         self.declare_parameter(
             "tts_bed1_audio_file", "/home/fzurobot/Downloads/1_.mp3"
         )
@@ -163,7 +183,7 @@ class Stm32Bridge(Node):
         self.declare_parameter("tts_keepalive_enabled", True)
         self.declare_parameter("tts_timeout_s", 8.0)
         # Circular body and physical X-drive wheel caps precede these guards.
-        self.declare_parameter("max_speed_mm_s", 2000.0)
+        self.declare_parameter("max_speed_mm_s", 3000.0)
         self.declare_parameter("max_yaw_cdeg_s", 9000.0)
         # Competition mode also applies when this node is launched directly.
         self.declare_parameter("dry_run", False)
@@ -198,10 +218,53 @@ class Stm32Bridge(Node):
         self.active_rotation_linear_threshold_m_s = max(
             0.0, float(get("active_rotation_linear_threshold_m_s"))
         )
+        self.heading_hold_controller = HeadingHoldController(
+            enabled=bool(get("heading_hold_enabled")),
+            task_states=get("heading_hold_task_states"),
+            target_yaw_deg=float(get("heading_hold_target_deg")),
+            kp=float(get("heading_hold_kp")),
+            ki=float(get("heading_hold_ki")),
+            kd=float(get("heading_hold_kd")),
+            deadband_deg=float(get("heading_hold_deadband_deg")),
+            max_wz_rad_s=float(get("heading_hold_max_wz_rad_s")),
+            integral_limit_rad_s=float(
+                get("heading_hold_integral_limit_rad_s")
+            ),
+            reverse_min_speed_m_s=float(
+                get("heading_hold_reverse_min_speed_m_s")
+            ),
+            reverse_full_speed_m_s=float(
+                get("heading_hold_reverse_full_speed_m_s")
+            ),
+            reverse_kp=float(get("heading_hold_reverse_kp")),
+            reverse_kd=float(get("heading_hold_reverse_kd")),
+            reverse_max_wz_rad_s=float(
+                get("heading_hold_reverse_max_wz_rad_s")
+            ),
+            reverse_hold_settle_s=float(
+                get("heading_hold_reverse_hold_settle_s")
+            ),
+            yaw_rate_deadband_rad_s=float(
+                get("heading_hold_yaw_rate_deadband_rad_s")
+            ),
+        )
         self.twist_filter_alpha = max(0.0, min(1.0, float(get("twist_filter_alpha"))))
         self.wheel_odom_timeout_s = max(
             0.05, float(get("wheel_odom_timeout_s"))
         )
+        self.stm32_telemetry_timeout_s = max(
+            0.10, float(get("stm32_telemetry_timeout_s"))
+        )
+        self.stm32_readiness = Stm32ReadinessGate(
+            recovery_hold_s=float(get("stm32_recovery_hold_s")),
+            stationary_linear_m_s=float(
+                get("stm32_recovery_max_linear_m_s")
+            ),
+            stationary_angular_rad_s=float(
+                get("stm32_recovery_max_angular_rad_s")
+            ),
+        )
+        self.last_stm32_gate_state = self.stm32_readiness.state
         self.scan_retry_s = max(0.05, float(get("scan_retry_s")))
         self.bed_scan_activation_distance_mm = max(
             0.1, float(get("bed_scan_activation_distance_m"))
@@ -253,9 +316,6 @@ class Stm32Bridge(Node):
                 ops_position_std_m=max(
                     0.001, float(get("ekf_ops_position_std_m"))
                 ),
-                hwt_yaw_std_rad=max(
-                    0.001, float(get("ekf_hwt_yaw_std_rad"))
-                ),
                 wheel_forward_std_m_s=max(
                     0.001, float(get("ekf_wheel_forward_std_m_s"))
                 ),
@@ -268,15 +328,14 @@ class Stm32Bridge(Node):
                 linear_accel_std_m_s2=max(
                     0.01, float(get("ekf_linear_accel_std_m_s2"))
                 ),
-                yaw_accel_std_rad_s2=max(
-                    0.01, float(get("ekf_yaw_accel_std_rad_s2"))
-                ),
             )
         )
 
         self.pose = None
         self.previous_ros_pose = None
         self.twist = (0.0, 0.0, 0.0)
+        self.hwt_yaw_rate_rad_s = 0.0
+        self.last_hwt_yaw_rate_s = 0.0
         self.last_pose_s = 0.0
         self.last_cmd_s = 0.0
         self.last_sent = (0.0, 0.0, 0.0)
@@ -284,6 +343,21 @@ class Stm32Bridge(Node):
         self.last_wheel_normalization_scale = 1.0
         self.last_requested_wheel_peak_m_s = 0.0
         self.last_yaw_mode = "active_rotation"
+        self.last_heading_hold = {
+            "mode": "mppi",
+            "active": False,
+            "target_yaw_deg": self.heading_hold_controller.target_yaw_deg,
+            "current_yaw_deg": None,
+            "error_deg": None,
+            "mppi_wz": 0.0,
+            "controller_wz": 0.0,
+            "profile": "normal",
+            "reverse_blend": 0.0,
+            "yaw_rate_rad_s": None,
+            "effective_kp": self.heading_hold_controller.kp,
+            "effective_kd": self.heading_hold_controller.kd,
+            "effective_max_wz": self.heading_hold_controller.max_wz_rad_s,
+        }
         self.last_safe_cmd = (0.0, 0.0, 0.0)
         self.nurse_scan_soft_stop = False
         self.tx_seq = 0
@@ -351,6 +425,9 @@ class Stm32Bridge(Node):
             String, "/medical_nav/bridge_cmd_debug", 10
         )
         self.status_pub = self.create_publisher(String, "/medical_nav/bridge_status", 10)
+        self.stm32_ready_pub = self.create_publisher(
+            Bool, "/medical_nav/stm32_ready", 10
+        )
         self.goal_pub = self.create_publisher(String, "/medical_nav/goal_request", 10)
         self.stp23l_pub = self.create_publisher(String, "/medical_nav/stp23l", 10)
         self.calibration_pub = self.create_publisher(
@@ -391,7 +468,8 @@ class Stm32Bridge(Node):
         self.get_logger().info(
             f"STM32 bridge ready | {self.map_frame}->{self.odom_frame}->{self.base_frame} "
             f"| velocity={self.cmd_vel_topic} | yaw_sign={self.yaw_sign:+.0f} "
-            f"| dry_run={self.dry_run} | task_gate={self.enforce_task_gate}"
+            f"| dry_run={self.dry_run} | task_gate={self.enforce_task_gate} "
+            f"| heading_hold={self.heading_hold_controller.enabled}"
         )
 
     # ------------------------------------------------------------------
@@ -444,6 +522,7 @@ class Stm32Bridge(Node):
         )
         if mission_restarted:
             self.gate_release_limiter.reset(received_s)
+            self.heading_hold_controller.reset()
             self.mission_epoch = (self.mission_epoch + 1) & 0xFFFFFFFF
             if self.mission_epoch == 0:
                 self.mission_epoch = 1
@@ -466,6 +545,8 @@ class Stm32Bridge(Node):
             self.odom_ekf.reset()
             self.previous_ros_pose = None
             self.twist = (0.0, 0.0, 0.0)
+            self.hwt_yaw_rate_rad_s = 0.0
+            self.last_hwt_yaw_rate_s = 0.0
             self.get_logger().info(
                 f"New medical mission epoch={self.mission_epoch}: "
                 "cleared stale navigation, scan and calibration state"
@@ -478,6 +559,8 @@ class Stm32Bridge(Node):
             self.odom_ekf.reset()
             self.previous_ros_pose = None
             self.twist = (0.0, 0.0, 0.0)
+            self.hwt_yaw_rate_rad_s = 0.0
+            self.last_hwt_yaw_rate_s = 0.0
         x, y, yaw = self._as_ros(pose.x_mm, pose.y_mm, pose.yaw_cdeg)
 
         if self.previous_ros_pose is not None:
@@ -490,6 +573,19 @@ class Stm32Bridge(Node):
                 raw_vx = math.cos(yaw) * world_vx + math.sin(yaw) * world_vy
                 raw_vy = -math.sin(yaw) * world_vx + math.cos(yaw) * world_vy
                 raw_wz = dyaw / dt
+                if abs(raw_wz) <= 6.0:
+                    if self.last_hwt_yaw_rate_s > 0.0:
+                        alpha = self.twist_filter_alpha
+                        self.hwt_yaw_rate_rad_s = (
+                            alpha * raw_wz
+                            + (1.0 - alpha) * self.hwt_yaw_rate_rad_s
+                        )
+                    else:
+                        self.hwt_yaw_rate_rad_s = raw_wz
+                    self.last_hwt_yaw_rate_s = received_s
+                else:
+                    self.hwt_yaw_rate_rad_s = 0.0
+                    self.last_hwt_yaw_rate_s = 0.0
                 # Reject coordinate resets and corrupt frames instead of feeding a
                 # one-cycle velocity spike into MPPI.
                 if math.hypot(raw_vx, raw_vy) <= 2.0 and abs(raw_wz) <= 6.0:
@@ -502,6 +598,8 @@ class Stm32Bridge(Node):
                     self.twist = (0.0, 0.0, 0.0)
             elif dt > self.pose_timeout_s:
                 self.twist = (0.0, 0.0, 0.0)
+                self.hwt_yaw_rate_rad_s = 0.0
+                self.last_hwt_yaw_rate_s = 0.0
 
         self.previous_ros_pose = (x, y, yaw, received_s)
         self.odom_ekf.update_pose(x, y, yaw)
@@ -512,6 +610,7 @@ class Stm32Bridge(Node):
         if previous_task_state is not None and previous_task_state != pose.task_state:
             self.stopped = True
             self.gate_release_limiter.reset(received_s)
+            self.heading_hold_controller.reset()
             self._send_velocity(0.0, 0.0, 0.0, source="task_transition")
         task_message = UInt8()
         task_message.data = pose.task_state
@@ -903,6 +1002,70 @@ class Stm32Bridge(Node):
             <= self.wheel_odom_timeout_s
         )
 
+    def _wheel_telemetry_is_fresh(self) -> bool:
+        """Raw frame freshness, independent of motor online-mask state."""
+        return (
+            self.wheel_odom is not None
+            and time.monotonic() - self.last_wheel_odom_s
+            <= self.stm32_telemetry_timeout_s
+        )
+
+    def _pose_telemetry_is_fresh(self) -> bool:
+        return (
+            self.pose is not None
+            and time.monotonic() - self.last_pose_s
+            <= self.stm32_telemetry_timeout_s
+        )
+
+    def _update_stm32_readiness(self) -> None:
+        was_ready = self.stm32_readiness.ready
+        wheel_linear_m_s = 0.0
+        wheel_angular_rad_s = 0.0
+        if self.wheel_odom is not None:
+            wheel_linear_m_s = math.hypot(
+                self.wheel_odom.forward_mm_s,
+                self.wheel_odom.left_mm_s,
+            ) / 1000.0
+            wheel_angular_rad_s = math.radians(
+                self.wheel_odom.yaw_ccw_cdeg_s / 100.0
+            )
+        ready = self.stm32_readiness.update(
+            time.monotonic(),
+            self._pose_telemetry_is_fresh(),
+            self._wheel_telemetry_is_fresh(),
+            wheel_linear_m_s,
+            wheel_angular_rad_s,
+            recovery_allowed=(
+                self.pose is not None
+                and self.pose.task_state == TASK_WAIT_START
+            ),
+        )
+
+        state = self.stm32_readiness.state
+        if state != self.last_stm32_gate_state:
+            self.get_logger().info(
+                f"STM32 readiness {self.last_stm32_gate_state}->{state}"
+            )
+            self.last_stm32_gate_state = state
+
+        if was_ready and not ready:
+            self.stopped = True
+            self.last_safe_cmd = (0.0, 0.0, 0.0)
+            self.gate_release_limiter.reset(time.monotonic())
+            self.heading_hold_controller.reset()
+            self._send_velocity(0.0, 0.0, 0.0, source="stm32_reboot")
+            self.get_logger().warn(
+                "STM32 telemetry lost; blocked motion and lidar until recovery"
+            )
+        elif ready and not was_ready:
+            self.get_logger().info(
+                "STM32 telemetry stable and stationary; navigation may resume"
+            )
+
+        message = Bool()
+        message.data = ready
+        self.stm32_ready_pub.publish(message)
+
     def _as_ros(self, x_mm: float, y_mm: float, yaw_cdeg: float, corrected=True):
         """STM32 field pose -> ROS map pose (metres, counter-clockwise yaw)."""
         if corrected:
@@ -938,6 +1101,7 @@ class Stm32Bridge(Node):
 
     def _tick(self) -> None:
         self._drain_frames()
+        self._update_stm32_readiness()
         self._poll_tts()
         self._send_pending_scan()
         if self._pose_is_fresh():
@@ -946,13 +1110,17 @@ class Stm32Bridge(Node):
 
     def _publish_pose(self) -> None:
         fused = self._wheel_odom_is_fresh() and self.odom_ekf.initialized
+        # Position/velocity may use the wheel filter, but yaw is never taken
+        # from its state. HWT101CT is the authoritative heading source.
+        direct_x, direct_y, direct_yaw = self._as_ros(
+            self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg
+        )
         if fused:
-            x, y, yaw = self.odom_ekf.pose
+            x, y, _ = self.odom_ekf.pose
+            yaw = direct_yaw
             self.twist = self.odom_ekf.twist
         else:
-            x, y, yaw = self._as_ros(
-                self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg
-            )
+            x, y, yaw = direct_x, direct_y, direct_yaw
         stamp = self.get_clock().now().to_msg()
         half = yaw * 0.5
         qz, qw = math.sin(half), math.cos(half)
@@ -1036,6 +1204,8 @@ class Stm32Bridge(Node):
         )
 
     def _motion_is_authorized(self) -> bool:
+        if not self.stm32_readiness.ready:
+            return False
         if not self.enforce_task_gate:
             return True
         return navigation_motion_is_authorized(
@@ -1089,6 +1259,7 @@ class Stm32Bridge(Node):
                         int(self.pose.task_state) if self.pose is not None else None
                     ),
                     "safe_cmd": self._debug_command(*self.last_safe_cmd),
+                    "heading_hold": dict(self.last_heading_hold),
                     "release_limited_cmd": self._debug_command(
                         *release_limited_cmd
                     ),
@@ -1097,6 +1268,9 @@ class Stm32Bridge(Node):
                         "mode": "continuous_asymmetric",
                         "active": bool(self.gate_release_limiter.active),
                         "limiting": bool(self.gate_release_limiter.limiting),
+                        "heading_yaw_priority": bool(
+                            self.last_heading_hold["active"]
+                        ),
                         "wheel_accel_m_s2": round(
                             float(
                                 self.gate_release_limiter.max_wheel_accel_m_s2
@@ -1131,8 +1305,80 @@ class Stm32Bridge(Node):
     def _send_velocity(self, vx: float, vy: float, wz: float, source: str) -> None:
         # Keep ROS body signs on the wire. The STM32 is the only layer that
         # knows motor mounting signs and converts these values to wheel RPM.
+        now_s = time.monotonic()
+        mppi_wz = float(wz)
+        task_state = self.pose.task_state if self.pose is not None else -1
+        current_yaw_rad = (
+            self.yaw_sign * math.radians(self.pose.yaw_cdeg / 100.0)
+            if self.pose is not None
+            else None
+        )
+        current_yaw_rate_rad_s = (
+            self.hwt_yaw_rate_rad_s
+            if self.last_hwt_yaw_rate_s > 0.0
+            and now_s - self.last_hwt_yaw_rate_s <= self.pose_timeout_s
+            else None
+        )
+        wz, heading_hold_mode, heading_error_rad = (
+            self.heading_hold_controller.update(
+                task_state=task_state,
+                mppi_wz_rad_s=mppi_wz,
+                current_yaw_rad=current_yaw_rad,
+                pose_fresh=self._pose_is_fresh(),
+                now_s=now_s,
+                # Stop, watchdog and task-transition commands must remain zero.
+                allow_override=source == "nav2",
+                forward_velocity_m_s=vx,
+                yaw_rate_rad_s=current_yaw_rate_rad_s,
+            )
+        )
+        self.last_heading_hold = {
+            "mode": heading_hold_mode,
+            "active": heading_hold_mode.startswith("heading_hold"),
+            "target_yaw_deg": round(
+                self.heading_hold_controller.target_yaw_deg, 3
+            ),
+            "current_yaw_deg": (
+                round(math.degrees(current_yaw_rad), 3)
+                if current_yaw_rad is not None
+                else None
+            ),
+            "error_deg": (
+                round(math.degrees(heading_error_rad), 3)
+                if heading_error_rad is not None
+                else None
+            ),
+            "mppi_wz": round(mppi_wz, 4),
+            "controller_wz": round(float(wz), 4),
+            "profile": self.heading_hold_controller.last_profile,
+            "reverse_blend": round(
+                self.heading_hold_controller.last_reverse_blend, 3
+            ),
+            "reverse_hold_active": (
+                self.heading_hold_controller.reverse_hold_active
+            ),
+            "yaw_rate_rad_s": (
+                round(current_yaw_rate_rad_s, 4)
+                if current_yaw_rate_rad_s is not None
+                else None
+            ),
+            "effective_kp": round(
+                self.heading_hold_controller.last_effective_kp, 3
+            ),
+            "effective_kd": round(
+                self.heading_hold_controller.last_effective_kd, 3
+            ),
+            "effective_max_wz": round(
+                self.heading_hold_controller.last_effective_max_wz_rad_s, 3
+            ),
+        }
+        heading_yaw_priority = heading_hold_mode.startswith("heading_hold")
         vx, vy, wz = self.gate_release_limiter.update(
-            vx, vy, wz, time.monotonic()
+            vx,
+            vy,
+            wz,
+            now_s,
+            priority_yaw=heading_yaw_priority,
         )
         release_limited_cmd = (float(vx), float(vy), float(wz))
         (
@@ -1150,7 +1396,14 @@ class Stm32Bridge(Node):
             self.max_planar_speed_m_s,
             self.max_wheel_speed_m_s,
             self.gate_release_limiter.yaw_radius_m,
-            self.heading_correction_max_wz_rad_s,
+            max(
+                self.heading_correction_max_wz_rad_s,
+                (
+                    self.heading_hold_controller.last_effective_max_wz_rad_s
+                    if heading_hold_mode.startswith("heading_hold")
+                    else 0.0
+                ),
+            ),
             self.active_rotation_max_wz_rad_s,
             self.active_rotation_linear_threshold_m_s,
         )
@@ -1285,11 +1538,18 @@ class Stm32Bridge(Node):
             "serial": self.transport.connected,
             "pose": self._pose_is_fresh(),
             "wheel_odom": self._wheel_odom_is_fresh(),
+            "wheel_telemetry": self._wheel_telemetry_is_fresh(),
+            "stm32_ready": self.stm32_readiness.ready,
+            "stm32_reboot_state": self.stm32_readiness.state,
+            "stm32_ready_transitions": self.stm32_readiness.transitions,
+            "stm32_recovery_hold_s": self.stm32_readiness.recovery_hold_s,
+            "stm32_telemetry_timeout_s": self.stm32_telemetry_timeout_s,
             "odom_source": (
-                "ops_hwt_wheel_ekf"
+                "wheel_ekf_xy_hwt101ct_yaw"
                 if self._wheel_odom_is_fresh()
-                else "ops_hwt_fallback"
+                else "ops_hwt_direct"
             ),
+            "yaw_source": "HWT101CT_direct",
             "mission_epoch": self.mission_epoch,
             "cmd_count": self.cmd_count,
             "stopped": self.stopped,
@@ -1338,6 +1598,25 @@ class Stm32Bridge(Node):
                 "translation_wheel_scale": round(
                     self.last_wheel_normalization_scale, 3
                 ),
+            },
+            "heading_hold": {
+                "enabled": self.heading_hold_controller.enabled,
+                "task_states": sorted(
+                    self.heading_hold_controller.task_states
+                ),
+                "target_yaw_deg": (
+                    self.heading_hold_controller.target_yaw_deg
+                ),
+                "kp": self.heading_hold_controller.kp,
+                "ki": self.heading_hold_controller.ki,
+                "kd": self.heading_hold_controller.kd,
+                "deadband_deg": math.degrees(
+                    self.heading_hold_controller.deadband_rad
+                ),
+                "max_wz_rad_s": (
+                    self.heading_hold_controller.max_wz_rad_s
+                ),
+                **self.last_heading_hold,
             },
             "last_safe_cmd": {
                 "vx": round(self.last_safe_cmd[0], 3),

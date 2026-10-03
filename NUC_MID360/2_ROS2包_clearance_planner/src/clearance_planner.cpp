@@ -23,6 +23,7 @@ namespace
 {
 
 constexpr double kSqrtTwo = 1.4142135623730951;
+constexpr double kPi = 3.14159265358979323846;
 constexpr double kInfinity = std::numeric_limits<double>::infinity();
 
 struct GridSnapshot
@@ -186,6 +187,30 @@ double densityAt(
 double distanceBetween(double ax, double ay, double bx, double by)
 {
   return std::hypot(ax - bx, ay - by);
+}
+
+double wrappedAngle(double angle)
+{
+  return std::atan2(std::sin(angle), std::cos(angle));
+}
+
+double blindZoneAngleError(
+  double world_dx, double world_dy, double travel_yaw,
+  const ClearancePlanner::Parameters & params)
+{
+  if (!params.blind_zone_enabled || params.blind_zone_angles_deg.empty() ||
+    std::hypot(world_dx, world_dy) <= 1.0e-9)
+  {
+    return kInfinity;
+  }
+  const double body_direction = wrappedAngle(std::atan2(world_dy, world_dx) - travel_yaw);
+  double minimum_error = kInfinity;
+  for (const double angle_deg : params.blind_zone_angles_deg) {
+    const double angle_rad = angle_deg * kPi / 180.0;
+    minimum_error = std::min(
+      minimum_error, std::abs(wrappedAngle(body_direction - angle_rad)));
+  }
+  return minimum_error;
 }
 
 std::vector<double> traversalRisks(
@@ -634,6 +659,141 @@ bool directSegmentCost(
   return true;
 }
 
+bool worldSegmentCost(
+  const GridSnapshot & grid,
+  double ax, double ay, double bx, double by,
+  const std::vector<double> & multiplier,
+  double & cost, double & maximum)
+{
+  int first_x = 0;
+  int first_y = 0;
+  int last_x = 0;
+  int last_y = 0;
+  if (!grid.worldToMap(ax, ay, first_x, first_y) ||
+    !grid.worldToMap(bx, by, last_x, last_y))
+  {
+    return false;
+  }
+  return directSegmentCost(
+    grid, grid.index(first_x, first_y), grid.index(last_x, last_y),
+    multiplier, cost, maximum);
+}
+
+double worldMoveTime(
+  double world_x, double world_y, double travel_yaw,
+  const ClearancePlanner::Parameters & params)
+{
+  const double cosine = std::cos(travel_yaw);
+  const double sine = std::sin(travel_yaw);
+  const double body_x = cosine * world_x + sine * world_y;
+  const double body_y = -sine * world_x + cosine * world_y;
+  const double x_speed = body_x >= 0.0 ? params.forward_speed : params.reverse_speed;
+  const double x_time = std::abs(body_x) / std::max(0.01, x_speed);
+  const double y_time = std::abs(body_y) / std::max(0.01, params.lateral_speed);
+  const double planar_time =
+    std::hypot(body_x, body_y) / std::max(0.01, params.max_planar_speed);
+  const double wheel_time =
+    ((std::abs(body_x) + std::abs(body_y)) / kSqrtTwo) /
+    std::max(0.01, params.max_wheel_speed);
+  return std::max({x_time, y_time, planar_time, wheel_time});
+}
+
+std::vector<std::pair<double, double>> addBlindZoneDoglegs(
+  const GridSnapshot & grid,
+  const std::vector<std::pair<double, double>> & controls,
+  const std::vector<double> & risk,
+  double travel_yaw,
+  const ClearancePlanner::Parameters & params,
+  std::size_t & inserted_count)
+{
+  inserted_count = 0;
+  if (!params.blind_zone_enabled || controls.size() < 2 ||
+    params.blind_zone_angles_deg.empty())
+  {
+    return controls;
+  }
+
+  const double trigger_angle = params.blind_zone_half_width_deg * kPi / 180.0;
+  const double target_angle =
+    (params.blind_zone_half_width_deg + params.blind_zone_margin_deg) * kPi / 180.0;
+  std::vector<std::pair<double, double>> shaped;
+  shaped.reserve(controls.size() * 2);
+  shaped.push_back(controls.front());
+
+  for (std::size_t index = 1; index < controls.size(); ++index) {
+    const auto [ax, ay] = shaped.back();
+    const auto [bx, by] = controls[index];
+    const double dx = bx - ax;
+    const double dy = by - ay;
+    const double length = std::hypot(dx, dy);
+    const double angle_error = blindZoneAngleError(dx, dy, travel_yaw, params);
+    if (length < params.blind_zone_min_segment_length || angle_error > trigger_angle) {
+      shaped.emplace_back(bx, by);
+      continue;
+    }
+
+    // A single midpoint dogleg creates parallax without rotating the chassis.
+    // The fixed 0-degree task heading is preserved on every output pose below.
+    // Offset enough that both halves depart from the nearest X-shaped blind ray;
+    // cap it to the configured, field-safe lateral exploration distance.
+    const double required_departure = std::min(
+      35.0 * kPi / 180.0, target_angle + angle_error);
+    const double geometric_offset = 0.5 * length * std::tan(required_departure);
+    const double offset = std::min(
+      params.blind_zone_lateral_offset,
+      std::max(params.blind_zone_min_lateral_offset, geometric_offset));
+    if (offset <= 1.0e-6) {
+      shaped.emplace_back(bx, by);
+      continue;
+    }
+
+    const double normal_x = -dy / length;
+    const double normal_y = dx / length;
+    const double midpoint_x = 0.5 * (ax + bx);
+    const double midpoint_y = 0.5 * (ay + by);
+    const double direct_time = worldMoveTime(dx, dy, travel_yaw, params);
+
+    bool found = false;
+    double best_score = kInfinity;
+    std::pair<double, double> best_midpoint;
+    for (const double sign : {-1.0, 1.0}) {
+      const double mx = midpoint_x + sign * offset * normal_x;
+      const double my = midpoint_y + sign * offset * normal_y;
+      double first_cost = 0.0;
+      double first_maximum = 0.0;
+      double second_cost = 0.0;
+      double second_maximum = 0.0;
+      if (!worldSegmentCost(
+          grid, ax, ay, mx, my, risk, first_cost, first_maximum) ||
+        !worldSegmentCost(
+          grid, mx, my, bx, by, risk, second_cost, second_maximum))
+      {
+        continue;
+      }
+      const double detour_time =
+        worldMoveTime(mx - ax, my - ay, travel_yaw, params) +
+        worldMoveTime(bx - mx, by - my, travel_yaw, params);
+      if (detour_time > direct_time * params.blind_zone_max_detour_time_ratio + 1.0e-9) {
+        continue;
+      }
+      const double score = first_cost + second_cost +
+        0.25 * (first_maximum + second_maximum);
+      if (score < best_score) {
+        found = true;
+        best_score = score;
+        best_midpoint = {mx, my};
+      }
+    }
+
+    if (found) {
+      shaped.push_back(best_midpoint);
+      ++inserted_count;
+    }
+    shaped.emplace_back(bx, by);
+  }
+  return shaped;
+}
+
 struct RouteMetrics
 {
   bool valid{false};
@@ -642,40 +802,50 @@ struct RouteMetrics
 };
 
 RouteMetrics routeMetrics(
-  const GridSnapshot & grid, const std::vector<int> & cells,
+  const GridSnapshot & grid,
+  const std::vector<std::pair<double, double>> & points,
   const std::vector<double> & risk, double travel_yaw,
   const ClearancePlanner::Parameters & params)
 {
   RouteMetrics metrics;
-  if (cells.empty() || !std::isfinite(risk[cells.front()])) {
+  if (points.empty()) {
+    return metrics;
+  }
+  int first_x = 0;
+  int first_y = 0;
+  if (!grid.worldToMap(points.front().first, points.front().second, first_x, first_y) ||
+    !std::isfinite(risk[grid.index(first_x, first_y)]))
+  {
     return metrics;
   }
   metrics.elapsed = 0.0;
   metrics.risk = 0.0;
-  for (std::size_t index = 1; index < cells.size(); ++index) {
+  for (std::size_t index = 1; index < points.size(); ++index) {
     double segment_risk = 0.0;
     double segment_maximum = 0.0;
-    if (!directSegmentCost(
-        grid, cells[index - 1], cells[index], risk,
+    if (!worldSegmentCost(
+        grid,
+        points[index - 1].first, points[index - 1].second,
+        points[index].first, points[index].second,
+        risk,
         segment_risk, segment_maximum))
     {
       return RouteMetrics{};
     }
-    const auto [previous_x, previous_y] = grid.coordinates(cells[index - 1]);
-    const auto [current_x, current_y] = grid.coordinates(cells[index]);
-    metrics.elapsed += moveTime(
-      grid, previous_x, previous_y, current_x, current_y, travel_yaw, params);
+    metrics.elapsed += worldMoveTime(
+      points[index].first - points[index - 1].first,
+      points[index].second - points[index - 1].second,
+      travel_yaw, params);
     metrics.risk += segment_risk * grid.resolution;
   }
   metrics.valid = true;
   return metrics;
 }
 
-std::vector<int> reconnectPreviousRoute(
-  const GridSnapshot & grid,
+std::vector<std::pair<double, double>> reconnectPreviousRoute(
   const std::vector<std::pair<double, double>> & previous_route,
-  double start_x, double start_y, int start_index, int goal_index,
-  double max_join_distance)
+  double start_x, double start_y, double goal_x, double goal_y,
+  double max_join_distance, double goal_tolerance)
 {
   if (previous_route.empty()) {
     return {};
@@ -693,25 +863,25 @@ std::vector<int> reconnectPreviousRoute(
   if (nearest_distance > max_join_distance) {
     return {};
   }
-
-  std::vector<int> cells{start_index};
-  for (std::size_t index = nearest; index < previous_route.size(); ++index) {
-    int x = 0;
-    int y = 0;
-    if (!grid.worldToMap(
-        previous_route[index].first, previous_route[index].second, x, y))
-    {
-      return {};
-    }
-    const int cell = grid.index(x, y);
-    if (cell != cells.back()) {
-      cells.push_back(cell);
-    }
-  }
-  if (cells.back() != goal_index) {
+  if (distanceBetween(
+      previous_route.back().first, previous_route.back().second,
+      goal_x, goal_y) > goal_tolerance)
+  {
     return {};
   }
-  return cells;
+
+  std::vector<std::pair<double, double>> points;
+  points.reserve(previous_route.size() - nearest + 1);
+  points.emplace_back(start_x, start_y);
+  for (std::size_t index = nearest; index < previous_route.size(); ++index) {
+    if (distanceBetween(
+        points.back().first, points.back().second,
+        previous_route[index].first, previous_route[index].second) > 1.0e-6)
+    {
+      points.push_back(previous_route[index]);
+    }
+  }
+  return points;
 }
 
 bool goalsMatch(
@@ -770,6 +940,29 @@ std::vector<int> simplifyPath(
   return simplified;
 }
 
+std::vector<std::pair<double, double>> densifyPath(
+  const std::vector<std::pair<double, double>> & controls,
+  double resolution)
+{
+  if (controls.empty()) {
+    return {};
+  }
+  std::vector<std::pair<double, double>> points;
+  points.push_back(controls.front());
+  for (std::size_t index = 1; index < controls.size(); ++index) {
+    const auto [ax, ay] = controls[index - 1];
+    const auto [bx, by] = controls[index];
+    const double length = distanceBetween(ax, ay, bx, by);
+    const int samples = std::max(
+      1, static_cast<int>(std::ceil(length / resolution)));
+    for (int sample = 1; sample <= samples; ++sample) {
+      const double ratio = static_cast<double>(sample) / samples;
+      points.emplace_back(ax + (bx - ax) * ratio, ay + (by - ay) * ratio);
+    }
+  }
+  return points;
+}
+
 }  // namespace
 
 void ClearancePlanner::configure(
@@ -796,13 +989,13 @@ void ClearancePlanner::configure(
   declare("allow_unknown", false);
   declare("tolerance", 0.10);
   declare("max_planning_time", 1.5);
-  declare("forward_speed", 2.00);
-  declare("reverse_speed", 2.00);
-  declare("lateral_speed", 2.00);
-  declare("max_planar_speed", 2.00);
-  declare("max_wheel_speed", 2.00);
+  declare("forward_speed", 3.00);
+  declare("reverse_speed", 3.00);
+  declare("lateral_speed", 3.00);
+  declare("max_planar_speed", 3.00);
+  declare("max_wheel_speed", 3.00);
   declare("max_time_ratio", 1.10);
-  declare("min_time_slack", 0.50);
+  declare("min_time_slack", 0.25);
   declare("costmap_weight", 3.0);
   declare("preferred_clearance", 0.65);
   declare("clearance_weight", 12.0);
@@ -814,9 +1007,18 @@ void ClearancePlanner::configure(
   declare("start_exemption_radius", 0.45);
   declare("simplification_cost_tolerance", 1.03);
   declare("simplification_time_tolerance", 1.01);
-  declare("route_switch_risk_improvement", 0.05);
-  declare("route_switch_time_improvement", 1.0);
+  declare("route_switch_risk_improvement", 0.55);
+  declare("route_switch_time_improvement", 0.50);
+  declare("route_switch_max_slowdown", 0.00);
   declare("route_reuse_max_distance", 0.50);
+  declare("blind_zone_enabled", true);
+  declare("blind_zone_angles_deg", std::vector<double>{45.0, 135.0, -135.0, -45.0});
+  declare("blind_zone_half_width_deg", 7.0);
+  declare("blind_zone_margin_deg", 3.0);
+  declare("blind_zone_min_segment_length", 1.0);
+  declare("blind_zone_min_lateral_offset", 0.18);
+  declare("blind_zone_lateral_offset", 0.32);
+  declare("blind_zone_max_detour_time_ratio", 1.25);
 
   RCLCPP_INFO(
     logger_, "Configured %s: bounded-time clearance planning enabled",
@@ -878,7 +1080,16 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   read("simplification_time_tolerance", params.simplification_time_tolerance);
   read("route_switch_risk_improvement", params.route_switch_risk_improvement);
   read("route_switch_time_improvement", params.route_switch_time_improvement);
+  read("route_switch_max_slowdown", params.route_switch_max_slowdown);
   read("route_reuse_max_distance", params.route_reuse_max_distance);
+  read("blind_zone_enabled", params.blind_zone_enabled);
+  read("blind_zone_angles_deg", params.blind_zone_angles_deg);
+  read("blind_zone_half_width_deg", params.blind_zone_half_width_deg);
+  read("blind_zone_margin_deg", params.blind_zone_margin_deg);
+  read("blind_zone_min_segment_length", params.blind_zone_min_segment_length);
+  read("blind_zone_min_lateral_offset", params.blind_zone_min_lateral_offset);
+  read("blind_zone_lateral_offset", params.blind_zone_lateral_offset);
+  read("blind_zone_max_detour_time_ratio", params.blind_zone_max_detour_time_ratio);
 
   params.tolerance = std::max(0.0, params.tolerance);
   params.max_planning_time = std::max(0.0, params.max_planning_time);
@@ -906,7 +1117,21 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
     0.0, params.route_switch_risk_improvement);
   params.route_switch_time_improvement = std::max(
     0.0, params.route_switch_time_improvement);
+  params.route_switch_max_slowdown = std::max(
+    0.0, params.route_switch_max_slowdown);
   params.route_reuse_max_distance = std::max(0.0, params.route_reuse_max_distance);
+  params.blind_zone_half_width_deg = std::clamp(
+    params.blind_zone_half_width_deg, 0.1, 44.0);
+  params.blind_zone_margin_deg = std::clamp(
+    params.blind_zone_margin_deg, 0.0, 20.0);
+  params.blind_zone_min_segment_length = std::max(
+    0.10, params.blind_zone_min_segment_length);
+  params.blind_zone_min_lateral_offset = std::max(
+    0.0, params.blind_zone_min_lateral_offset);
+  params.blind_zone_lateral_offset = std::max(
+    params.blind_zone_min_lateral_offset, params.blind_zone_lateral_offset);
+  params.blind_zone_max_detour_time_ratio = std::max(
+    1.0, params.blind_zone_max_detour_time_ratio);
   return params;
 }
 
@@ -1003,50 +1228,6 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
       name_.c_str(), fastest_time);
   }
 
-  const RouteMetrics new_metrics = routeMetrics(
-    grid, cells, risk, travel_yaw, params);
-  if (has_previous_route_ &&
-    goalsMatch(previous_goal_, goal, std::max(params.tolerance, grid.resolution)))
-  {
-    std::vector<int> previous_cells = reconnectPreviousRoute(
-      grid, previous_route_, start.pose.position.x, start.pose.position.y,
-      start_index, goal_index, params.route_reuse_max_distance);
-    const RouteMetrics previous_metrics = routeMetrics(
-      grid, previous_cells, risk, travel_yaw, params);
-    if (previous_metrics.valid && new_metrics.valid) {
-      const double risk_improvement = previous_metrics.risk > 1.0e-9 ?
-        (previous_metrics.risk - new_metrics.risk) / previous_metrics.risk : 0.0;
-      const double time_improvement = previous_metrics.elapsed - new_metrics.elapsed;
-      const bool switch_route =
-        risk_improvement >= params.route_switch_risk_improvement ||
-        time_improvement >= params.route_switch_time_improvement;
-      if (!switch_route) {
-        cells = std::move(previous_cells);
-        RCLCPP_DEBUG(
-          logger_,
-          "%s retained route: risk improvement %.1f%%, time improvement %.2f s",
-          name_.c_str(), risk_improvement * 100.0, time_improvement);
-      } else {
-        RCLCPP_INFO(
-          logger_,
-          "%s switched route: risk improvement %.1f%%, time improvement %.2f s",
-          name_.c_str(), risk_improvement * 100.0, time_improvement);
-      }
-    } else if (!previous_cells.empty() && !previous_metrics.valid) {
-      RCLCPP_INFO(
-        logger_, "%s switched route because the retained route is blocked", name_.c_str());
-    }
-  }
-
-  previous_route_.clear();
-  previous_route_.reserve(cells.size());
-  for (const int cell : cells) {
-    const auto [x, y] = grid.coordinates(cell);
-    previous_route_.push_back(grid.mapToWorld(x, y));
-  }
-  previous_goal_ = goal;
-  has_previous_route_ = true;
-
   cells = simplifyPath(
     grid, cells, risk, params.simplification_cost_tolerance,
     params.simplification_time_tolerance, travel_yaw, params);
@@ -1064,19 +1245,55 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
     controls.push_back(grid.mapToWorld(x, y));
   }
 
-  std::vector<std::pair<double, double>> points;
-  points.push_back(controls.front());
-  for (std::size_t i = 1; i < controls.size(); ++i) {
-    const auto [ax, ay] = controls[i - 1];
-    const auto [bx, by] = controls[i];
-    const double length = distanceBetween(ax, ay, bx, by);
-    const int samples = std::max(
-      1, static_cast<int>(std::ceil(length / grid.resolution)));
-    for (int sample = 1; sample <= samples; ++sample) {
-      const double t = static_cast<double>(sample) / samples;
-      points.emplace_back(ax + (bx - ax) * t, ay + (by - ay) * t);
+  std::size_t blind_doglegs = 0;
+  controls = addBlindZoneDoglegs(
+    grid, controls, risk, travel_yaw, params, blind_doglegs);
+
+  std::vector<std::pair<double, double>> points = densifyPath(
+    controls, grid.resolution);
+  const RouteMetrics new_metrics = routeMetrics(
+    grid, points, risk, travel_yaw, params);
+  if (has_previous_route_ &&
+    goalsMatch(previous_goal_, goal, std::max(params.tolerance, grid.resolution)))
+  {
+    std::vector<std::pair<double, double>> previous_points = reconnectPreviousRoute(
+      previous_route_, start.pose.position.x, start.pose.position.y,
+      goal.pose.position.x, goal.pose.position.y,
+      params.route_reuse_max_distance,
+      std::max(params.tolerance, grid.resolution));
+    const RouteMetrics previous_metrics = routeMetrics(
+      grid, previous_points, risk, travel_yaw, params);
+    if (previous_metrics.valid && new_metrics.valid) {
+      const double risk_improvement = previous_metrics.risk > 1.0e-9 ?
+        (previous_metrics.risk - new_metrics.risk) / previous_metrics.risk : 0.0;
+      const double time_improvement = previous_metrics.elapsed - new_metrics.elapsed;
+      const bool clearly_faster =
+        time_improvement >= params.route_switch_time_improvement;
+      const bool clearly_safer_without_slowing =
+        risk_improvement >= params.route_switch_risk_improvement &&
+        time_improvement >= -params.route_switch_max_slowdown;
+      if (!clearly_faster && !clearly_safer_without_slowing) {
+        points = std::move(previous_points);
+        RCLCPP_DEBUG(
+          logger_,
+          "%s retained final route: risk improvement %.1f%%, time improvement %.2f s",
+          name_.c_str(), risk_improvement * 100.0, time_improvement);
+      } else {
+        RCLCPP_INFO(
+          logger_,
+          "%s switched final route: risk improvement %.1f%%, time improvement %.2f s",
+          name_.c_str(), risk_improvement * 100.0, time_improvement);
+      }
+    } else if (!previous_points.empty() && !previous_metrics.valid) {
+      RCLCPP_INFO(
+        logger_, "%s switched final route because the retained route is blocked",
+        name_.c_str());
     }
   }
+
+  previous_route_ = points;
+  previous_goal_ = goal;
+  has_previous_route_ = true;
 
   path.poses.reserve(points.size());
   for (std::size_t i = 0; i < points.size(); ++i) {
@@ -1092,8 +1309,10 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
 
   RCLCPP_DEBUG(
     logger_,
-    "%s planned %zu poses via %zu controls: fastest=%.2f s budget=%.2f s expanded=%zu",
-    name_.c_str(), path.poses.size(), controls.size(), fastest_time, time_budget, expanded);
+    "%s planned %zu poses via %zu controls (%zu blind-zone doglegs): "
+    "fastest=%.2f s budget=%.2f s expanded=%zu",
+    name_.c_str(), path.poses.size(), controls.size(), blind_doglegs,
+    fastest_time, time_budget, expanded);
   return path;
 }
 

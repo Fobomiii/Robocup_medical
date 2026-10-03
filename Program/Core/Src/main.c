@@ -1119,11 +1119,28 @@ void StartCanHostTask(void *argument)
                       task_state, nav_status, 0U, 0U);
     }
 
-    dock_override = MedicalTask_DockingControl(
-        (uint8_t)((ops_ok != 0U) && (hwt_ok != 0U)),
-        pos_x, pos_y, yaw_deg);
+    /* Do not allow navigation or local correction to continue with stale
+     * pose/yaw or a missing wheel feedback frame.  This is an immediate stop;
+     * normal command changes still use the chassis-side velocity ramp. */
+    if ((ops_ok == 0U) || (hwt_ok == 0U) ||
+        (wheel_online_mask != 0x0FU))
+    {
+      dock_override = 0U;
+      DJI_Chassis_SetCommandImmediate(0.0f, 0.0f, 0.0f);
+    }
+    else
+    {
+      dock_override = MedicalTask_DockingControl(
+          1U, pos_x, pos_y, yaw_deg,
+          measured_forward_mm_s, measured_left_mm_s);
+    }
 
-    if (dock_override != 0U)
+    if ((ops_ok == 0U) || (hwt_ok == 0U) ||
+        (wheel_online_mask != 0x0FU))
+    {
+      /* Safety stop already issued above. */
+    }
+    else if (dock_override != 0U)
     {
       /* MedicalTask owns the chassis output during final docking. */
     }

@@ -24,8 +24,9 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
-from std_msgs.msg import String
+from std_msgs.msg import Bool, String
 
+from .controller_selection import controller_for_route
 from .field_goals import FieldGoal, load_field_goals
 from .nav_protocol import (
     GOAL_NONE,
@@ -109,6 +110,12 @@ class MedicalNavigator(Node):
         self.nurse_next_goal = None
         self.nurse_qr_seen = False
         self.plan_ready = False
+        self.active_controller_id = None
+        self.requested_controller_id = None
+        self.controller_source_goal = None
+        self.controller_destination_goal = None
+        self.stm32_ready = False
+        self.deferred_goal_request = None
         self.lock = threading.Lock()
 
         self.nav_client = ActionClient(self, NavigateToPose, "navigate_to_pose")
@@ -120,15 +127,28 @@ class MedicalNavigator(Node):
         )
         self.status_pub = self.create_publisher(String, "/medical_nav/navigator_status", 10)
         self.plan_pub = self.create_publisher(Path, "/medical_nav/plan", latched)
+        self.controller_selector_pub = self.create_publisher(
+            String, "/controller_selector", latched
+        )
         self.create_subscription(String, "/medical_nav/goal_request", self._goal_request, 10)
         self.create_subscription(String, "/medical_nav/scan_result", self._scan_result, 10)
         self.create_subscription(
             PoseStamped, "/medical_nav/robot_pose", self._robot_pose, 10
         )
         self.create_subscription(Path, "/plan", self._nav2_plan, 10)
+        self.create_subscription(
+            Bool,
+            "/medical_nav/stm32_ready",
+            self._stm32_ready_changed,
+            10,
+        )
 
         self.create_timer(0.5, self._pending_goal_tick)
         self.create_timer(0.5, self._publish_status)
+        # ControllerSelector may be created when a behavior tree starts.
+        # Repeat the selection while a goal is active so it cannot miss the
+        # one-shot message sent immediately before the NavigateToPose goal.
+        self.create_timer(0.2, self._publish_controller_selection)
         self.get_logger().info(
             f"Navigator ready | goals={sorted(self.goals_by_name)} "
             f"| nav2={'up' if self.nav_client.server_is_ready() else 'starting'}"
@@ -362,6 +382,59 @@ class MedicalNavigator(Node):
 
     # ------------------------------------------------------------------
 
+    def _stm32_ready_changed(self, msg: Bool) -> None:
+        ready = bool(msg.data)
+        cancel_handle = None
+        deferred_request = None
+        with self.lock:
+            if ready == self.stm32_ready:
+                return
+            self.stm32_ready = ready
+            if not ready:
+                cancel_handle = self.active_goal_handle or self.cancel_goal_handle
+                self.goal_generation += 1
+                self.busy = False
+                self.pending_goal = None
+                self.active_goal_handle = None
+                self.cancel_goal_handle = None
+                self.waiting_for_cancel = False
+                self.cancel_started_s = 0.0
+                self.cancel_attempt = 0
+                self.active_goal_id = GOAL_NONE
+                self.active_request_id = 0
+                self.requested_controller_id = None
+                self.controller_source_goal = None
+                self.controller_destination_goal = None
+                self.plan_ready = False
+                self.nav_status = NAV_IDLE
+                self.last_result = "stm32_rebooting"
+                self.deferred_goal_request = None
+                self._reset_nurse_scan_locked(False)
+            else:
+                deferred_request = self.deferred_goal_request
+                self.deferred_goal_request = None
+                self.last_result = "stm32_ready"
+
+        if cancel_handle is not None:
+            try:
+                cancel_handle.cancel_goal_async()
+            except Exception as exc:
+                self.get_logger().warn(
+                    f"Cannot cancel navigation during STM32 reset: {exc}"
+                )
+        self._publish_plan(Path())
+        self._publish_status()
+        if ready:
+            self.get_logger().info(
+                "STM32 recovery complete; accepting navigation requests"
+            )
+            if deferred_request is not None:
+                self.dispatch(*deferred_request)
+        else:
+            self.get_logger().warn(
+                "STM32 reset detected; canceled navigation and cleared handoff state"
+            )
+
     def _goal_request(self, msg: String) -> None:
         try:
             payload = json.loads(msg.data)
@@ -370,9 +443,24 @@ class MedicalNavigator(Node):
         except (ValueError, KeyError, TypeError) as exc:
             self.get_logger().warn(f"Bad goal request: {exc}")
             return
+        with self.lock:
+            if not self.stm32_ready:
+                self.deferred_goal_request = (goal_id, request_id)
+                self.last_result = "waiting_for_stm32_recovery"
+                defer = True
+            else:
+                defer = False
+        if defer:
+            self._publish_status()
+            return
         self.dispatch(goal_id, request_id)
 
     def dispatch(self, goal_id: int, request_id: int = 0) -> bool:
+        with self.lock:
+            if not self.stm32_ready:
+                self.deferred_goal_request = (goal_id, request_id)
+                self.last_result = "waiting_for_stm32_recovery"
+                return True
         goal = self.goals.get(goal_id)
         if goal is None:
             self.get_logger().warn(f"Unknown goal id {goal_id}")
@@ -383,6 +471,9 @@ class MedicalNavigator(Node):
                 self.last_result = "unknown_goal"
                 self.busy = False
                 self.pending_goal = None
+                self.requested_controller_id = None
+                self.controller_source_goal = None
+                self.controller_destination_goal = None
                 self.cancel_goal_handle = None
                 self.waiting_for_cancel = False
                 self.cancel_started_s = 0.0
@@ -409,6 +500,13 @@ class MedicalNavigator(Node):
                 self.last_request_s = time.monotonic()
                 continuing_same_goal = True
             else:
+                source_goal = self.goals.get(self.active_goal_id)
+                source_goal_name = (
+                    source_goal.name if source_goal is not None else None
+                )
+                controller_id = controller_for_route(
+                    source_goal_name, goal.name
+                )
                 previous_handle = self.active_goal_handle or self.cancel_goal_handle
                 self.active_goal_handle = None
                 self.cancel_goal_handle = previous_handle
@@ -421,6 +519,9 @@ class MedicalNavigator(Node):
                 self.rejection_retry_count = 0
                 self.busy = True
                 self.pending_goal = goal
+                self.requested_controller_id = controller_id
+                self.controller_source_goal = source_goal_name
+                self.controller_destination_goal = goal.name
                 self.plan_ready = False
                 self.last_request_s = time.monotonic()
                 self.nav_status = NAV_WAIT_PATH
@@ -535,7 +636,11 @@ class MedicalNavigator(Node):
 
     def _send_goal(self, goal, generation: int) -> None:
         with self.lock:
-            if generation != self.goal_generation or self.waiting_for_cancel:
+            if (
+                generation != self.goal_generation
+                or self.waiting_for_cancel
+                or not self.stm32_ready
+            ):
                 return
             self.plan_ready = False
         if not self.nav_client.server_is_ready():
@@ -555,6 +660,12 @@ class MedicalNavigator(Node):
             if generation != self.goal_generation:
                 return
             self.pending_goal = None
+            controller_id = self.requested_controller_id
+            if controller_id is None:
+                controller_id = controller_for_route(
+                    self.controller_source_goal, goal.name
+                )
+            self.active_controller_id = controller_id
 
         target = PoseStamped()
         target.header.frame_id = self.map_frame
@@ -570,9 +681,12 @@ class MedicalNavigator(Node):
         request.pose = target
         if goal.goal_id == self.nurse_goal_id:
             request.behavior_tree = self.nurse_bt_xml
+        self._publish_controller_selection()
         self.get_logger().info(
             f"Dispatching {goal.name} -> map({target.pose.position.x:.2f}, "
-            f"{target.pose.position.y:.2f}) request={self.active_request_id}"
+            f"{target.pose.position.y:.2f}) request={self.active_request_id} "
+            f"route={self.controller_source_goal or 'unknown'}->{goal.name} "
+            f"controller={controller_id}"
         )
         future = self.nav_client.send_goal_async(
             request,
@@ -588,6 +702,8 @@ class MedicalNavigator(Node):
         advance_nurse = False
         publish_nurse_timeout = False
         with self.lock:
+            if not self.stm32_ready:
+                return
             generation = self.goal_generation
             if self.waiting_for_cancel:
                 elapsed = time.monotonic() - self.cancel_started_s
@@ -854,6 +970,15 @@ class MedicalNavigator(Node):
 
     # ------------------------------------------------------------------
 
+    def _publish_controller_selection(self) -> None:
+        with self.lock:
+            controller_id = self.active_controller_id if self.busy else None
+        if controller_id is None:
+            return
+        message = String()
+        message.data = controller_id
+        self.controller_selector_pub.publish(message)
+
     def _publish_status(self) -> None:
         message = String()
         message.data = json.dumps(
@@ -870,7 +995,14 @@ class MedicalNavigator(Node):
                 "nurse_scan_mode": self.nurse_scan_mode,
                 "nurse_viewpoint_index": self.nurse_viewpoint_index,
                 "nav2_ready": self.nav_client.server_is_ready(),
+                "stm32_ready": self.stm32_ready,
+                "deferred_goal_request": self.deferred_goal_request,
                 "plan_ready": self.plan_ready,
+                "controller_id": self.active_controller_id,
+                "controller_route": {
+                    "from": self.controller_source_goal,
+                    "to": self.controller_destination_goal,
+                },
             },
             ensure_ascii=False,
         )

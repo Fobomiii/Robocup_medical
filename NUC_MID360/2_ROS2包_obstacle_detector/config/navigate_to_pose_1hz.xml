@@ -1,19 +1,19 @@
 <!--
-  Nav2 Humble's navigate-to-pose recovery flow with bounded 2 Hz live global
+  Nav2 Humble's navigate-to-pose recovery flow with bounded 1 Hz live global
   replanning so newly visible competition cones are avoided before braking.
 -->
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
     <RecoveryNode number_of_retries="6" name="NavigateRecovery">
       <PipelineSequence name="NavigateWithReplanning">
-        <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
+        <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPathHeadingHold" topic_name="controller_selector"/>
         <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
-        <RateController hz="2.0">
+        <RateController hz="1.0">
           <RecoveryNode number_of_retries="1" name="ComputeAndSmoothPath">
             <Sequence name="PlanThenSmooth">
               <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}"/>
               <Fallback name="SmoothOrKeepOriginal">
-                <SmoothPath unsmoothed_path="{path}" smoothed_path="{path}" smoother_id="simple_smoother" max_smoothing_duration="0.20"/>
+                <SmoothPath unsmoothed_path="{path}" smoothed_path="{path}" smoother_id="simple_smoother" max_smoothing_duration="0.35"/>
                 <AlwaysSuccess/>
               </Fallback>
             </Sequence>
@@ -27,15 +27,10 @@
       </PipelineSequence>
       <ReactiveFallback name="RecoveryFallback">
         <GoalUpdated/>
-        <RoundRobin name="RecoveryActions">
-          <Sequence name="ClearingActions">
-            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
-            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
-          </Sequence>
-          <Spin spin_dist="1.57"/>
-          <Wait wait_duration="5"/>
-          <BackUp backup_dist="0.30" backup_speed="0.05"/>
-        </RoundRobin>
+        <Sequence name="ClearCostmapsAndRefresh">
+          <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+          <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+        </Sequence>
       </ReactiveFallback>
     </RecoveryNode>
   </BehaviorTree>

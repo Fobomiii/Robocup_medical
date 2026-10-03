@@ -15,6 +15,7 @@ HOST = os.environ.get("MEDICAL_NUC_HOST", "192.168.50.22")
 USER = os.environ.get("MEDICAL_NUC_USER", "fzurobot")
 PASSWORD = os.environ.get("MEDICAL_NUC_PASSWORD")
 ROS_DOMAIN_ID = os.environ.get("MEDICAL_ROS_DOMAIN_ID", "77")
+DRY_RUN = os.environ.get("MEDICAL_NAV_DRY_RUN", "false").lower()
 SCANNER_ENABLED = os.environ.get("MEDICAL_SCANNER_ENABLED", "true").lower()
 SCAN_CAMERA = os.environ.get(
     "MEDICAL_SCAN_CAMERA",
@@ -62,6 +63,9 @@ def main() -> int:
         return 2
     if not ROS_DOMAIN_ID.isdigit() or not 0 <= int(ROS_DOMAIN_ID) <= 101:
         print("MEDICAL_ROS_DOMAIN_ID must be an integer from 0 to 101.")
+        return 2
+    if DRY_RUN not in {"true", "false"}:
+        print("MEDICAL_NAV_DRY_RUN must be true or false.")
         return 2
     if SCANNER_ENABLED not in {"true", "false"}:
         print("MEDICAL_SCANNER_ENABLED must be true or false.")
@@ -202,6 +206,8 @@ def main() -> int:
              f"{remote_home}/start_scan_dashboard.sh"),
             (os.path.join(HERE, "monitor_velocity_layers.sh"),
              f"{remote_home}/monitor_velocity_layers.sh"),
+            (os.path.join(HERE, "record_bed13_3runs.sh"),
+             f"{remote_home}/record_bed13_3runs.sh"),
             (os.path.join(HERE, "medical-scan-dashboard.desktop"),
              f"{remote_home}/medical-scan-dashboard.desktop"),
             (os.path.join(HERE, "mid360.service"), f"{remote_home}/mid360.service"),
@@ -225,7 +231,8 @@ def main() -> int:
 
     run(
         f"chmod +x {remote_home}/start_*.sh "
-        f"{remote_home}/monitor_velocity_layers.sh {remote_home}/check_nuc.sh"
+        f"{remote_home}/monitor_velocity_layers.sh "
+        f"{remote_home}/record_bed13_3runs.sh {remote_home}/check_nuc.sh"
     )
 
     print("Installing scanner, BLE health and NUC TTS runtime dependencies...")
@@ -323,8 +330,10 @@ def main() -> int:
         "obstacle_detector/nav_protocol.py obstacle_detector/serial_transport.py "
         "obstacle_detector/nuc_tts.py "
         "obstacle_detector/bridge_safety.py "
+        "obstacle_detector/qos_profiles.py "
         "obstacle_detector/field_goals.py obstacle_detector/stm32_bridge.py "
         "obstacle_detector/medical_navigator.py obstacle_detector/lidar_transform.py "
+        "obstacle_detector/blind_zone_visualizer.py "
         "obstacle_detector/nurse_scan_core.py "
         "obstacle_detector/lidar_odometry_core.py "
         "obstacle_detector/lidar_odometry_guard.py "
@@ -368,7 +377,7 @@ def main() -> int:
     # Configure unattended automatic navigation with real chassis output.
     # This value persists across service restarts and NUC reboots.
     environment = (
-        "MEDICAL_NAV_DRY_RUN=false\n"
+        f"MEDICAL_NAV_DRY_RUN={DRY_RUN}\n"
         f"ROS_DOMAIN_ID={ROS_DOMAIN_ID}\n"
         "ROS_LOCALHOST_ONLY=1\n"
         f"MEDICAL_SCANNER_ENABLED={SCANNER_ENABLED}\n"
@@ -454,6 +463,11 @@ def main() -> int:
             "2>/dev/null | grep -Fq '\"serial\": true' && "
             f"ROS_DOMAIN_ID={ROS_DOMAIN_ID} ROS_LOCALHOST_ONLY=1 "
             "ros2 node list 2>/dev/null | grep -Fxq /health_ble_bridge && "
+            f"ROS_DOMAIN_ID={ROS_DOMAIN_ID} ROS_LOCALHOST_ONLY=1 "
+            "ros2 node list 2>/dev/null | grep -Fxq /blind_zone_visualizer && "
+            f"ROS_DOMAIN_ID={ROS_DOMAIN_ID} ROS_LOCALHOST_ONLY=1 "
+            "timeout 8s ros2 topic echo --once /medical_nav/blind_zone_status "
+            ">/dev/null 2>&1 && "
             f"ROS_DOMAIN_ID={ROS_DOMAIN_ID} ROS_LOCALHOST_ONLY=1 "
             "timeout 8s ros2 topic echo --once /medical_nav/health_status "
             ">/dev/null 2>&1",

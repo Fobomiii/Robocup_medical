@@ -81,7 +81,7 @@ void ChassisCtrl_Enable(bool enable)
   {
     if (!enable)
     {
-      DJI_Chassis_SetCommand(0.0f, 0.0f, 0.0f);
+      DJI_Chassis_SetCommandImmediate(0.0f, 0.0f, 0.0f);
     }
     return;
   }
@@ -91,7 +91,7 @@ void ChassisCtrl_Enable(bool enable)
   chassis_ctrl_reset_output();
   if (!enable)
   {
-    DJI_Chassis_SetCommand(0.0f, 0.0f, 0.0f);
+    DJI_Chassis_SetCommandImmediate(0.0f, 0.0f, 0.0f);
   }
 }
 
@@ -109,7 +109,7 @@ bool ChassisCtrl_Update(float pos_x, float pos_y, float yaw)
 
   if (!s_enabled)
   {
-    DJI_Chassis_SetCommand(0.0f, 0.0f, 0.0f);
+    DJI_Chassis_SetCommandImmediate(0.0f, 0.0f, 0.0f);
     return false;
   }
 
@@ -118,7 +118,7 @@ bool ChassisCtrl_Update(float pos_x, float pos_y, float yaw)
       (fabsf(chassis_ctrl_yaw_error(s_target_yaw, yaw)) <
        CHASSIS_CTRL_REACH_YAW_DEG))
   {
-    DJI_Chassis_SetCommand(0.0f, 0.0f, 0.0f);
+    DJI_Chassis_SetCommandImmediate(0.0f, 0.0f, 0.0f);
     PID_Reset();
     chassis_ctrl_reset_output();
     s_enabled = false;

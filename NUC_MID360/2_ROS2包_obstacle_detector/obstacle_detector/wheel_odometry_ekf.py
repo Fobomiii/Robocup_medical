@@ -1,4 +1,4 @@
-"""Planar EKF for OPS/HWT pose and encoder-derived body velocity."""
+"""Planar position/velocity filter with direct HWT101CT yaw."""
 
 from dataclasses import dataclass
 import math
@@ -13,17 +13,20 @@ def normalize_angle(angle: float) -> float:
 @dataclass(frozen=True)
 class WheelOdometryEkfConfig:
     ops_position_std_m: float = 0.02
-    hwt_yaw_std_rad: float = 0.015
     wheel_forward_std_m_s: float = 0.08
     wheel_lateral_std_m_s: float = 0.16
     wheel_yaw_std_rad_s: float = 0.12
     linear_accel_std_m_s2: float = 1.5
-    yaw_accel_std_rad_s2: float = 1.5
     max_dt_s: float = 0.20
 
 
 class PlanarWheelOdometryEkf:
-    """State is x, y, yaw, body-vx, body-vy and yaw-rate."""
+    """Filter x/y and body velocity; yaw is always the latest HWT value.
+
+    HWT101CT is the authoritative heading source.  The filter retains yaw in
+    its state so the existing planar prediction API remains compatible, but it
+    never blends wheel yaw-rate or a predicted yaw into the published heading.
+    """
 
     def __init__(self, config: WheelOdometryEkfConfig | None = None) -> None:
         self.config = config or WheelOdometryEkfConfig()
@@ -57,7 +60,7 @@ class PlanarWheelOdometryEkf:
                 [
                     self.config.ops_position_std_m**2,
                     self.config.ops_position_std_m**2,
-                    self.config.hwt_yaw_std_rad**2,
+                    1.0e-8,
                     self.config.wheel_forward_std_m_s**2,
                     self.config.wheel_lateral_std_m_s**2,
                     self.config.wheel_yaw_std_rad_s**2,
@@ -66,22 +69,25 @@ class PlanarWheelOdometryEkf:
             self.initialized = True
             return True
 
-        measurement = np.array((x_m, y_m, yaw_rad), dtype=np.float64)
-        observation = np.zeros((3, 6), dtype=np.float64)
+        # Correct position only.  Do not run an EKF correction on yaw: the
+        # HWT101CT measurement is copied directly and is the sole heading
+        # source used by the bridge and published odometry.
+        measurement = np.array((x_m, y_m), dtype=np.float64)
+        observation = np.zeros((2, 6), dtype=np.float64)
         observation[0, 0] = 1.0
         observation[1, 1] = 1.0
-        observation[2, 2] = 1.0
         noise = np.diag(
             [
                 self.config.ops_position_std_m**2,
                 self.config.ops_position_std_m**2,
-                self.config.hwt_yaw_std_rad**2,
             ]
         )
         innovation = measurement - observation @ self.state
-        innovation[2] = normalize_angle(float(innovation[2]))
         self._correct(observation, noise, innovation)
-        self.state[2] = normalize_angle(float(self.state[2]))
+        self.state[2] = yaw_rad
+        self.covariance[2, :] = 0.0
+        self.covariance[:, 2] = 0.0
+        self.covariance[2, 2] = 1.0e-8
         return True
 
     def update_wheel(
@@ -135,7 +141,8 @@ class PlanarWheelOdometryEkf:
         world_vy = sine * forward_m_s + cosine * left_m_s
         self.state[0] = x_m + world_vx * dt
         self.state[1] = y_m + world_vy * dt
-        self.state[2] = normalize_angle(yaw_rad + yaw_rate * dt)
+        # Keep the last direct HWT heading between pose frames.  Wheel yaw
+        # remains an estimated twist component, never a heading substitute.
 
         transition = np.eye(6, dtype=np.float64)
         transition[0, 2] = (-sine * forward_m_s - cosine * left_m_s) * dt
@@ -144,18 +151,17 @@ class PlanarWheelOdometryEkf:
         transition[1, 2] = (cosine * forward_m_s - sine * left_m_s) * dt
         transition[1, 3] = sine * dt
         transition[1, 4] = cosine * dt
-        transition[2, 5] = dt
+        transition[2, 5] = 0.0
 
         linear_position_std = 0.5 * self.config.linear_accel_std_m_s2 * dt * dt
-        yaw_position_std = 0.5 * self.config.yaw_accel_std_rad_s2 * dt * dt
         process_noise = np.diag(
             [
                 linear_position_std**2,
                 linear_position_std**2,
-                yaw_position_std**2,
+                1.0e-8,
                 (self.config.linear_accel_std_m_s2 * dt) ** 2,
                 (self.config.linear_accel_std_m_s2 * dt) ** 2,
-                (self.config.yaw_accel_std_rad_s2 * dt) ** 2,
+                1.0e-8,
             ]
         )
         self.covariance = (

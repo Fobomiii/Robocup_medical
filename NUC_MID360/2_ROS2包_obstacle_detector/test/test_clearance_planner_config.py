@@ -42,8 +42,8 @@ class ClearancePlannerConfigTest(unittest.TestCase):
         planner = config["planner_server"]["ros__parameters"]["GridBased"]
         self.assertEqual(global_params["inflation_layer"]["inflation_radius"], 0.25)
         self.assertEqual(local_params["inflation_layer"]["inflation_radius"], 0.25)
-        self.assertGreater(planner["preferred_clearance"], 0.25)
-        self.assertGreater(planner["clearance_weight"], 0.0)
+        self.assertAlmostEqual(planner["preferred_clearance"], 0.65)
+        self.assertAlmostEqual(planner["clearance_weight"], 12.0)
         self.assertGreater(planner["density_weight"], 0.0)
         self.assertGreater(planner["goal_exemption_radius"], 0.0)
         self.assertGreaterEqual(planner["costmap_weight"], 0.0)
@@ -55,19 +55,23 @@ class ClearancePlannerConfigTest(unittest.TestCase):
             )
         )
         planner = config["planner_server"]["ros__parameters"]["GridBased"]
-        controller = config["controller_server"]["ros__parameters"]["FollowPath"]
-        self.assertEqual(planner["forward_speed"], controller["vx_max"])
-        self.assertEqual(planner["reverse_speed"], abs(controller["vx_min"]))
-        self.assertEqual(planner["lateral_speed"], controller["vy_max"])
-        self.assertAlmostEqual(planner["max_planar_speed"], 2.00)
-        self.assertAlmostEqual(planner["max_wheel_speed"], 2.00)
+        controller_params = config["controller_server"]["ros__parameters"]
+        for controller_name in controller_params["controller_plugins"]:
+            controller = controller_params[controller_name]
+            self.assertEqual(planner["forward_speed"], controller["vx_max"])
+            self.assertEqual(
+                planner["reverse_speed"], abs(controller["vx_min"])
+            )
+            self.assertEqual(planner["lateral_speed"], controller["vy_max"])
+        self.assertAlmostEqual(planner["max_planar_speed"], 3.00)
+        self.assertAlmostEqual(planner["max_wheel_speed"], 3.00)
         self.assertAlmostEqual(planner["simplification_time_tolerance"], 1.01)
         self.assertGreaterEqual(planner["max_time_ratio"], 1.0)
         self.assertLessEqual(planner["max_time_ratio"], 1.25)
-        self.assertGreaterEqual(planner["min_time_slack"], 0.0)
-        self.assertLessEqual(planner["min_time_slack"], 1.0)
-        self.assertAlmostEqual(planner["route_switch_risk_improvement"], 0.05)
-        self.assertAlmostEqual(planner["route_switch_time_improvement"], 1.0)
+        self.assertAlmostEqual(planner["min_time_slack"], 0.25)
+        self.assertAlmostEqual(planner["route_switch_risk_improvement"], 0.55)
+        self.assertAlmostEqual(planner["route_switch_time_improvement"], 0.50)
+        self.assertAlmostEqual(planner["route_switch_max_slowdown"], 0.00)
         self.assertAlmostEqual(planner["route_reuse_max_distance"], 0.50)
 
     def test_bounded_time_clearance_model_is_active(self) -> None:
@@ -93,6 +97,35 @@ class ClearancePlannerConfigTest(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("traversalRisks", source)
         self.assertIn("preferred_clearance", source)
+
+    def test_x_drive_blind_zone_path_shaping_is_enabled(self) -> None:
+        with (OBSTACLE_PACKAGE / "config" / "nav2_params.yaml").open(
+            "r", encoding="utf-8"
+        ) as stream:
+            config = yaml.safe_load(stream)
+        planner = config["planner_server"]["ros__parameters"]["GridBased"]
+        self.assertTrue(planner["blind_zone_enabled"])
+        self.assertEqual(
+            planner["blind_zone_angles_deg"],
+            [45.0, 135.0, -135.0, -45.0],
+        )
+        self.assertGreater(planner["blind_zone_half_width_deg"], 0.0)
+        self.assertGreater(planner["blind_zone_min_lateral_offset"], 0.0)
+        self.assertGreater(planner["blind_zone_lateral_offset"], 0.0)
+        self.assertLessEqual(
+            planner["blind_zone_min_lateral_offset"],
+            planner["blind_zone_lateral_offset"],
+        )
+        self.assertGreaterEqual(
+            planner["blind_zone_max_detour_time_ratio"], 1.0
+        )
+
+        source = (
+            PLANNER_PACKAGE / "src" / "clearance_planner.cpp"
+        ).read_text(encoding="utf-8")
+        self.assertIn("addBlindZoneDoglegs", source)
+        self.assertIn("worldSegmentCost", source)
+        self.assertIn("blind-zone doglegs", source)
         self.assertIn("density_weight", source)
         self.assertIn("fastestTimeField", source)
         self.assertIn("constrainedSafePath", source)
@@ -107,9 +140,23 @@ class ClearancePlannerConfigTest(unittest.TestCase):
         self.assertIn("simplification_time_tolerance", source)
         self.assertIn("route_switch_risk_improvement", source)
         self.assertIn("route_switch_time_improvement", source)
+        self.assertIn("route_switch_max_slowdown", source)
         self.assertIn("has_previous_route_", source)
-        self.assertIn("risk_improvement >= params.route_switch_risk_improvement ||", source)
-        self.assertIn("time_improvement >= params.route_switch_time_improvement", source)
+        self.assertIn("densifyPath", source)
+        self.assertIn("retained final route", source)
+        for parameter in (
+            "forward_speed",
+            "reverse_speed",
+            "lateral_speed",
+            "max_planar_speed",
+            "max_wheel_speed",
+        ):
+            self.assertIn(f'declare("{parameter}", 3.00)', source)
+        self.assertIn("const bool clearly_faster", source)
+        self.assertIn("const bool clearly_safer_without_slowing", source)
+        self.assertIn(
+            "time_improvement >= -params.route_switch_max_slowdown", source
+        )
         self.assertNotIn("1.0 + costmap_penalty", source)
         self.assertNotIn("traversalTimes", source)
 
