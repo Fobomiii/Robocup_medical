@@ -11,9 +11,11 @@
         <RateController hz="1.0">
           <RecoveryNode number_of_retries="1" name="ComputeAndSmoothPath">
             <Sequence name="PlanThenSmooth">
-              <!-- Native Nav2 path contract: the limiter evaluates this exact
-                   path, so FollowPath always receives the planner result. -->
               <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}"/>
+              <Fallback name="SmoothOrKeepOriginal">
+                <SmoothPath unsmoothed_path="{path}" smoothed_path="{path}" smoother_id="simple_smoother" max_smoothing_duration="0.35"/>
+                <AlwaysSuccess/>
+              </Fallback>
             </Sequence>
             <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
           </RecoveryNode>

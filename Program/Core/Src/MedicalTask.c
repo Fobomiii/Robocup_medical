@@ -47,7 +47,6 @@
 #define MEDICAL_DOCK_TRACK_YAW_DEG 3.0f
 #define MEDICAL_DOCK_HANDOFF_MAX_SPEED_MM_S 450.0f
 #define MEDICAL_DOCK_HANDOFF_STABLE_MS 150U
-#define MEDICAL_DOCK_HANDOFF_FALLBACK_MS 600U
 #define MEDICAL_DOCK_SAFE_FORWARD_HALF_WIDTH_MM 300.0f
 #define MEDICAL_DOCK_SAFE_APPROACH_DEPTH_MM 350.0f
 #define MEDICAL_DOCK_SAFE_OVERSHOOT_MM 40.0f
@@ -1501,6 +1500,14 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
     return 0U;
   }
 
+  /* Keep refreshing the tracked target during docking, as in a187cec.
+   * The moving handoff guards above apply before chassis ownership changes;
+   * they must not prevent the stopped sampling fallback after Nav2 arrival. */
+  if (pose_valid != 0U)
+  {
+    medical_docking_capture_targets(pos_x, pos_y, yaw_clockwise_deg);
+  }
+
   if ((HAL_GetTick() - s_state_enter_ms) >= MEDICAL_DOCK_TIMEOUT_MS)
   {
     medical_docking_timeout_finish();
@@ -1510,13 +1517,12 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
   if (s_dock_phase == MEDICAL_DOCK_HANDOFF)
   {
     ChassisCtrl_Enable(false);
-    if (medical_docking_handoff_target(
-            pose_valid,
-            pos_x,
-            pos_y,
-            yaw_clockwise_deg,
-            measured_forward_mm_s,
-            measured_left_mm_s,
+    if (pose_valid == 0U)
+    {
+      return 1U;
+    }
+
+    if (medical_docking_get_tracked_target(
             &tracked_target_x,
             &tracked_target_y) != 0U)
     {
@@ -1525,9 +1531,7 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
           pos_x, pos_y, yaw_clockwise_deg,
           MEDICAL_DOCK_MOVE_TRACKED);
     }
-    else if ((s_dock_handoff_slow_since_ms != 0U) &&
-             ((HAL_GetTick() - s_dock_handoff_slow_since_ms) >=
-              MEDICAL_DOCK_HANDOFF_FALLBACK_MS))
+    else
     {
       s_dock_phase = MEDICAL_DOCK_SAMPLE_INITIAL;
       medical_docking_sample_reset();

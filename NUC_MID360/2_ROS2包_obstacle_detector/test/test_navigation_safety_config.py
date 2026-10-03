@@ -177,7 +177,11 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertIn('name="home_approach_limiter"', launch_source)
         self.assertIn('executable="corner_speed_limiter"', launch_source)
         self.assertIn('name="corner_speed_limiter"', launch_source)
-        self.assertIn('"execution_path_topic": "/plan"', launch_source)
+        self.assertIn('"raw_path_topic": "/plan"', launch_source)
+        self.assertIn(
+            '"smoothed_path_topic": "/transformed_global_plan"',
+            launch_source,
+        )
         self.assertIn('"output_topic": "/speed_limit"', launch_source)
         self.assertIn(
             '"controller_selector_topic": "/controller_selector"',
@@ -288,11 +292,15 @@ class NavigationSafetyConfigTest(unittest.TestCase):
         self.assertEqual(len(rate_controllers), 1)
         self.assertEqual(float(rate_controllers[0].attrib["hz"]), 1.0)
         smoothers = root.findall(".//SmoothPath")
-        self.assertEqual(len(smoothers), 0)
+        self.assertEqual(len(smoothers), 1)
+        self.assertEqual(smoothers[0].attrib["smoother_id"], "simple_smoother")
+        self.assertEqual(
+            float(smoothers[0].attrib["max_smoothing_duration"]), 0.35
+        )
         smooth_fallback = root.find(".//Fallback[@name='SmoothOrKeepOriginal']")
-        self.assertIsNone(smooth_fallback)
-        self.assertEqual(len(root.findall(".//SelectExecutionPath")), 0)
-        self.assertEqual(root.find(".//FollowPath").attrib["path"], "{path}")
+        self.assertIsNotNone(smooth_fallback)
+        self.assertIsNotNone(smooth_fallback.find("SmoothPath"))
+        self.assertIsNotNone(smooth_fallback.find("AlwaysSuccess"))
         plugin_names = self.config["bt_navigator"]["ros__parameters"][
             "plugin_lib_names"
         ]
@@ -328,8 +336,6 @@ class NavigationSafetyConfigTest(unittest.TestCase):
             ],
             "FollowPathNurse",
         )
-        self.assertEqual(len(nurse_root.findall(".//SelectExecutionPath")), 0)
-        self.assertEqual(nurse_root.find(".//FollowPath").attrib["path"], "{path}")
 
         bt_params = self.config["bt_navigator"]["ros__parameters"]
         self.assertEqual(

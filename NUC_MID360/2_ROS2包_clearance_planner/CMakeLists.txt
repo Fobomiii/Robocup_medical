@@ -37,13 +37,6 @@ ament_target_dependencies(clearance_planner
 
 pluginlib_export_plugin_description_file(nav2_core clearance_planner_plugin.xml)
 
-if(BUILD_TESTING)
-  enable_testing()
-  add_executable(test_execution_path_selection test/test_execution_path_selection.cpp)
-  target_include_directories(test_execution_path_selection PRIVATE include)
-  add_test(NAME execution_path_selection COMMAND test_execution_path_selection)
-endif()
-
 install(TARGETS clearance_planner
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
