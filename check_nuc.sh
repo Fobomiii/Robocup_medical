@@ -69,6 +69,17 @@ section "Clearance planner"
 ros2 param get /planner_server GridBased.plugin 2>/dev/null || \
     echo "[WARN] planner plugin parameter unavailable"
 for parameter in \
+    blind_zone_enabled \
+    blind_zone_angles_deg \
+    blind_zone_half_width_deg \
+    blind_zone_min_segment_length \
+    blind_zone_min_lateral_offset \
+    blind_zone_lateral_offset
+do
+    printf '%-40s ' "GridBased.$parameter"
+    ros2 param get /planner_server "GridBased.$parameter" 2>/dev/null || echo "unavailable"
+done
+for parameter in \
     max_speed \
     crawl_speed \
     soft_decel \
@@ -77,6 +88,12 @@ for parameter in \
 do
     printf '%-28s ' "GridBased.$parameter"
     ros2 param get /planner_server "GridBased.$parameter" 2>/dev/null || echo "unavailable"
+done
+
+section "Normal acceleration and braking (ROS X forward, Y left)"
+for parameter in feedback max_accel max_decel max_velocity; do
+    printf '%-28s ' "velocity_smoother.$parameter"
+    ros2 param get /velocity_smoother "$parameter" 2>/dev/null || echo "unavailable"
 done
 
 section "Motion lock"
@@ -120,6 +137,7 @@ for node in \
     /code_scanner \
     /stm32_bridge \
     /lidar_self_filter \
+    /blind_zone_visualizer \
     /medical_navigator \
     /controller_server \
     /smoother_server \
@@ -144,15 +162,21 @@ topics=$(ros2 topic list 2>/dev/null || true)
 for topic in \
     /livox/lidar \
     /livox/lidar_filtered \
+    /livox/lidar_nav \
+    /livox/lidar_safety \
     /odom \
     /cmd_vel \
     /cmd_vel_safe \
     /medical_nav/robot_pose \
     /medical_nav/bridge_status \
+    /medical_nav/stm32_ready \
     /medical_nav/scanner_status \
     /medical_nav/scanner_preview/compressed \
     /medical_nav/tele_scanner_preview/compressed \
     /medical_nav/lidar_filter_status \
+    /medical_nav/lidar_safety_filter_status \
+    /medical_nav/blind_zones \
+    /medical_nav/blind_zone_status \
     /map \
     /global_costmap/costmap \
     /local_costmap/costmap \
@@ -201,6 +225,14 @@ timeout 4 ros2 topic echo --once /livox/lidar_filtered --field header 2>/dev/nul
     echo "[WARN] no filtered point cloud sample"
 timeout 4 ros2 topic echo --once /medical_nav/lidar_filter_status 2>/dev/null || \
     echo "[WARN] no lidar self-filter status"
+timeout 4 ros2 topic echo --once /livox/lidar_safety --field header 2>/dev/null || \
+    echo "[WARN] no independent collision-safety point cloud"
+timeout 4 ros2 topic echo --once /medical_nav/lidar_safety_filter_status 2>/dev/null || \
+    echo "[WARN] no lidar safety-filter status"
+
+section "X-drive lidar blind zones (one sample, max 4 s)"
+timeout 4 ros2 topic echo --once /medical_nav/blind_zone_status 2>/dev/null || \
+    echo "[WARN] no blind-zone status"
 
 section "Pose and lidar rates (about 6 s each)"
 echo "Expected after flashing the current STM32 firmware: /odom about 50 Hz"
@@ -209,6 +241,8 @@ echo "Expected from the Mid360 driver: /livox/lidar about 10 Hz"
 timeout 6 ros2 topic hz /livox/lidar --window 50 2>/dev/null || true
 echo "Expected after self filtering: /livox/lidar_filtered about 10 Hz"
 timeout 6 ros2 topic hz /livox/lidar_filtered --window 50 2>/dev/null || true
+echo "Expected on the lightweight safety path: /livox/lidar_safety about 10 Hz"
+timeout 6 ros2 topic hz /livox/lidar_safety --window 50 2>/dev/null || true
 
 section "Point cloud delay (about 6 s)"
 echo "Delay should be small and stable; a large or negative value means clock mismatch."

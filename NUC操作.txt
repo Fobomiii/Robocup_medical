@@ -150,6 +150,38 @@ tail -n 100
 journalctl -fu obstacle-detector.service
 
 
+横向过冲：第一阶段制动参数（2026-10-03）
+
+ROS车体X为前后，Y为左右。当前velocity_smoother.max_decel为
+[-1.3, -2.2, -2.0]：横向普通减速度从1.3提高到2.2 m/s²，适用于左右两个方向、所有导航任务。
+max_accel仍为[2.2, 2.2, 1.8]，车轮释放加速度仍为2.8 m/s²。
+
+030815第三次记录：03:10:52.189709 MPPI的vy已经反向，但直到03:10:52.919332
+平滑器的vy才反向，滞后约0.73秒。反向请求之后车仍向Bed3横移约0.38米。
+桥接GateReleaseLimiter直接放行降速；STM32导航模式无额外减速斜坡，电机速度PID执行制动。
+
+加载第一节ROS环境后，在车辆静止时可临时应用并核对：
+
+ros2 param set /velocity_smoother max_decel '[-1.3, -2.2, -2.0]'
+ros2 param get /velocity_smoother max_decel
+
+临时参数随服务重启失效；部署更新后的nav2_params.yaml才会永久生效，无需更新STM32固件。
+bed_soft_decel_m_s2和corner_speed_limiter.braking_decel_m_s2是距离限速包络的假定制动能力，
+增大它们会延后开始减速，不能用来代替增大velocity_smoother的实际指令减速度。
+下一次实车继续同时记录/cmd_vel_nav、/cmd_vel、/cmd_vel_safe、/medical_nav/bridge_cmd_debug、
+/medical_nav/wheel_odom和/medical_nav/robot_pose，比较反向延迟与实际横向停止距离。
+
+电机速度环与航向来源（2026-10-03）
+
+STM32 四个底盘电机速度环 Kp 已从 6.0 提高到 6.5，Ki=1.0、Kd=0.01、输出限幅保持不变。
+修改后必须重新编译并烧录 STM32，观察目标/实测 RPM 误差、电流饱和和横向停止距离。
+
+NUC 的航向来源已改为 HWT101CT 直接航向：轮速 EKF 只保留 X/Y 位置和车体速度滤波，
+不再融合或发布 EKF 预测 yaw。/medical_nav/bridge_status 中 yaw_source 应显示
+HWT101CT_direct；odom_source 在轮速有效时应显示 wheel_ekf_xy_hwt101ct_yaw。
+航向保持 PID 仍使用 HWT101CT，HWT101CT 超时或 STM32 姿态帧失效时必须保持运动锁定。
+
+
 七、调整膨胀区（临时参数）
 
 # 查看当前值
@@ -222,6 +254,8 @@ cd 'C:\Users\ASUS\Desktop\Robocup医疗'
 $env:MEDICAL_NUC_HOST='192.168.50.22'
 $env:MEDICAL_NUC_USER='fzurobot'
 $env:MEDICAL_NUC_PASSWORD='FZURobot'
+$env:MEDICAL_NAV_DRY_RUN='true'
+# Change to 'false' only after RViz blind-zone and path checks pass.
 python '.\NUC_MID360\4_启动脚本\deploy_nuc.py'
 
 重要：当前 deploy_nuc.py 会在部署完成后写入 MEDICAL_NAV_DRY_RUN=false，并重启服务，即允许真实底盘运动。部署前必须保证场地和急停安全。
@@ -261,3 +295,931 @@ journalctl -b -k --no-pager | grep -Ei 'ch341|ttyUSB|brltty' | tail -n 50
 - map -> base_link 已能持续发布；当前输出为零位姿时表示机器人正处于地图原点，不是 TF 故障。
 - 当前任务状态 status: 2 表示任务执行中。
 - 当前若保持 dry_run=true，底盘不会运动，Nav2 的无进展恢复日志可忽略；不测试时建议停止 obstacle-detector.service。
+
+
+
+
+source /opt/ros/humble/setup.bash
+source ~/livox_ws/install/setup.bash
+export ROS_DOMAIN_ID=77
+export ROS_LOCALHOST_ONLY=1
+
+mkdir -p ~/wheel_logs
+
+~/monitor_velocity_layers.sh 5 0.75 |
+tee ~/wheel_logs/wheel_critic_$(date +%Y%m%d_%H%M%S).log
+
+
+
+
+
+
+完整的log生成
+
+
+
+bash <<'BASH'
+set -uo pipefail
+
+set +u
+if [ -f "$HOME/.config/medical-navigation.env" ]; then
+    set -a
+    source "$HOME/.config/medical-navigation.env"
+    set +a
+fi
+source /opt/ros/humble/setup.bash
+source "$HOME/livox_ws/install/setup.bash"
+set -u
+
+STAMP="$(date +%Y%m%d_%H%M%S)"
+OUT="$HOME/bed13_full_${STAMP}"
+ARCHIVE="${OUT}.tar.gz"
+mkdir -p "$OUT"
+
+JOURNAL_PID=""
+SYSTEM_PID=""
+BAG_PID=""
+CLEANED=0
+
+cleanup()
+{
+    if [ "$CLEANED" -eq 1 ]; then
+        return
+    fi
+    CLEANED=1
+    trap - EXIT INT TERM
+
+    echo
+    echo "============================================================"
+    echo "正在停止后台记录器并整理数据……"
+    echo "============================================================"
+
+    if [ -n "$BAG_PID" ] && kill -0 "$BAG_PID" 2>/dev/null; then
+        kill -INT "$BAG_PID" 2>/dev/null || true
+        for _ in $(seq 1 40); do
+            kill -0 "$BAG_PID" 2>/dev/null || break
+            sleep 0.2
+        done
+        if kill -0 "$BAG_PID" 2>/dev/null; then
+            kill -TERM "$BAG_PID" 2>/dev/null || true
+        fi
+        wait "$BAG_PID" 2>/dev/null || true
+    fi
+
+    if [ -n "$SYSTEM_PID" ]; then
+        kill "$SYSTEM_PID" 2>/dev/null || true
+        wait "$SYSTEM_PID" 2>/dev/null || true
+    fi
+
+    if [ -n "$JOURNAL_PID" ]; then
+        kill "$JOURNAL_PID" 2>/dev/null || true
+        wait "$JOURNAL_PID" 2>/dev/null || true
+    fi
+
+    {
+        echo "========== SNAPSHOT TIME =========="
+        date --iso-8601=ns
+
+        echo
+        echo "========== NODES =========="
+        timeout 8s ros2 node list 2>&1 || true
+
+        echo
+        echo "========== TOPICS =========="
+        timeout 8s ros2 topic list -t 2>&1 || true
+
+        echo
+        echo "========== VELOCITY / DIAGNOSTIC GRAPH =========="
+        for topic in \
+            /cmd_vel_nav \
+            /cmd_vel \
+            /cmd_vel_home_limited \
+            /cmd_vel_safe \
+            /medical_nav/cone_compensation_status \
+            /medical_nav/blind_zone_status \
+            /collision_monitor/collision_points \
+            /collision_monitor/visualization_marker \
+            /medical_nav/bridge_cmd_debug \
+            /medical_nav/wheel_odom \
+            /medical_nav/wheel_diagnostics \
+            /livox/lidar_nav
+        do
+            echo
+            echo "--- $topic ---"
+            timeout 6s ros2 topic info -v "$topic" 2>&1 || true
+        done
+
+        echo
+        echo "========== LIFECYCLE =========="
+        for node in \
+            /controller_server \
+            /planner_server \
+            /smoother_server \
+            /behavior_server \
+            /bt_navigator \
+            /velocity_smoother \
+            /collision_monitor
+        do
+            echo
+            echo "--- $node ---"
+            timeout 5s ros2 lifecycle get "$node" 2>&1 || true
+        done
+
+        echo
+        echo "========== PARAMETERS =========="
+        for node in \
+            /controller_server \
+            /planner_server \
+            /velocity_smoother \
+            /collision_monitor \
+            /cone_footprint_compensator \
+            /home_approach_limiter \
+            /corner_speed_limiter \
+            /stm32_bridge
+        do
+            echo
+            echo "--- $node ---"
+            timeout 8s ros2 param dump "$node" 2>&1 || true
+        done
+    } >"$OUT/snapshot.txt" 2>&1
+
+    tar -C "$HOME" -czf "$ARCHIVE" "$(basename "$OUT")"
+
+    echo
+    echo "============================================================"
+    echo "采集完成"
+    echo "目录：$OUT"
+    echo "压缩包：$ARCHIVE"
+    echo
+    echo "请发送这个文件："
+    echo "$ARCHIVE"
+    echo "============================================================"
+}
+
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+START_TIME="$(date '+%Y-%m-%d %H:%M:%S')"
+
+journalctl \
+    -u obstacle-detector.service \
+    --since "$START_TIME" \
+    -f \
+    -o short-precise \
+    >"$OUT/journal.log" 2>&1 &
+JOURNAL_PID=$!
+
+(
+    while true; do
+        echo "========== $(date --iso-8601=ns) =========="
+        echo "LOAD:"
+        uptime
+        echo "MEMORY:"
+        free -m
+        echo "PROCESSES:"
+        ps -eo pid,ppid,stat,pcpu,pmem,nlwp,comm,args \
+            --sort=-pcpu | head -n 35
+        echo
+        sleep 1
+    done
+) >"$OUT/system.log" 2>&1 &
+SYSTEM_PID=$!
+
+BASE_BAG_TOPICS=(
+    /cmd_vel_nav \
+    /cmd_vel \
+    /cmd_vel_home_limited \
+    /cmd_vel_safe \
+    /medical_nav/task_state \
+    /medical_nav/navigator_status \
+    /medical_nav/cone_compensation_status \
+    /medical_nav/blind_zone_status \
+    /medical_nav/lidar_filter_status \
+    /medical_nav/lidar_safety_filter_status \
+    /medical_nav/robot_pose \
+    /controller_selector \
+    /medical_nav/bridge_cmd_debug \
+    /medical_nav/bridge_status \
+    /medical_nav/stm32_ready \
+    /medical_nav/corner_speed_status \
+    /medical_nav/wheel_odom \
+    /medical_nav/wheel_diagnostics \
+    /odom \
+    /plan \
+    /plan_smoothed \
+    /transformed_global_plan \
+    /speed_limit \
+    /navigate_to_pose/_action/status \
+    /tf \
+    /tf_static
+)
+
+# Humble补丁版本的Collision Monitor可视化话题名称可能不同。
+# 自动记录当前实际存在的collision/polygon/StopPolygon/ApproachPolygon话题，
+# 同时把最终列表保存下来，便于回放时确认点云来源。
+mapfile -t COLLISION_BAG_TOPICS < <(
+    timeout 8s ros2 topic list 2>/dev/null \
+        | grep -Ei 'collision|polygon|StopPolygon|ApproachPolygon' \
+        | sort -u \
+        || true
+)
+BAG_TOPICS=("${BASE_BAG_TOPICS[@]}")
+for topic in "${COLLISION_BAG_TOPICS[@]}"; do
+    BAG_TOPICS+=("$topic")
+done
+printf '%s\n' "${BAG_TOPICS[@]}" >"$OUT/recorded_topics.txt"
+
+ros2 bag record \
+    --storage sqlite3 \
+    -o "$OUT/rosbag" \
+    "${BAG_TOPICS[@]}" \
+    >"$OUT/rosbag.log" 2>&1 &
+BAG_PID=$!
+
+sleep 1
+
+if ! kill -0 "$BAG_PID" 2>/dev/null; then
+    echo "[ERROR] rosbag记录器启动失败："
+    cat "$OUT/rosbag.log"
+    exit 2
+fi
+
+/usr/bin/python3 - "$OUT/timeline.jsonl" <<'PY'
+import json
+import math
+import sys
+import time
+from datetime import datetime
+
+import rclpy
+from action_msgs.msg import GoalStatusArray
+from geometry_msgs.msg import Twist
+from nav2_msgs.msg import SpeedLimit
+from nav_msgs.msg import Odometry, Path
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, qos_profile_sensor_data
+from sensor_msgs.msg import PointCloud2
+from std_msgs.msg import Bool, String, UInt8
+
+
+OUTPUT_FILE = sys.argv[1]
+GAP_THRESHOLD_S = 0.20
+NAVIGATION_TASK_STATES = {1, 3, 6, 9}
+
+TWIST_TOPICS = {
+    "RAW": "/cmd_vel_nav",
+    "SMOOTH": "/cmd_vel",
+    "HOME": "/cmd_vel_home_limited",
+    "SAFE": "/cmd_vel_safe",
+}
+
+STRING_TOPICS = {
+    "NAV_STATUS": "/medical_nav/navigator_status",
+    "CONE": "/medical_nav/cone_compensation_status",
+    "BLIND": "/medical_nav/blind_zone_status",
+    "BRIDGE_CMD": "/medical_nav/bridge_cmd_debug",
+    "BRIDGE_STATUS": "/medical_nav/bridge_status",
+    "CORNER": "/medical_nav/corner_speed_status",
+    "WHEEL_DIAG": "/medical_nav/wheel_diagnostics",
+    "LIDAR_NAV_FILTER": "/medical_nav/lidar_filter_status",
+    "LIDAR_SAFETY_FILTER": "/medical_nav/lidar_safety_filter_status",
+}
+
+REQUIRED_PUBLISHERS = [
+    "/cmd_vel_nav",
+    "/cmd_vel",
+    "/cmd_vel_home_limited",
+    "/cmd_vel_safe",
+    "/medical_nav/task_state",
+    "/medical_nav/navigator_status",
+    "/medical_nav/cone_compensation_status",
+    "/medical_nav/blind_zone_status",
+    "/medical_nav/bridge_cmd_debug",
+    "/medical_nav/stm32_ready",
+    "/medical_nav/wheel_odom",
+    "/odom",
+    "/livox/lidar_nav",
+    "/livox/lidar_safety",
+    "/medical_nav/lidar_safety_filter_status",
+]
+
+
+class Bed13Recorder(Node):
+    def __init__(self):
+        super().__init__("bed13_full_gap_recorder")
+
+        self.start_mono = time.monotonic()
+        self.output = open(OUTPUT_FILE, "w", buffering=1, encoding="utf-8")
+        self.ready = False
+
+        self.task_state = None
+        self.navigator_following = False
+        self.navigator_payload = {}
+        self.motion_active = False
+        self.motion_start_mono = None
+
+        self.last_rx = {layer: None for layer in TWIST_TOPICS}
+        self.last_speed = {layer: None for layer in TWIST_TOPICS}
+        self.gap_start = {layer: None for layer in TWIST_TOPICS}
+        self.max_gap = {layer: 0.0 for layer in TWIST_TOPICS}
+        self.gap_count = {layer: 0 for layer in TWIST_TOPICS}
+
+        self.sent_speed = None
+        self.wheel_speed = None
+        self.odom_speed = None
+        self.cloud_age = {
+            "/livox/lidar_nav": None,
+            "/livox/lidar_safety": None,
+        }
+        self.last_console = 0.0
+        self._subscriptions_keepalive = []
+
+        normal_qos = QoSProfile(depth=100)
+
+        for layer, topic in TWIST_TOPICS.items():
+            sub = self.create_subscription(
+                Twist,
+                topic,
+                self.make_twist_callback(layer, topic),
+                normal_qos,
+            )
+            self._subscriptions_keepalive.append(sub)
+
+        for label, topic in STRING_TOPICS.items():
+            sub = self.create_subscription(
+                String,
+                topic,
+                self.make_string_callback(label, topic),
+                normal_qos,
+            )
+            self._subscriptions_keepalive.append(sub)
+
+        self._subscriptions_keepalive.append(
+            self.create_subscription(
+                UInt8,
+                "/medical_nav/task_state",
+                self.task_callback,
+                normal_qos,
+            )
+        )
+
+        self._subscriptions_keepalive.append(
+            self.create_subscription(
+                Bool,
+                "/medical_nav/stm32_ready",
+                lambda msg: self.emit(
+                    "stm32_ready", ready=bool(msg.data)
+                ),
+                normal_qos,
+            )
+        )
+
+        self._subscriptions_keepalive.append(
+            self.create_subscription(
+                Odometry,
+                "/odom",
+                lambda msg: self.odom_callback("ODOM", "/odom", msg),
+                qos_profile_sensor_data,
+            )
+        )
+
+        self._subscriptions_keepalive.append(
+            self.create_subscription(
+                Odometry,
+                "/medical_nav/wheel_odom",
+                lambda msg: self.odom_callback(
+                    "WHEEL_ODOM",
+                    "/medical_nav/wheel_odom",
+                    msg,
+                ),
+                qos_profile_sensor_data,
+            )
+        )
+
+        for topic in self.cloud_age:
+            self._subscriptions_keepalive.append(
+                self.create_subscription(
+                    PointCloud2,
+                    topic,
+                    self.make_cloud_callback(topic),
+                    qos_profile_sensor_data,
+                )
+            )
+
+        for topic in (
+            "/plan",
+            "/plan_smoothed",
+            "/transformed_global_plan",
+        ):
+            self._subscriptions_keepalive.append(
+                self.create_subscription(
+                    Path,
+                    topic,
+                    lambda msg, selected_topic=topic: self.path_callback(
+                        selected_topic,
+                        msg,
+                    ),
+                    normal_qos,
+                )
+            )
+
+        self._subscriptions_keepalive.append(
+            self.create_subscription(
+                SpeedLimit,
+                "/speed_limit",
+                self.speed_limit_callback,
+                normal_qos,
+            )
+        )
+
+        self._subscriptions_keepalive.append(
+            self.create_subscription(
+                GoalStatusArray,
+                "/navigate_to_pose/_action/status",
+                self.action_status_callback,
+                normal_qos,
+            )
+        )
+
+        self.create_timer(0.02, self.timer_callback)
+
+        self.emit(
+            "recorder_start",
+            gap_threshold_s=GAP_THRESHOLD_S,
+            required_publishers=REQUIRED_PUBLISHERS,
+        )
+
+    def mono(self):
+        return time.monotonic() - self.start_mono
+
+    def emit(self, kind, **fields):
+        record = {
+            "wall_ns": time.time_ns(),
+            "mono_s": round(self.mono(), 6),
+            "kind": kind,
+            "task_state": self.task_state,
+        }
+        record.update(fields)
+        self.output.write(
+            json.dumps(
+                record,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            + "\n"
+        )
+
+    def make_twist_callback(self, layer, topic):
+        def callback(message):
+            now = time.monotonic()
+            previous = self.last_rx[layer]
+            dt = None if previous is None else now - previous
+
+            vx = float(message.linear.x)
+            vy = float(message.linear.y)
+            wz = float(message.angular.z)
+            speed = math.hypot(vx, vy)
+
+            self.last_rx[layer] = now
+            self.last_speed[layer] = speed
+
+            if self.gap_start[layer] is not None:
+                duration = now - self.gap_start[layer]
+                self.max_gap[layer] = max(
+                    self.max_gap[layer],
+                    duration,
+                )
+                self.emit(
+                    "gap_end",
+                    layer=layer,
+                    topic=topic,
+                    duration_s=round(duration, 6),
+                    resumed_speed=round(speed, 6),
+                )
+                print(
+                    f"\n[GAP END] {layer} "
+                    f"duration={duration:.3f}s "
+                    f"speed={speed:.3f}",
+                    flush=True,
+                )
+                self.gap_start[layer] = None
+
+            self.emit(
+                "twist",
+                layer=layer,
+                topic=topic,
+                dt_s=None if dt is None else round(dt, 6),
+                vx=round(vx, 6),
+                vy=round(vy, 6),
+                wz=round(wz, 6),
+                speed=round(speed, 6),
+            )
+
+        return callback
+
+    def make_string_callback(self, label, topic):
+        def callback(message):
+            self.emit(
+                "string",
+                label=label,
+                topic=topic,
+                data=message.data,
+            )
+
+            if label == "NAV_STATUS":
+                try:
+                    payload = json.loads(message.data)
+                    self.navigator_payload = payload
+                    self.navigator_following = (
+                        int(payload.get("state", -1)) == 2
+                        and bool(payload.get("busy", False))
+                    )
+                except Exception as error:
+                    self.emit(
+                        "parse_error",
+                        label=label,
+                        error=str(error),
+                    )
+
+            elif label == "BRIDGE_CMD":
+                try:
+                    payload = json.loads(message.data)
+                    sent = payload.get("sent_cmd") or {}
+                    self.sent_speed = float(
+                        sent.get("speed", 0.0)
+                    )
+                except Exception:
+                    pass
+
+        return callback
+
+    def task_callback(self, message):
+        current = int(message.data)
+        if current != self.task_state:
+            previous = self.task_state
+            self.task_state = current
+            self.emit(
+                "task_state",
+                previous=previous,
+                current=current,
+            )
+            print(
+                f"\n[TASK] {previous} -> {current}",
+                flush=True,
+            )
+        else:
+            self.task_state = current
+
+    def odom_callback(self, label, topic, message):
+        vx = float(message.twist.twist.linear.x)
+        vy = float(message.twist.twist.linear.y)
+        wz = float(message.twist.twist.angular.z)
+        speed = math.hypot(vx, vy)
+
+        if label == "ODOM":
+            self.odom_speed = speed
+        else:
+            self.wheel_speed = speed
+
+        self.emit(
+            "odometry",
+            label=label,
+            topic=topic,
+            vx=round(vx, 6),
+            vy=round(vy, 6),
+            wz=round(wz, 6),
+            speed=round(speed, 6),
+        )
+
+    def make_cloud_callback(self, topic):
+        def callback(message):
+            stamp_ns = (
+                int(message.header.stamp.sec) * 1_000_000_000
+                + int(message.header.stamp.nanosec)
+            )
+            now_ns = self.get_clock().now().nanoseconds
+            age_s = (now_ns - stamp_ns) / 1_000_000_000.0
+            self.cloud_age[topic] = age_s
+
+            self.emit(
+                "pointcloud_header",
+                topic=topic,
+                frame_id=message.header.frame_id,
+                stamp_ns=stamp_ns,
+                age_s=round(age_s, 6),
+                width=int(message.width),
+                height=int(message.height),
+                point_step=int(message.point_step),
+            )
+
+        return callback
+
+    def path_callback(self, topic, message):
+        length = 0.0
+        for first, second in zip(
+            message.poses,
+            message.poses[1:],
+        ):
+            dx = (
+                second.pose.position.x
+                - first.pose.position.x
+            )
+            dy = (
+                second.pose.position.y
+                - first.pose.position.y
+            )
+            length += math.hypot(dx, dy)
+
+        first_xy = None
+        last_xy = None
+
+        if message.poses:
+            first = message.poses[0].pose.position
+            last = message.poses[-1].pose.position
+            first_xy = [
+                round(first.x, 4),
+                round(first.y, 4),
+            ]
+            last_xy = [
+                round(last.x, 4),
+                round(last.y, 4),
+            ]
+
+        self.emit(
+            "path",
+            topic=topic,
+            frame_id=message.header.frame_id,
+            poses=len(message.poses),
+            length_m=round(length, 4),
+            first_xy=first_xy,
+            last_xy=last_xy,
+        )
+
+    def speed_limit_callback(self, message):
+        self.emit(
+            "speed_limit",
+            percentage=bool(message.percentage),
+            speed_limit=round(
+                float(message.speed_limit),
+                6,
+            ),
+        )
+
+    def action_status_callback(self, message):
+        statuses = []
+        for item in message.status_list:
+            statuses.append(
+                {
+                    "status": int(item.status),
+                    "goal_id": bytes(
+                        item.goal_info.goal_id.uuid
+                    ).hex(),
+                }
+            )
+
+        self.emit(
+            "action_status",
+            statuses=statuses,
+        )
+
+    def timer_callback(self):
+        now = time.monotonic()
+        active = (
+            self.navigator_following
+            and self.task_state in NAVIGATION_TASK_STATES
+        )
+
+        if active != self.motion_active:
+            previous = self.motion_active
+            self.motion_active = active
+
+            if active:
+                self.motion_start_mono = now
+                self.emit(
+                    "motion_start",
+                    previous=previous,
+                    navigator=self.navigator_payload,
+                )
+                print(
+                    "\n========== MOTION START ==========",
+                    flush=True,
+                )
+            else:
+                self.emit(
+                    "motion_end",
+                    previous=previous,
+                    navigator=self.navigator_payload,
+                )
+                print(
+                    "\n========== MOTION END ==========",
+                    flush=True,
+                )
+
+                for layer in TWIST_TOPICS:
+                    if self.gap_start[layer] is not None:
+                        duration = (
+                            now - self.gap_start[layer]
+                        )
+                        self.max_gap[layer] = max(
+                            self.max_gap[layer],
+                            duration,
+                        )
+                        self.emit(
+                            "gap_end",
+                            layer=layer,
+                            topic=TWIST_TOPICS[layer],
+                            duration_s=round(
+                                duration,
+                                6,
+                            ),
+                            reason="motion_end",
+                        )
+                        self.gap_start[layer] = None
+
+        if active and self.motion_start_mono is not None:
+            for layer, topic in TWIST_TOPICS.items():
+                last = self.last_rx[layer]
+                reference = self.motion_start_mono
+
+                if (
+                    last is not None
+                    and last >= self.motion_start_mono
+                ):
+                    reference = last
+
+                age = now - reference
+
+                if (
+                    age >= GAP_THRESHOLD_S
+                    and self.gap_start[layer] is None
+                ):
+                    self.gap_start[layer] = reference
+                    self.gap_count[layer] += 1
+                    self.emit(
+                        "gap_start",
+                        layer=layer,
+                        topic=topic,
+                        age_s=round(age, 6),
+                    )
+                    print(
+                        f"\n[GAP START] "
+                        f"{layer} age={age:.3f}s",
+                        flush=True,
+                    )
+
+        if self.ready and now - self.last_console >= 0.5:
+            self.last_console = now
+            fields = []
+
+            for layer in TWIST_TOPICS:
+                last = self.last_rx[layer]
+                age = (
+                    None
+                    if last is None
+                    else now - last
+                )
+                speed = self.last_speed[layer]
+
+                if age is None or speed is None:
+                    fields.append(f"{layer}=--/--")
+                else:
+                    fields.append(
+                        f"{layer}={speed:.3f}"
+                        f"@{age:.2f}s"
+                    )
+
+            nav_state = self.navigator_payload.get(
+                "state",
+                "--",
+            )
+            nav_request = self.navigator_payload.get(
+                "request_id",
+                "--",
+            )
+            nav_goal = self.navigator_payload.get(
+                "goal_id",
+                "--",
+            )
+            controller = self.navigator_payload.get(
+                "controller_id",
+                "--",
+            )
+
+            wheel = (
+                "--"
+                if self.wheel_speed is None
+                else f"{self.wheel_speed:.3f}"
+            )
+            sent = (
+                "--"
+                if self.sent_speed is None
+                else f"{self.sent_speed:.3f}"
+            )
+            nav_cloud = self.cloud_age["/livox/lidar_nav"]
+            safety_cloud = self.cloud_age["/livox/lidar_safety"]
+            nav_cloud_text = "--" if nav_cloud is None else f"{nav_cloud:.3f}s"
+            safety_cloud_text = (
+                "--" if safety_cloud is None else f"{safety_cloud:.3f}s"
+            )
+
+            timestamp = datetime.now().strftime(
+                "%H:%M:%S.%f"
+            )[:-3]
+
+            print(
+                f"{timestamp} TASK={self.task_state} "
+                + " ".join(fields)
+                + f" SENT={sent}"
+                + f" WHEEL={wheel}"
+                + f" CLOUD_NAV={nav_cloud_text}"
+                + f" CLOUD_SAFETY={safety_cloud_text}"
+                + f" NAV[state={nav_state}"
+                + f" req={nav_request}"
+                + f" goal={nav_goal}"
+                + f" controller={controller}]",
+                flush=True,
+            )
+
+    def close(self):
+        self.emit(
+            "recorder_stop",
+            gap_count=self.gap_count,
+            max_gap_s={
+                key: round(value, 6)
+                for key, value in self.max_gap.items()
+            },
+        )
+        self.output.close()
+
+
+rclpy.init()
+node = Bed13Recorder()
+
+try:
+    last_wait_print = 0.0
+
+    while rclpy.ok():
+        rclpy.spin_once(node, timeout_sec=0.1)
+
+        missing = [
+            topic
+            for topic in REQUIRED_PUBLISHERS
+            if node.count_publishers(topic) == 0
+        ]
+
+        now = time.monotonic()
+
+        if not missing:
+            node.ready = True
+            node.emit(
+                "recorder_ready",
+                publishers=REQUIRED_PUBLISHERS,
+            )
+
+            print()
+            print(
+                "============================================================"
+            )
+            print("RECORDER READY")
+            print(
+                "所有关键发布者已发现，"
+                "rosbag和实时记录均已启动。"
+            )
+            print(
+                "现在再让车辆执行 Bed 1 -> Bed 3。"
+            )
+            print(
+                "到达Bed 3并进入状态7或8后，"
+                "再等2秒，然后按Ctrl+C。"
+            )
+            print(
+                "============================================================"
+            )
+            print()
+            break
+
+        if now - last_wait_print >= 2.0:
+            last_wait_print = now
+            print(
+                "等待关键发布者："
+                + ", ".join(missing),
+                flush=True,
+            )
+
+    while rclpy.ok():
+        rclpy.spin_once(node, timeout_sec=0.05)
+
+except KeyboardInterrupt:
+    print(
+        "\n收到Ctrl+C，正在结束记录……",
+        flush=True,
+    )
+
+finally:
+    node.close()
+    node.destroy_node()
+    if rclpy.ok():
+        rclpy.shutdown()
+PY
+
+BASH

@@ -1,5 +1,6 @@
 """Integration checks for the custom Nav2 clearance planner package."""
 
+import ast
 from pathlib import Path
 import unittest
 import xml.etree.ElementTree as ET
@@ -110,6 +111,12 @@ class ClearancePlannerConfigTest(unittest.TestCase):
             [45.0, 135.0, -135.0, -45.0],
         )
         self.assertGreater(planner["blind_zone_half_width_deg"], 0.0)
+        self.assertGreater(planner["blind_zone_min_overlap_m"], 0.0)
+        self.assertGreater(planner["blind_zone_lookahead_m"], 0.0)
+        self.assertGreater(planner["blind_zone_heading_tolerance_deg"], 0.0)
+        self.assertAlmostEqual(planner["blind_zone_min_overlap_m"], 0.60)
+        self.assertAlmostEqual(planner["blind_zone_lookahead_m"], 2.0)
+        self.assertAlmostEqual(planner["blind_zone_side_switch_improvement"], 0.25)
         self.assertGreater(planner["blind_zone_min_lateral_offset"], 0.0)
         self.assertGreater(planner["blind_zone_lateral_offset"], 0.0)
         self.assertLessEqual(
@@ -124,6 +131,8 @@ class ClearancePlannerConfigTest(unittest.TestCase):
             PLANNER_PACKAGE / "src" / "clearance_planner.cpp"
         ).read_text(encoding="utf-8")
         self.assertIn("addBlindZoneDoglegs", source)
+        self.assertIn("longestBlindZoneOverlap", source)
+        self.assertIn("blind_zone_side_switch_improvement", source)
         self.assertIn("worldSegmentCost", source)
         self.assertIn("blind-zone doglegs", source)
         self.assertIn("density_weight", source)
@@ -177,6 +186,14 @@ class ClearancePlannerConfigTest(unittest.TestCase):
             source,
         )
         self.assertNotIn("yawQuaternion", source)
+
+    def test_execution_path_uses_native_nav2_contract(self) -> None:
+        xml = (OBSTACLE_PACKAGE / "config" / "navigate_to_pose_1hz.xml").read_text(encoding="utf-8")
+        self.assertIn('ComputePathToPose goal="{goal}" path="{path}"', xml)
+        self.assertIn('FollowPath path="{path}"', xml)
+        self.assertNotIn("SelectExecutionPath", xml)
+        launch = (OBSTACLE_PACKAGE / "launch" / "obstacle.launch.py").read_text(encoding="utf-8")
+        self.assertIn('"execution_path_topic": "/plan"', launch)
 
 
 if __name__ == "__main__":

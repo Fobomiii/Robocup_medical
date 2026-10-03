@@ -155,51 +155,35 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>318</LineNumber>
+          <LineNumber>239</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
+          <Address>134264488</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
-          <Filename>../Core/Src/stm32h7xx_it.c</Filename>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>C:\Users\ASUS\Desktop\Robocup鍖荤枟\Program\Core\Src\DJIMotorCtrlSTM32.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression></Expression>
-        </Bp>
-        <Bp>
-          <Number>1</Number>
-          <Type>0</Type>
-          <LineNumber>322</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
-          <Filename>../Core/Src/stm32h7xx_it.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
+          <Expression>\\Program\../Core/Src/DJIMotorCtrlSTM32.cpp\239</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
         <Ww>
           <count>0</count>
           <WinNumber>1</WinNumber>
-          <ItemText>channel-&gt;frame[4]</ItemText>
+          <ItemText>hfdcan2.State</ItemText>
         </Ww>
         <Ww>
           <count>1</count>
           <WinNumber>1</WinNumber>
-          <ItemText>channel-&gt;frame[5]</ItemText>
+          <ItemText>hfdcan2.ErrorCode</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>channel-&gt;frame[6]</ItemText>
+          <ItemText>h_-&gt;Instance</ItemText>
         </Ww>
         <Ww>
           <count>3</count>

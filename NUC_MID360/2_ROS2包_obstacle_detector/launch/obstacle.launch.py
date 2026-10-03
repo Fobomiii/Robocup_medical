@@ -500,11 +500,10 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     {
-                        # Prefer the smoothed, pruned path that MPPI actually
-                        # follows. Keep the planner's raw path as a fallback
-                        # during controller startup, recovery or goal handoff.
-                        "raw_path_topic": "/plan",
-                        "smoothed_path_topic": "/transformed_global_plan",
+                        # This is exactly the native BT FollowPath input.
+                        # Keep one route as the limiter's source of truth.
+                        "execution_path_topic": "/plan",
+                        "path_frame_id": "map",
                         "pose_topic": "/medical_nav/robot_pose",
                         "output_topic": "/speed_limit",
                         "status_topic": "/medical_nav/corner_speed_status",
@@ -531,18 +530,18 @@ def generate_launch_description():
                         "min_turn_angle_deg": 35.0,
                         "braking_margin_m": 0.05,
                         # The same X-shaped aluminium shadows used by the
-                        # global planner. If the transformed MPPI path cuts a
-                        # dogleg and again overlaps a blind strip for 0.6 m,
-                        # retain a low-speed visibility fallback.
+                        # global planner and BT execution-path selector. A
+                        # blind-aligned selected route retains low speed;
+                        # another candidate cannot release its protection.
                         "blind_zone_enabled": True,
                         "blind_zone_angles_deg": [45.0, 135.0, -135.0, -45.0],
                         "blind_zone_half_width_deg": 7.0,
+                        "blind_zone_heading_tolerance_deg": 3.0,
                         "blind_zone_min_overlap_m": 0.60,
                         "blind_zone_lookahead_m": 2.0,
                         "blind_zone_speed_m_s": 0.70,
                         "path_timeout_s": 1.50,
                         "pose_timeout_s": 0.50,
-                        "smoothing_wait_s": 0.25,
                         "update_rate_hz": 10.0,
                     }
                 ],

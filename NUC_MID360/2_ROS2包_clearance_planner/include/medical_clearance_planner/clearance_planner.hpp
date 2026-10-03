@@ -52,10 +52,13 @@ public:
     std::vector<double> blind_zone_angles_deg{45.0, 135.0, -135.0, -45.0};
     double blind_zone_half_width_deg{7.0};
     double blind_zone_margin_deg{3.0};
-    double blind_zone_min_segment_length{1.0};
+    double blind_zone_min_overlap_m{0.60};
+    double blind_zone_lookahead_m{2.0};
+    double blind_zone_heading_tolerance_deg{3.0};
     double blind_zone_min_lateral_offset{0.18};
     double blind_zone_lateral_offset{0.32};
     double blind_zone_max_detour_time_ratio{1.25};
+    double blind_zone_side_switch_improvement{0.25};
   };
 
   ClearancePlanner() = default;
@@ -87,6 +90,9 @@ private:
   bool has_previous_route_{false};
   geometry_msgs::msg::PoseStamped previous_goal_;
   std::vector<std::pair<double, double>> previous_route_;
+  bool has_blind_side_lock_{false};
+  int blind_side_lock_{0};
+  geometry_msgs::msg::PoseStamped blind_side_goal_;
 };
 
 }  // namespace medical_clearance_planner

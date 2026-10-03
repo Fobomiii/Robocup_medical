@@ -1,6 +1,7 @@
 #include "medical_clearance_planner/clearance_planner.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -16,6 +17,7 @@
 #include "nav2_costmap_2d/cost_values.hpp"
 #include "nav2_util/node_utils.hpp"
 #include "pluginlib/class_list_macros.hpp"
+#include "medical_clearance_planner/blind_zone_geometry.hpp"
 
 namespace medical_clearance_planner
 {
@@ -187,30 +189,6 @@ double densityAt(
 double distanceBetween(double ax, double ay, double bx, double by)
 {
   return std::hypot(ax - bx, ay - by);
-}
-
-double wrappedAngle(double angle)
-{
-  return std::atan2(std::sin(angle), std::cos(angle));
-}
-
-double blindZoneAngleError(
-  double world_dx, double world_dy, double travel_yaw,
-  const ClearancePlanner::Parameters & params)
-{
-  if (!params.blind_zone_enabled || params.blind_zone_angles_deg.empty() ||
-    std::hypot(world_dx, world_dy) <= 1.0e-9)
-  {
-    return kInfinity;
-  }
-  const double body_direction = wrappedAngle(std::atan2(world_dy, world_dx) - travel_yaw);
-  double minimum_error = kInfinity;
-  for (const double angle_deg : params.blind_zone_angles_deg) {
-    const double angle_rad = angle_deg * kPi / 180.0;
-    minimum_error = std::min(
-      minimum_error, std::abs(wrappedAngle(body_direction - angle_rad)));
-  }
-  return minimum_error;
 }
 
 std::vector<double> traversalRisks(
@@ -704,31 +682,69 @@ std::vector<std::pair<double, double>> addBlindZoneDoglegs(
   const std::vector<double> & risk,
   double travel_yaw,
   const ClearancePlanner::Parameters & params,
-  std::size_t & inserted_count)
+  int preferred_side,
+  std::size_t & inserted_count,
+  int & selected_side)
 {
   inserted_count = 0;
+  selected_side = preferred_side;
   if (!params.blind_zone_enabled || controls.size() < 2 ||
     params.blind_zone_angles_deg.empty())
   {
     return controls;
   }
 
-  const double trigger_angle = params.blind_zone_half_width_deg * kPi / 180.0;
+  const std::vector<double> blind_angles = blindZoneAnglesRadians(
+    params.blind_zone_angles_deg);
+  const double trigger_angle =
+    (params.blind_zone_half_width_deg + params.blind_zone_heading_tolerance_deg) *
+    kPi / 180.0;
   const double target_angle =
-    (params.blind_zone_half_width_deg + params.blind_zone_margin_deg) * kPi / 180.0;
-  std::vector<std::pair<double, double>> shaped;
-  shaped.reserve(controls.size() * 2);
-  shaped.push_back(controls.front());
+    (params.blind_zone_half_width_deg + params.blind_zone_heading_tolerance_deg +
+    params.blind_zone_margin_deg) * kPi / 180.0;
 
+  // Long blind-aligned controls are split at the runtime lookahead distance.
+  // This lets a bounded lateral offset create enough angular separation on
+  // every leg instead of producing one shallow, still-blind detour.
+  std::vector<std::pair<double, double>> expanded_controls;
+  expanded_controls.reserve(controls.size() * 2);
+  expanded_controls.push_back(controls.front());
   for (std::size_t index = 1; index < controls.size(); ++index) {
-    const auto [ax, ay] = shaped.back();
+    const auto [ax, ay] = controls[index - 1];
     const auto [bx, by] = controls[index];
     const double dx = bx - ax;
     const double dy = by - ay;
     const double length = std::hypot(dx, dy);
-    const double angle_error = blindZoneAngleError(dx, dy, travel_yaw, params);
-    if (length < params.blind_zone_min_segment_length || angle_error > trigger_angle) {
+    const bool blind_aligned = blindZoneAngleError(
+      dx, dy, travel_yaw, blind_angles) <= trigger_angle;
+    const int pieces = blind_aligned ? std::max(
+      1, static_cast<int>(std::ceil(length / params.blind_zone_lookahead_m))) : 1;
+    for (int piece = 1; piece <= pieces; ++piece) {
+      const double ratio = static_cast<double>(piece) / pieces;
+      expanded_controls.emplace_back(ax + ratio * dx, ay + ratio * dy);
+    }
+  }
+
+  std::vector<std::pair<double, double>> shaped;
+  shaped.reserve(expanded_controls.size() * 2);
+  shaped.push_back(expanded_controls.front());
+  double current_blind_overlap = 0.0;
+
+  for (std::size_t index = 1; index < expanded_controls.size(); ++index) {
+    const auto [ax, ay] = shaped.back();
+    const auto [bx, by] = expanded_controls[index];
+    const double dx = bx - ax;
+    const double dy = by - ay;
+    const double length = std::hypot(dx, dy);
+    const double angle_error = blindZoneAngleError(
+      dx, dy, travel_yaw, blind_angles);
+    const bool blind_aligned = angle_error <= trigger_angle;
+    const bool overlap_would_trigger = blind_aligned &&
+      current_blind_overlap + length >= params.blind_zone_min_overlap_m;
+    if (!overlap_would_trigger) {
       shaped.emplace_back(bx, by);
+      current_blind_overlap = blind_aligned ? std::min(
+        params.blind_zone_lookahead_m, current_blind_overlap + length) : 0.0;
       continue;
     }
 
@@ -753,10 +769,17 @@ std::vector<std::pair<double, double>> addBlindZoneDoglegs(
     const double midpoint_y = 0.5 * (ay + by);
     const double direct_time = worldMoveTime(dx, dy, travel_yaw, params);
 
-    bool found = false;
-    double best_score = kInfinity;
-    std::pair<double, double> best_midpoint;
-    for (const double sign : {-1.0, 1.0}) {
+    struct Candidate
+    {
+      bool valid{false};
+      int side{0};
+      double score{kInfinity};
+      std::pair<double, double> midpoint;
+    };
+    std::array<Candidate, 2> candidates;
+    for (std::size_t candidate_index = 0; candidate_index < candidates.size(); ++candidate_index) {
+      const int side = candidate_index == 0 ? -1 : 1;
+      const double sign = static_cast<double>(side);
       const double mx = midpoint_x + sign * offset * normal_x;
       const double my = midpoint_y + sign * offset * normal_y;
       double first_cost = 0.0;
@@ -776,18 +799,49 @@ std::vector<std::pair<double, double>> addBlindZoneDoglegs(
       if (detour_time > direct_time * params.blind_zone_max_detour_time_ratio + 1.0e-9) {
         continue;
       }
+      const std::vector<std::pair<double, double>> candidate_points{
+        {ax, ay}, {mx, my}, {bx, by}};
+      if (longestBlindZoneOverlap(
+          candidate_points, travel_yaw, blind_angles, trigger_angle,
+          params.blind_zone_lookahead_m) >= params.blind_zone_min_overlap_m - 1.0e-6)
+      {
+        continue;
+      }
       const double score = first_cost + second_cost +
         0.25 * (first_maximum + second_maximum);
-      if (score < best_score) {
-        found = true;
-        best_score = score;
-        best_midpoint = {mx, my};
+      candidates[candidate_index] = Candidate{true, side, score, {mx, my}};
+    }
+
+    const Candidate * best = nullptr;
+    const Candidate * locked = nullptr;
+    for (const Candidate & candidate : candidates) {
+      if (!candidate.valid) {
+        continue;
+      }
+      if (best == nullptr || candidate.score < best->score) {
+        best = &candidate;
+      }
+      if (candidate.side == selected_side) {
+        locked = &candidate;
+      }
+    }
+    const Candidate * chosen = best;
+    if (locked != nullptr && best != nullptr && best->side != locked->side) {
+      const double relative_improvement =
+        (locked->score - best->score) / std::max(1.0e-6, std::abs(locked->score));
+      if (relative_improvement < params.blind_zone_side_switch_improvement) {
+        chosen = locked;
       }
     }
 
-    if (found) {
-      shaped.push_back(best_midpoint);
+    if (chosen != nullptr) {
+      shaped.push_back(chosen->midpoint);
+      selected_side = chosen->side;
       ++inserted_count;
+      current_blind_overlap = 0.0;
+    } else {
+      current_blind_overlap = std::min(
+        params.blind_zone_lookahead_m, current_blind_overlap + length);
     }
     shaped.emplace_back(bx, by);
   }
@@ -1015,10 +1069,13 @@ void ClearancePlanner::configure(
   declare("blind_zone_angles_deg", std::vector<double>{45.0, 135.0, -135.0, -45.0});
   declare("blind_zone_half_width_deg", 7.0);
   declare("blind_zone_margin_deg", 3.0);
-  declare("blind_zone_min_segment_length", 1.0);
+  declare("blind_zone_min_overlap_m", 0.60);
+  declare("blind_zone_lookahead_m", 2.0);
+  declare("blind_zone_heading_tolerance_deg", 3.0);
   declare("blind_zone_min_lateral_offset", 0.18);
   declare("blind_zone_lateral_offset", 0.32);
   declare("blind_zone_max_detour_time_ratio", 1.25);
+  declare("blind_zone_side_switch_improvement", 0.25);
 
   RCLCPP_INFO(
     logger_, "Configured %s: bounded-time clearance planning enabled",
@@ -1030,6 +1087,8 @@ void ClearancePlanner::cleanup()
   RCLCPP_INFO(logger_, "Cleaning up %s", name_.c_str());
   has_previous_route_ = false;
   previous_route_.clear();
+  has_blind_side_lock_ = false;
+  blind_side_lock_ = 0;
   costmap_ = nullptr;
   costmap_ros_.reset();
   tf_.reset();
@@ -1045,6 +1104,8 @@ void ClearancePlanner::deactivate()
   RCLCPP_INFO(logger_, "Deactivating %s", name_.c_str());
   has_previous_route_ = false;
   previous_route_.clear();
+  has_blind_side_lock_ = false;
+  blind_side_lock_ = 0;
 }
 
 ClearancePlanner::Parameters ClearancePlanner::readParameters() const
@@ -1086,10 +1147,13 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   read("blind_zone_angles_deg", params.blind_zone_angles_deg);
   read("blind_zone_half_width_deg", params.blind_zone_half_width_deg);
   read("blind_zone_margin_deg", params.blind_zone_margin_deg);
-  read("blind_zone_min_segment_length", params.blind_zone_min_segment_length);
+  read("blind_zone_min_overlap_m", params.blind_zone_min_overlap_m);
+  read("blind_zone_lookahead_m", params.blind_zone_lookahead_m);
+  read("blind_zone_heading_tolerance_deg", params.blind_zone_heading_tolerance_deg);
   read("blind_zone_min_lateral_offset", params.blind_zone_min_lateral_offset);
   read("blind_zone_lateral_offset", params.blind_zone_lateral_offset);
   read("blind_zone_max_detour_time_ratio", params.blind_zone_max_detour_time_ratio);
+  read("blind_zone_side_switch_improvement", params.blind_zone_side_switch_improvement);
 
   params.tolerance = std::max(0.0, params.tolerance);
   params.max_planning_time = std::max(0.0, params.max_planning_time);
@@ -1124,14 +1188,18 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
     params.blind_zone_half_width_deg, 0.1, 44.0);
   params.blind_zone_margin_deg = std::clamp(
     params.blind_zone_margin_deg, 0.0, 20.0);
-  params.blind_zone_min_segment_length = std::max(
-    0.10, params.blind_zone_min_segment_length);
+  params.blind_zone_min_overlap_m = std::max(0.05, params.blind_zone_min_overlap_m);
+  params.blind_zone_lookahead_m = std::max(0.10, params.blind_zone_lookahead_m);
+  params.blind_zone_heading_tolerance_deg = std::clamp(
+    params.blind_zone_heading_tolerance_deg, 0.0, 20.0);
   params.blind_zone_min_lateral_offset = std::max(
     0.0, params.blind_zone_min_lateral_offset);
   params.blind_zone_lateral_offset = std::max(
     params.blind_zone_min_lateral_offset, params.blind_zone_lateral_offset);
   params.blind_zone_max_detour_time_ratio = std::max(
     1.0, params.blind_zone_max_detour_time_ratio);
+  params.blind_zone_side_switch_improvement = std::clamp(
+    params.blind_zone_side_switch_improvement, 0.0, 1.0);
   return params;
 }
 
@@ -1245,12 +1313,33 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
     controls.push_back(grid.mapToWorld(x, y));
   }
 
+  int preferred_blind_side = 0;
+  if (has_blind_side_lock_ && goalsMatch(
+      blind_side_goal_, goal, std::max(params.tolerance, grid.resolution)))
+  {
+    preferred_blind_side = blind_side_lock_;
+  }
   std::size_t blind_doglegs = 0;
+  int selected_blind_side = preferred_blind_side;
   controls = addBlindZoneDoglegs(
-    grid, controls, risk, travel_yaw, params, blind_doglegs);
+    grid, controls, risk, travel_yaw, params, preferred_blind_side,
+    blind_doglegs, selected_blind_side);
 
   std::vector<std::pair<double, double>> points = densifyPath(
     controls, grid.resolution);
+  const std::vector<double> blind_angles = blindZoneAnglesRadians(
+    params.blind_zone_angles_deg);
+  const double final_blind_overlap = longestBlindZoneOverlap(
+    points, travel_yaw, blind_angles,
+    (params.blind_zone_half_width_deg + params.blind_zone_heading_tolerance_deg) *
+    kPi / 180.0,
+    params.blind_zone_lookahead_m);
+  if (final_blind_overlap >= params.blind_zone_min_overlap_m - 1.0e-6) {
+    RCLCPP_WARN(
+      logger_, "%s final route still has %.2f m blind-zone overlap",
+      name_.c_str(), final_blind_overlap);
+  }
+  bool selected_route_is_new = true;
   const RouteMetrics new_metrics = routeMetrics(
     grid, points, risk, travel_yaw, params);
   if (has_previous_route_ &&
@@ -1274,6 +1363,7 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
         time_improvement >= -params.route_switch_max_slowdown;
       if (!clearly_faster && !clearly_safer_without_slowing) {
         points = std::move(previous_points);
+        selected_route_is_new = false;
         RCLCPP_DEBUG(
           logger_,
           "%s retained final route: risk improvement %.1f%%, time improvement %.2f s",
@@ -1289,6 +1379,15 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
         logger_, "%s switched final route because the retained route is blocked",
         name_.c_str());
     }
+  }
+
+  if (selected_route_is_new && selected_blind_side != 0) {
+    has_blind_side_lock_ = true;
+    blind_side_lock_ = selected_blind_side;
+    blind_side_goal_ = goal;
+    RCLCPP_DEBUG(
+      logger_, "%s locked blind-zone dogleg side %+d for this goal",
+      name_.c_str(), blind_side_lock_);
   }
 
   previous_route_ = points;

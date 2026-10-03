@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python -c ' *)",
-      "Bash(ros2 pkg *)"
-    ]
-  }
-}
