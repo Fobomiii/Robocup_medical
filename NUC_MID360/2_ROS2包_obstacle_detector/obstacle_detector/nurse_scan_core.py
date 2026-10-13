@@ -1,7 +1,6 @@
 """Configuration and geometry helpers for nurse-station QR acquisition."""
 
 from dataclasses import dataclass
-import math
 from pathlib import Path
 from typing import Tuple
 
@@ -37,13 +36,6 @@ class NurseScanConfig:
     dwell_s: float
     viewpoint_timeout_s: float
     viewpoints: Tuple[NurseScanViewpoint, ...]
-
-
-def field_yaw_toward(
-    x_mm: float, y_mm: float, target_x_mm: float, target_y_mm: float
-) -> float:
-    """Return field yaw where 0 deg faces +Y and positive turns toward +X."""
-    return math.degrees(math.atan2(target_x_mm - x_mm, target_y_mm - y_mm))
 
 
 def next_nurse_viewpoint_index(current_index: int, viewpoint_count: int) -> int:

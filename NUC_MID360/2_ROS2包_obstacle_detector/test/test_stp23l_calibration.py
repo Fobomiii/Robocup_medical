@@ -35,25 +35,27 @@ class Stp23lCalibrationTest(unittest.TestCase):
         self.assertEqual(beds["bed3"].true_y_mm, 5400.0)
         self.assertEqual(beds["bed1"].task_states, (12,))
         self.assertEqual(beds["bed3"].task_states, (13,))
+        self.assertEqual(beds["bed1"].side_sensor, "a")
+        self.assertEqual(beds["bed3"].side_sensor, "c")
         for bed in beds.values():
             self.assertEqual(bed.expected_center_side_distance_mm, 1300.0)
             self.assertEqual(bed.expected_center_front_distance_mm, 500.0)
             self.assertEqual(
                 bed.expected_center_side_distance_mm
                 - self.config.sensor_radius_mm,
-                1147.0,
+                1155.7,
             )
             self.assertEqual(
                 bed.expected_center_front_distance_mm
                 - self.config.sensor_radius_mm,
-                347.0,
+                355.7,
             )
 
     def test_protocol_round_trip(self):
-        payload = bytes.fromhex("04 7B 01 5B 04 7B 07")
+        payload = bytes.fromhex("04 84 01 64 04 84 07")
         frame = FrameParser().feed(encode_frame(MSG_STP23L, 9, payload))[0]
         ranges = decode_stp23l(frame.payload)
-        self.assertEqual(ranges, Stp23lTelemetry(1147, 347, 1147, 0x07))
+        self.assertEqual(ranges, Stp23lTelemetry(1156, 356, 1156, 0x07))
 
     def test_bed1_corrects_surveyed_ops_to_true_circle_center(self):
         event = None
@@ -64,34 +66,34 @@ class Stp23lCalibrationTest(unittest.TestCase):
             actual_x = raw_x + 50.0
             actual_y = raw_y + 50.0
             ranges = Stp23lTelemetry(
+                round(actual_x - (-3500.0) - self.config.sensor_radius_mm),
+                round(5900.0 - actual_y - self.config.sensor_radius_mm),
                 0,
-                int(5900.0 - actual_y - 153.0),
-                int(actual_x - (-3500.0) - 153.0),
-                0x06,
+                0x03,
             )
             event = self.calibrator.update(
                 12, NAV_FOLLOWING, raw_x, raw_y, 0, ranges
             )
         self.assertTrue(event.applied)
-        self.assertAlmostEqual(self.calibrator.offset_x_mm, 50.0)
-        self.assertAlmostEqual(self.calibrator.offset_y_mm, 50.0)
-        self.assertEqual(
-            self.calibrator.corrected_xy(-2250.0, 5350.0), (-2200.0, 5400.0)
-        )
+        self.assertAlmostEqual(self.calibrator.offset_x_mm, 50.0, delta=0.5)
+        self.assertAlmostEqual(self.calibrator.offset_y_mm, 50.0, delta=0.5)
+        corrected_x, corrected_y = self.calibrator.corrected_xy(-2250.0, 5350.0)
+        self.assertAlmostEqual(corrected_x, -2200.0, delta=0.5)
+        self.assertAlmostEqual(corrected_y, 5400.0, delta=0.5)
 
     def test_bed3_uses_right_sensor_and_recalibrates_current_drift(self):
-        ranges = Stp23lTelemetry(1147, 347, 0, 0x03)
+        ranges = Stp23lTelemetry(0, 356, 1156, 0x06)
         event = None
         for _ in range(self.config.samples_required):
             event = self.calibrator.update(
                 13, NAV_FOLLOWING, 2150.0, 5450.0, 0, ranges
             )
         self.assertTrue(event.applied)
-        self.assertAlmostEqual(self.calibrator.offset_x_mm, 50.0)
-        self.assertAlmostEqual(self.calibrator.offset_y_mm, -50.0)
+        self.assertAlmostEqual(self.calibrator.offset_x_mm, 50.0, delta=0.5)
+        self.assertAlmostEqual(self.calibrator.offset_y_mm, -50.0, delta=0.5)
 
     def test_unexpected_obstacle_range_is_rejected(self):
-        ranges = Stp23lTelemetry(0, 150, 400, 0x06)
+        ranges = Stp23lTelemetry(400, 150, 0, 0x03)
         event = self.calibrator.update(
             12, NAV_FOLLOWING, -2250.0, 5350.0, 0, ranges
         )
@@ -99,7 +101,7 @@ class Stp23lCalibrationTest(unittest.TestCase):
         self.assertFalse(event.applied)
 
     def test_navigation_states_cannot_apply_bed_calibration(self):
-        ranges = Stp23lTelemetry(0, 347, 1147, 0x06)
+        ranges = Stp23lTelemetry(1156, 356, 0, 0x03)
         event = self.calibrator.update(
             3, NAV_FOLLOWING, -2200.0, 5400.0, 0, ranges
         )
@@ -107,7 +109,7 @@ class Stp23lCalibrationTest(unittest.TestCase):
         self.assertFalse(event.applied)
 
     def test_leaving_bed_rearms_calibration_for_next_visit(self):
-        ranges = Stp23lTelemetry(0, 347, 1147, 0x06)
+        ranges = Stp23lTelemetry(1156, 356, 0, 0x03)
         for _ in range(self.config.samples_required):
             first = self.calibrator.update(
                 12, NAV_FOLLOWING, -2200.0, 5400.0, 0, ranges
@@ -122,7 +124,7 @@ class Stp23lCalibrationTest(unittest.TestCase):
         self.assertTrue(second.applied)
 
     def test_new_mission_reset_clears_offset_and_samples(self):
-        ranges = Stp23lTelemetry(1147, 347, 0, 0x03)
+        ranges = Stp23lTelemetry(0, 356, 1156, 0x06)
         for _ in range(self.config.samples_required):
             event = self.calibrator.update(
                 13, NAV_FOLLOWING, 2150.0, 5450.0, 0, ranges

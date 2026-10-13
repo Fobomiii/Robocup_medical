@@ -16,6 +16,7 @@
 #include <string.h>
 
 #define OPS_MAX_POSE_AGE_MS 100U
+#define OPS_CROSS_FRAME_INV_SQRT2 0.70710678118654752440f
 
 volatile Union_OPS OPS;
 
@@ -31,6 +32,16 @@ static union {
   uint8_t data[24];
   float ActVal[6];
 } s_payload;
+
+static void OPS_NativeToFieldXY(float native_x, float native_y,
+                                float *field_x, float *field_y)
+{
+  /* The OPS native axes have a fixed 45-degree mounting/reference offset from
+   * the physical chassis and surveyed field axes. Keep the surveyed conversion
+   * here; it is independent of the cross-drive wheel mixing. */
+  *field_x = (native_x - native_y) * OPS_CROSS_FRAME_INV_SQRT2;
+  *field_y = (native_x + native_y) * OPS_CROSS_FRAME_INV_SQRT2;
+}
 
 static void OPS_SendBytes(const uint8_t *buf, uint16_t len)
 {
@@ -246,24 +257,34 @@ void OPS_ClearFrameReady(void)
 
 float OPS_GetX(void)
 {
-  float value;
+  float native_x;
+  float native_y;
+  float field_x;
+  float field_y;
   uint32_t primask = __get_PRIMASK();
   __disable_irq();
-  value = -OPS.ActVal[4];
+  native_x = -OPS.ActVal[4];
+  native_y = -OPS.ActVal[5];
   if (primask == 0U)
     __enable_irq();
-  return value;
+  OPS_NativeToFieldXY(native_x, native_y, &field_x, &field_y);
+  return field_x;
 }
 
 float OPS_GetY(void)
 {
-  float value;
+  float native_x;
+  float native_y;
+  float field_x;
+  float field_y;
   uint32_t primask = __get_PRIMASK();
   __disable_irq();
-  value = -OPS.ActVal[5];
+  native_x = -OPS.ActVal[4];
+  native_y = -OPS.ActVal[5];
   if (primask == 0U)
     __enable_irq();
-  return value;
+  OPS_NativeToFieldXY(native_x, native_y, &field_x, &field_y);
+  return field_y;
 }
 
 float OPS_GetYaw(void)
@@ -290,18 +311,31 @@ float OPS_GetWz(void)
 
 uint8_t OPS_GetPose(float *pos_x, float *pos_y, float *yaw)
 {
+  uint32_t sample_ms;
+  return OPS_GetPoseStamped(pos_x, pos_y, yaw, &sample_ms);
+}
+
+uint8_t OPS_GetPoseStamped(float *pos_x, float *pos_y, float *yaw,
+                           uint32_t *sample_ms)
+{
+  float native_x;
+  float native_y;
   uint32_t primask;
 
-  if (pos_x == NULL || pos_y == NULL || yaw == NULL || OPS_IsOnline() == 0U)
+  if (pos_x == NULL || pos_y == NULL || yaw == NULL || sample_ms == NULL ||
+      OPS_IsOnline() == 0U)
     return 0U;
 
   primask = __get_PRIMASK();
   __disable_irq();
-  *pos_x = -OPS.ActVal[4];
-  *pos_y = -OPS.ActVal[5];
+  native_x = -OPS.ActVal[4];
+  native_y = -OPS.ActVal[5];
   *yaw   = -OPS.ActVal[1];
+  *sample_ms = s_last_frame_ms;
   if (primask == 0U)
     __enable_irq();
+
+  OPS_NativeToFieldXY(native_x, native_y, pos_x, pos_y);
 
   return 1U;
 }

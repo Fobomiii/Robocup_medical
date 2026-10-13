@@ -24,36 +24,41 @@
 #define MEDICAL_ORDER_HANDOFF_STOP_MS 500U
 /* Keep the selected compartment open long enough to release the medicine. */
 #define MEDICAL_DISPENSE_HOLD_MS 2500U
-#define MEDICAL_DISPENSE_ANNOUNCE_DELAY_MS 1000U
+/* Start speech 0.7 s after opening the medicine compartment. */
+#define MEDICAL_DISPENSE_ANNOUNCE_DELAY_MS 700U
 #define MEDICAL_DISPENSE_TTS_TIMEOUT_MS 10000U
+#define MEDICAL_BED_SCAN_TIMEOUT_MS 5000U
 #define MEDICAL_BOX_COUNT 2U
 
 /*
  * Final docking targets are sensor-face distances.  The field geometry uses
- * 1300 mm from the vehicle centre to the side reference and 500 mm to the
- * front reference; the STP23L heads are 153 mm from the vehicle centre.
+ * The calibrated front STP23L target is 355 mm.  The side target is selected
+ * from the bed and medicine box: medicine 1 is the left/Servo1 box and
+ * medicine 3 is the right/Servo2 box.  Bed1/medicine1 and Bed3/medicine3 use
+ * 1165 mm; Bed1/medicine3 and Bed3/medicine1 use 1145 mm.
  */
-#define MEDICAL_DOCK_FRONT_TARGET_MM 347
-#define MEDICAL_DOCK_SIDE_TARGET_MM 1147
+#define MEDICAL_DOCK_FRONT_TARGET_MM 355.0f
+#define MEDICAL_DOCK_SIDE_TARGET_MATCH_MM 1165.0f
+#define MEDICAL_DOCK_SIDE_TARGET_OPPOSITE_MM 1145.0f
 #define MEDICAL_DOCK_SIDE_SPLIT_THRESHOLD_MM 1600U
-#define MEDICAL_DOCK_TOLERANCE_MM 35
+#define MEDICAL_DOCK_TOLERANCE_MM 5
 #define MEDICAL_DOCK_SAMPLE_COUNT 8U
 #define MEDICAL_DOCK_SAMPLE_TRIM_COUNT 1U
 #define MEDICAL_DOCK_SAMPLE_SETTLE_MS 100U
 #define MEDICAL_DOCK_SAMPLE_TIMEOUT_MS 1500U
-#define MEDICAL_DOCK_TRACK_MIN_SAMPLES 5U
-#define MEDICAL_DOCK_TRACK_SPREAD_MM 40.0f
-#define MEDICAL_DOCK_TRACK_RADIUS_MM 350.0f
+#define MEDICAL_DOCK_FALLBACK_STILL_MS 2000U
+#define MEDICAL_DOCK_FALLBACK_SAMPLE_COUNT 5U
+#define MEDICAL_DOCK_VERIFY_SAMPLE_COUNT 1U
+#define MEDICAL_DOCK_STILL_LINEAR_MM_S 30.0f
+#define MEDICAL_DOCK_STILL_YAW_CDEG_S 100.0f
+#define MEDICAL_DOCK_TRACK_MIN_SAMPLES 3U
+#define MEDICAL_DOCK_TRACK_PREFERRED_SPREAD_MM 10.0f
+#define MEDICAL_DOCK_TRACK_FALLBACK_SPREAD_MM 40.0f
+#define MEDICAL_DOCK_TRACK_RADIUS_MM 800.0f
 #define MEDICAL_DOCK_TRACK_YAW_DEG 3.0f
-#define MEDICAL_DOCK_HANDOFF_MAX_SPEED_MM_S 450.0f
-#define MEDICAL_DOCK_HANDOFF_STABLE_MS 150U
-#define MEDICAL_DOCK_HANDOFF_FALLBACK_MS 600U
-#define MEDICAL_DOCK_SAFE_FORWARD_HALF_WIDTH_MM 300.0f
-#define MEDICAL_DOCK_SAFE_APPROACH_DEPTH_MM 350.0f
-#define MEDICAL_DOCK_SAFE_OVERSHOOT_MM 40.0f
 #define MEDICAL_DOCK_LASER_MAX_CORRECTION_MM 400.0f
 #define MEDICAL_DOCK_MAX_CORRECTIONS 2U
-#define MEDICAL_DOCK_TIMEOUT_MS 3000U
+#define MEDICAL_DOCK_TIMEOUT_MS 8000U
 #define MEDICAL_DOCK_SPEED_LOC_K 1000.0f
 #define MEDICAL_DOCK_PI 3.14159265358979323846f
 #define MEDICAL_BED1_TARGET_X_MM -2200.0f
@@ -64,14 +69,23 @@
 #define MEDICAL_ARM_RETRACT_TIME_S 1.5f
 #define MEDICAL_START_BUTTON_DEBOUNCE_MS 50U
 /*
- * Bench/field navigation test mode:
- *   nurse -> bed1 -> bed3 -> home
- * without waiting for any GM65 barcode.
+ * Navigation timing test mode:
+ *   home -> bed1 -> bed3 -> home
+ * without nurse-station navigation, camera scans or arm motion.  Final
+ * STP23L docking remains enabled at both beds.  The two bed stages retain a
+ * 1.5 s arm-deploy-equivalent delay so goal handoff is still tested with an
+ * explicit stationary service phase.
  *
- * Set this to 0 before the formal medicine-delivery run to restore the
- * four-read order and bedside barcode checks below.
+ * Set this to 0 before the formal medicine-delivery run, then restore the
+ * scanner_enabled launch default to true.
  */
-#define MEDICAL_TEST_AUTO_SKIP_SCAN 0U
+#define MEDICAL_NAVIGATION_TIMING_TEST 0U
+#define MEDICAL_TEST_DEFAULT_ORDER "11"
+#define MEDICAL_TEST_ARM_STAGE_DELAY_MS 1500U
+#define MEDICAL_TEST_AUTO_SKIP_SCAN MEDICAL_NAVIGATION_TIMING_TEST
+
+static volatile const uint8_t s_navigation_timing_test_enabled =
+    MEDICAL_NAVIGATION_TIMING_TEST;
 
 typedef enum {
   MEDICINE_BOX_LEFT = 0,
@@ -126,7 +140,8 @@ static uint8_t s_dock_correction_count;
 static uint32_t s_dock_last_front_sequence;
 static uint32_t s_dock_last_side_sequence;
 static uint32_t s_dock_phase_enter_ms;
-static uint32_t s_dock_handoff_slow_since_ms;
+static uint32_t s_dock_still_since_ms;
+static uint8_t s_dock_still_tracking;
 static float s_arm_origin_deg;
 static uint8_t s_arm_origin_valid;
 static uint8_t s_arm_target_deployed;
@@ -139,6 +154,8 @@ static uint32_t s_box_open_ms[MEDICAL_BOX_COUNT];
 static uint8_t s_box_close_pending[MEDICAL_BOX_COUNT];
 static uint32_t s_dispense_start_ms;
 static uint8_t s_dispense_announcement_started;
+/* Set when the bed barcode was not available within the bounded wait. */
+static uint8_t s_bed_scan_timeout_fallback;
 
 static void medical_set_state(MedicalTaskState next);
 static void medical_docking_timeout_beep_start(void);
@@ -171,6 +188,13 @@ static uint8_t medical_start_button_event(void)
 
 static void medical_arm_update(void)
 {
+  if (s_navigation_timing_test_enabled != 0U)
+  {
+    s_arm_target_deployed = 0U;
+    s_arm_commanded_deployed = 0U;
+    return;
+  }
+
   if (s_arm_origin_valid == 0U)
   {
     if (DJI_Arm_IsOnline() == 0U)
@@ -203,6 +227,29 @@ static void medical_arm_set_deployed(uint8_t deployed)
   medical_arm_update();
 }
 
+static void medical_arm_debug_update(void)
+{
+  NUC_ArmDebugCommand command;
+  NUC_ArmDebugStatus status;
+
+  while (NUC_Nav_TakeArmDebugCommand(&command) != 0U)
+  {
+    if (s_state == MEDICAL_TASK_WAIT_START ||
+        s_state == MEDICAL_TASK_WAIT_BED1_START ||
+        s_state == MEDICAL_TASK_WAIT_BED3_START)
+    {
+      medical_arm_set_deployed(command.deployed);
+      status = NUC_ARM_DEBUG_ACCEPTED;
+    }
+    else
+    {
+      status = NUC_ARM_DEBUG_WRONG_STATE;
+    }
+    (void)NUC_Nav_SendArmDebugStatus(
+        command.request_id, s_arm_target_deployed, status);
+  }
+}
+
 static uint8_t medical_is_docking_state(void)
 {
   return (s_state == MEDICAL_TASK_DOCK_BED1 ||
@@ -220,9 +267,25 @@ static uint8_t medical_dock_get_side_sample(uint16_t *distance_mm,
 {
   if (s_current_bed == 1U)
   {
-    return STP23L_GetSampleC(distance_mm, frame_sequence);
+    return STP23L_GetSampleA(distance_mm, frame_sequence);
   }
-  return STP23L_GetSampleA(distance_mm, frame_sequence);
+  return STP23L_GetSampleC(distance_mm, frame_sequence);
+}
+
+static float medical_docking_side_target_mm(void)
+{
+  MedicineBox selected_box = (s_current_bed == 1U)
+                                  ? s_bed1_box
+                                  : s_bed3_box;
+  uint8_t matching_box =
+      (((s_current_bed == 1U) && (selected_box == MEDICINE_BOX_LEFT)) ||
+       ((s_current_bed == 3U) && (selected_box == MEDICINE_BOX_RIGHT)))
+          ? 1U
+          : 0U;
+
+  return matching_box != 0U
+             ? MEDICAL_DOCK_SIDE_TARGET_MATCH_MM
+             : MEDICAL_DOCK_SIDE_TARGET_OPPOSITE_MM;
 }
 
 static float medical_docking_clamp(float value, float minimum, float maximum)
@@ -249,35 +312,6 @@ static float medical_docking_abs_yaw(float yaw_clockwise_deg)
     yaw_clockwise_deg += 360.0f;
   }
   return fabsf(yaw_clockwise_deg);
-}
-
-static uint8_t medical_docking_in_safe_corridor(
-    float pos_x,
-    float pos_y,
-    float yaw_clockwise_deg)
-{
-  float nominal_x;
-  float side_progress;
-
-  if ((s_current_bed != 1U) && (s_current_bed != 3U))
-  {
-    return 0U;
-  }
-
-  nominal_x = (s_current_bed == 1U)
-                  ? MEDICAL_BED1_TARGET_X_MM
-                  : MEDICAL_BED3_TARGET_X_MM;
-  side_progress = (s_current_bed == 1U)
-                      ? -(pos_x - nominal_x)
-                      : (pos_x - nominal_x);
-  return ((side_progress >= -MEDICAL_DOCK_SAFE_APPROACH_DEPTH_MM) &&
-          (side_progress <= MEDICAL_DOCK_SAFE_OVERSHOOT_MM) &&
-          (fabsf(pos_y - MEDICAL_BED_TARGET_Y_MM) <=
-           MEDICAL_DOCK_SAFE_FORWARD_HALF_WIDTH_MM) &&
-          (medical_docking_abs_yaw(yaw_clockwise_deg) <=
-           MEDICAL_DOCK_TRACK_YAW_DEG))
-             ? 1U
-             : 0U;
 }
 
 static void medical_docking_target_samples_reset(void)
@@ -328,8 +362,8 @@ static void medical_docking_capture_targets(float pos_x,
   if (((s_current_bed != 1U) && (s_current_bed != 3U)) ||
       ((delta_x * delta_x + delta_y * delta_y) >
        (MEDICAL_DOCK_TRACK_RADIUS_MM * MEDICAL_DOCK_TRACK_RADIUS_MM)) ||
-      (medical_docking_in_safe_corridor(
-           pos_x, pos_y, yaw_clockwise_deg) == 0U))
+      (medical_docking_abs_yaw(yaw_clockwise_deg) >
+       MEDICAL_DOCK_TRACK_YAW_DEG))
   {
     return;
   }
@@ -352,7 +386,7 @@ static void medical_docking_capture_targets(float pos_x,
       (frame_sequence != s_dock_target_last_side_sequence))
   {
     s_dock_target_last_side_sequence = frame_sequence;
-    distance_error = (float)distance_mm - MEDICAL_DOCK_SIDE_TARGET_MM;
+    distance_error = (float)distance_mm - medical_docking_side_target_mm();
     if (fabsf(distance_error) <= MEDICAL_DOCK_LASER_MAX_CORRECTION_MM)
     {
       right_delta = (s_current_bed == 1U)
@@ -374,7 +408,6 @@ static uint8_t medical_docking_filtered_target(const float *samples,
   uint8_t best_start = 0U;
   uint8_t index;
   uint8_t insert_index;
-  float target_sum = 0.0f;
 
   if ((target == NULL) ||
       (sample_count < MEDICAL_DOCK_TRACK_MIN_SAMPLES))
@@ -409,16 +442,17 @@ static uint8_t medical_docking_filtered_target(const float *samples,
     }
   }
 
-  if (best_spread > MEDICAL_DOCK_TRACK_SPREAD_MM)
+  if (best_spread > MEDICAL_DOCK_TRACK_PREFERRED_SPREAD_MM)
   {
-    return 0U;
+    if ((sample_count < MEDICAL_DOCK_SAMPLE_COUNT) ||
+        (best_spread > MEDICAL_DOCK_TRACK_FALLBACK_SPREAD_MM))
+    {
+      return 0U;
+    }
   }
 
-  for (index = 0U; index < MEDICAL_DOCK_TRACK_MIN_SAMPLES; index++)
-  {
-    target_sum += sorted[best_start + index];
-  }
-  *target = target_sum / (float)MEDICAL_DOCK_TRACK_MIN_SAMPLES;
+  *target = (sorted[best_start] + sorted[best_start + 1U] +
+             sorted[best_start + 2U]) / 3.0f;
   return 1U;
 }
 
@@ -443,12 +477,20 @@ static void medical_docking_reset(void)
   s_dock_phase = MEDICAL_DOCK_HANDOFF;
   s_dock_correction_count = 0U;
   s_dock_phase_enter_ms = HAL_GetTick();
+  s_dock_still_since_ms = 0U;
+  s_dock_still_tracking = 0U;
 }
 
-static uint8_t medical_docking_collect_samples(void)
+static uint8_t medical_docking_collect_samples(uint8_t required_count)
 {
   uint16_t distance_mm;
   uint32_t frame_sequence;
+
+  if ((required_count == 0U) ||
+      (required_count > MEDICAL_DOCK_SAMPLE_COUNT))
+  {
+    return 0U;
+  }
 
   if ((HAL_GetTick() - s_dock_phase_enter_ms) <
       MEDICAL_DOCK_SAMPLE_SETTLE_MS)
@@ -456,7 +498,7 @@ static uint8_t medical_docking_collect_samples(void)
     return 0U;
   }
 
-  if ((s_dock_front_sample_count < MEDICAL_DOCK_SAMPLE_COUNT) &&
+  if ((s_dock_front_sample_count < required_count) &&
       (STP23L_GetSampleB(&distance_mm, &frame_sequence) != 0U) &&
       (frame_sequence != s_dock_last_front_sequence))
   {
@@ -464,7 +506,7 @@ static uint8_t medical_docking_collect_samples(void)
     s_dock_front_samples[s_dock_front_sample_count++] = distance_mm;
   }
 
-  if ((s_dock_side_sample_count < MEDICAL_DOCK_SAMPLE_COUNT) &&
+  if ((s_dock_side_sample_count < required_count) &&
       (medical_dock_get_side_sample(&distance_mm, &frame_sequence) != 0U) &&
       (frame_sequence != s_dock_last_side_sequence))
   {
@@ -472,16 +514,22 @@ static uint8_t medical_docking_collect_samples(void)
     s_dock_side_samples[s_dock_side_sample_count++] = distance_mm;
   }
 
-  return ((s_dock_front_sample_count == MEDICAL_DOCK_SAMPLE_COUNT) &&
-          (s_dock_side_sample_count == MEDICAL_DOCK_SAMPLE_COUNT))
+  return ((s_dock_front_sample_count == required_count) &&
+          (s_dock_side_sample_count == required_count))
              ? 1U
              : 0U;
 }
 
-static uint8_t medical_docking_collect_front_samples(void)
+static uint8_t medical_docking_collect_front_samples(uint8_t required_count)
 {
   uint16_t distance_mm;
   uint32_t frame_sequence;
+
+  if ((required_count == 0U) ||
+      (required_count > MEDICAL_DOCK_SAMPLE_COUNT))
+  {
+    return 0U;
+  }
 
   if ((HAL_GetTick() - s_dock_phase_enter_ms) <
       MEDICAL_DOCK_SAMPLE_SETTLE_MS)
@@ -489,7 +537,7 @@ static uint8_t medical_docking_collect_front_samples(void)
     return 0U;
   }
 
-  if ((s_dock_front_sample_count < MEDICAL_DOCK_SAMPLE_COUNT) &&
+  if ((s_dock_front_sample_count < required_count) &&
       (STP23L_GetSampleB(&distance_mm, &frame_sequence) != 0U) &&
       (frame_sequence != s_dock_last_front_sequence))
   {
@@ -497,20 +545,31 @@ static uint8_t medical_docking_collect_front_samples(void)
     s_dock_front_samples[s_dock_front_sample_count++] = distance_mm;
   }
 
-  return (s_dock_front_sample_count == MEDICAL_DOCK_SAMPLE_COUNT) ? 1U : 0U;
+  return (s_dock_front_sample_count == required_count) ? 1U : 0U;
 }
 
-static uint16_t medical_docking_filtered_distance(const uint16_t *samples)
+static uint16_t medical_docking_filtered_distance(const uint16_t *samples,
+                                                   uint8_t sample_count)
 {
   uint16_t sorted[MEDICAL_DOCK_SAMPLE_COUNT];
   uint32_t sum = 0U;
   uint8_t index;
   uint8_t insert_index;
-  uint8_t retained_count = MEDICAL_DOCK_SAMPLE_COUNT -
-                           (2U * MEDICAL_DOCK_SAMPLE_TRIM_COUNT);
+  uint8_t retained_count;
 
-  memcpy(sorted, samples, sizeof(sorted));
-  for (index = 1U; index < MEDICAL_DOCK_SAMPLE_COUNT; index++)
+  if ((samples == NULL) || (sample_count == 0U))
+  {
+    return 0U;
+  }
+  if (sample_count == 1U)
+  {
+    return samples[0];
+  }
+  retained_count = sample_count -
+                   (2U * MEDICAL_DOCK_SAMPLE_TRIM_COUNT);
+
+  memcpy(sorted, samples, sample_count * sizeof(sorted[0]));
+  for (index = 1U; index < sample_count; index++)
   {
     uint16_t value = sorted[index];
     insert_index = index;
@@ -524,7 +583,7 @@ static uint16_t medical_docking_filtered_distance(const uint16_t *samples)
   }
 
   for (index = MEDICAL_DOCK_SAMPLE_TRIM_COUNT;
-       index < (MEDICAL_DOCK_SAMPLE_COUNT -
+       index < (sample_count -
                 MEDICAL_DOCK_SAMPLE_TRIM_COUNT);
        index++)
   {
@@ -545,6 +604,12 @@ static void medical_docking_finish(void)
 static void medical_docking_timeout_finish(void)
 {
   medical_docking_timeout_beep_start();
+  medical_docking_finish();
+}
+
+/* Preserve the run: after the correction budget, skip only the docking step. */
+static void medical_docking_skip_after_max_corrections(void)
+{
   medical_docking_finish();
 }
 
@@ -622,56 +687,6 @@ static uint8_t medical_docking_get_tracked_target(float *target_x,
   return ((front_valid != 0U) && (side_valid != 0U)) ? 1U : 0U;
 }
 
-static void medical_docking_handoff_reset(void)
-{
-  s_dock_handoff_slow_since_ms = 0U;
-  medical_docking_target_samples_reset();
-}
-
-static uint8_t medical_docking_handoff_target(
-    uint8_t pose_valid,
-    float pos_x,
-    float pos_y,
-    float yaw_clockwise_deg,
-    float measured_forward_mm_s,
-    float measured_left_mm_s,
-    float *target_x,
-    float *target_y)
-{
-  float planar_speed = sqrtf(
-      measured_forward_mm_s * measured_forward_mm_s +
-      measured_left_mm_s * measured_left_mm_s);
-  uint32_t now_ms = HAL_GetTick();
-
-  if ((pose_valid == 0U) ||
-      (medical_docking_in_safe_corridor(
-           pos_x, pos_y, yaw_clockwise_deg) == 0U) ||
-      (planar_speed >= MEDICAL_DOCK_HANDOFF_MAX_SPEED_MM_S))
-  {
-    if ((s_dock_handoff_slow_since_ms != 0U) ||
-        (s_dock_front_target_count != 0U) ||
-        (s_dock_side_target_count != 0U))
-    {
-      medical_docking_handoff_reset();
-    }
-    return 0U;
-  }
-
-  if (s_dock_handoff_slow_since_ms == 0U)
-  {
-    medical_docking_target_samples_reset();
-    s_dock_handoff_slow_since_ms = now_ms;
-  }
-  medical_docking_capture_targets(pos_x, pos_y, yaw_clockwise_deg);
-
-  if ((now_ms - s_dock_handoff_slow_since_ms) <
-      MEDICAL_DOCK_HANDOFF_STABLE_MS)
-  {
-    return 0U;
-  }
-  return medical_docking_get_tracked_target(target_x, target_y);
-}
-
 static void medical_docking_finish_or_correct_tracked(
     float pos_x,
     float pos_y,
@@ -691,7 +706,10 @@ static void medical_docking_finish_or_correct_tracked(
        (fabsf(target_y - pos_y) <= MEDICAL_DOCK_TOLERANCE_MM)) ||
       (s_dock_correction_count >= MEDICAL_DOCK_MAX_CORRECTIONS))
   {
-    medical_docking_finish();
+    /* The moving target is only a prediction. Always take one fresh
+     * stationary frame before handing control back to the medicine task. */
+    s_dock_phase = MEDICAL_DOCK_SAMPLE_VERIFY;
+    medical_docking_sample_reset();
     return;
   }
 
@@ -724,6 +742,7 @@ static void medical_store_last_scan(const char *value)
   }
 }
 
+#if !MEDICAL_TEST_AUTO_SKIP_SCAN
 static void medical_store_bed_scan(uint8_t context, const char *value)
 {
   char *destination;
@@ -784,6 +803,7 @@ static void medical_scan_beep_start(void)
   s_buzzer_phase_start_ms = HAL_GetTick();
   s_buzzer_phase = MEDICAL_BUZZER_SCAN_ON;
 }
+#endif
 
 static void medical_docking_timeout_beep_start(void)
 {
@@ -839,6 +859,7 @@ static void medical_buzzer_update(void)
   }
 }
 
+#if !MEDICAL_TEST_AUTO_SKIP_SCAN
 static uint8_t medical_scan_value_allowed(uint8_t format, const char *code)
 {
   static const char *const order_codes[] = {"11", "13", "31", "33"};
@@ -919,6 +940,7 @@ static uint8_t medical_take_scan(uint8_t expected_context,
 
   return 0U;
 }
+#endif
 
 static MedicineBox medical_box_for_bed(uint8_t bed)
 {
@@ -998,7 +1020,8 @@ static void medical_set_state(MedicalTaskState next)
     case MEDICAL_TASK_NAV_NURSE:
       medical_arm_set_deployed(0U);
       NUC_Nav_ClearVelocity();
-      NUC_Nav_RequestGoal(NUC_NAV_GOAL_NURSE);
+      medical_scan_reset();
+      NUC_Nav_RestartGoal(NUC_NAV_GOAL_NURSE);
       break;
 
     case MEDICAL_TASK_WAIT_START:
@@ -1022,23 +1045,23 @@ static void medical_set_state(MedicalTaskState next)
     case MEDICAL_TASK_NAV_BED1:
       s_current_bed = 1U;
       medical_arm_set_deployed(0U);
-      medical_docking_handoff_reset();
+      medical_docking_target_samples_reset();
       NUC_Nav_ClearVelocity();
-      NUC_Nav_RequestGoal(NUC_NAV_GOAL_BED1);
+      NUC_Nav_RestartGoal(NUC_NAV_GOAL_BED1);
       break;
 
     case MEDICAL_TASK_NAV_BED3:
       s_current_bed = 3U;
       medical_arm_set_deployed(0U);
-      medical_docking_handoff_reset();
+      medical_docking_target_samples_reset();
       NUC_Nav_ClearVelocity();
-      NUC_Nav_RequestGoal(NUC_NAV_GOAL_BED3);
+      NUC_Nav_RestartGoal(NUC_NAV_GOAL_BED3);
       break;
 
     case MEDICAL_TASK_DOCK_BED1:
     case MEDICAL_TASK_DOCK_BED3:
-      /* Stable moving STP23L samples or Nav2 arrival transfer chassis
-       * ownership to the STM32 for final correction while the arm deploys. */
+      /* Moving STP23L samples transfer immediately.  A Nav2 arrival without
+       * them waits for a stopped five-frame fallback before correction. */
       NUC_Nav_ClearVelocity();
       medical_arm_set_deployed(1U);
       medical_docking_reset();
@@ -1047,7 +1070,7 @@ static void medical_set_state(MedicalTaskState next)
     case MEDICAL_TASK_NAV_HOME:
       medical_arm_set_deployed(0U);
       NUC_Nav_ClearVelocity();
-      NUC_Nav_RequestGoal(NUC_NAV_GOAL_HOME);
+      NUC_Nav_RestartGoal(NUC_NAV_GOAL_HOME);
       break;
 
     case MEDICAL_TASK_SCAN_ORDER:
@@ -1059,15 +1082,17 @@ static void medical_set_state(MedicalTaskState next)
     case MEDICAL_TASK_SCAN_BED3:
       NUC_Nav_ClearVelocity();
       medical_scan_reset();
-      medical_box_open(medical_box_for_bed(s_current_bed));
-      NUC_Nav_ClearTTS();
-      s_dispense_start_ms = HAL_GetTick();
-      s_dispense_announcement_started = 0U;
+      s_bed_scan_timeout_fallback = 0U;
       break;
 
     case MEDICAL_TASK_DISPENSE_BED1:
     case MEDICAL_TASK_DISPENSE_BED3:
       NUC_Nav_ClearVelocity();
+      /* Open only after a valid barcode or the bounded scan fallback. */
+      medical_box_open(medical_box_for_bed(s_current_bed));
+      NUC_Nav_ClearTTS();
+      s_dispense_start_ms = HAL_GetTick();
+      s_dispense_announcement_started = 0U;
       break;
 
     case MEDICAL_TASK_COMPLETE:
@@ -1156,6 +1181,7 @@ void MedicalTask_Init(void)
   s_arm_target_deployed = 0U;
   s_dispense_start_ms = 0U;
   s_dispense_announcement_started = 0U;
+  s_bed_scan_timeout_fallback = 0U;
   NUC_Nav_ClearTTS();
   s_start_requested = 0U;
   s_start_button_down =
@@ -1166,8 +1192,14 @@ void MedicalTask_Init(void)
   medical_scan_reset();
   medical_docking_reset();
   medical_box_close_all();
-  /* Plan the first route immediately, but keep the chassis locked until C. */
+  /* Plan the configured first route immediately, but keep motion locked. */
+#if MEDICAL_NAVIGATION_TIMING_TEST
+  medical_store_last_scan(MEDICAL_TEST_DEFAULT_ORDER);
+  (void)medical_decode_order(MEDICAL_TEST_DEFAULT_ORDER);
+  medical_set_state(MEDICAL_TASK_WAIT_BED1_START);
+#else
   medical_set_state(MEDICAL_TASK_WAIT_START);
+#endif
 }
 
 void MedicalTask_Update(void)
@@ -1176,6 +1208,7 @@ void MedicalTask_Update(void)
   char confirmed_code[MEDICAL_TASK_SCAN_CODE_MAX];
 #endif
 
+  medical_arm_debug_update();
   medical_arm_update();
   medical_box_update();
   medical_buzzer_update();
@@ -1299,15 +1332,24 @@ void MedicalTask_Update(void)
       break;
 
     case MEDICAL_TASK_SCAN_BED1:
-      medical_dispense_announcement_update();
 #if MEDICAL_TEST_AUTO_SKIP_SCAN
-      medical_set_state(MEDICAL_TASK_DISPENSE_BED1);
+      if ((HAL_GetTick() - s_state_enter_ms) >=
+          MEDICAL_TEST_ARM_STAGE_DELAY_MS)
+      {
+        medical_set_state(MEDICAL_TASK_DISPENSE_BED1);
+      }
 #else
       if ((medical_bed_scan_available(1U) != 0U) ||
           medical_take_scan((uint8_t)NUC_SCAN_CONTEXT_BED1,
                             (uint8_t)NUC_SCAN_FORMAT_CODE128,
                             confirmed_code, sizeof(confirmed_code)))
       {
+        medical_set_state(MEDICAL_TASK_DISPENSE_BED1);
+      }
+      else if ((HAL_GetTick() - s_state_enter_ms) >=
+               MEDICAL_BED_SCAN_TIMEOUT_MS)
+      {
+        s_bed_scan_timeout_fallback = 1U;
         medical_set_state(MEDICAL_TASK_DISPENSE_BED1);
       }
 #endif
@@ -1330,15 +1372,24 @@ void MedicalTask_Update(void)
       break;
 
     case MEDICAL_TASK_SCAN_BED3:
-      medical_dispense_announcement_update();
 #if MEDICAL_TEST_AUTO_SKIP_SCAN
-      medical_set_state(MEDICAL_TASK_DISPENSE_BED3);
+      if ((HAL_GetTick() - s_state_enter_ms) >=
+          MEDICAL_TEST_ARM_STAGE_DELAY_MS)
+      {
+        medical_set_state(MEDICAL_TASK_DISPENSE_BED3);
+      }
 #else
       if ((medical_bed_scan_available(3U) != 0U) ||
           medical_take_scan((uint8_t)NUC_SCAN_CONTEXT_BED3,
                             (uint8_t)NUC_SCAN_FORMAT_CODE128,
                             confirmed_code, sizeof(confirmed_code)))
       {
+        medical_set_state(MEDICAL_TASK_DISPENSE_BED3);
+      }
+      else if ((HAL_GetTick() - s_state_enter_ms) >=
+               MEDICAL_BED_SCAN_TIMEOUT_MS)
+      {
+        s_bed_scan_timeout_fallback = 1U;
         medical_set_state(MEDICAL_TASK_DISPENSE_BED3);
       }
 #endif
@@ -1362,11 +1413,13 @@ void MedicalTask_Update(void)
         NUC_Nav_ClearTTS();
       }
 #if !MEDICAL_TEST_AUTO_SKIP_SCAN
-      if (medical_bed_scan_available(s_current_bed) == 0U)
+      if ((medical_bed_scan_available(s_current_bed) == 0U) &&
+          (s_bed_scan_timeout_fallback == 0U))
       {
         break;
       }
 #endif
+      /* Continue immediately on speech completion; no post-speech dwell. */
       s_delivered_count++;
       if (s_delivered_count < 2U)
       {
@@ -1460,38 +1513,38 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
                                    float pos_y,
                                    float yaw_clockwise_deg,
                                    float measured_forward_mm_s,
-                                   float measured_left_mm_s)
+                                   float measured_left_mm_s,
+                                   float measured_yaw_ccw_cdeg_s)
 {
   float tracked_target_x;
   float tracked_target_y;
   uint16_t front_mm;
   uint16_t side_mm;
-  int32_t front_error;
-  int32_t side_error;
+  float front_error;
+  float side_error;
   float forward_delta;
   float right_delta;
+  float planar_speed;
   uint8_t front_valid;
+  uint8_t sample_goal;
 
   if (medical_is_bed_navigation_state() != 0U)
   {
-    if (medical_docking_handoff_target(
-            pose_valid,
-            pos_x,
-            pos_y,
-            yaw_clockwise_deg,
-            measured_forward_mm_s,
-            measured_left_mm_s,
-            &tracked_target_x,
-            &tracked_target_y) != 0U)
+    if (pose_valid != 0U)
     {
-      medical_set_state((s_state == MEDICAL_TASK_NAV_BED1)
-                            ? MEDICAL_TASK_DOCK_BED1
-                            : MEDICAL_TASK_DOCK_BED3);
-      medical_docking_start_absolute_move(
-          tracked_target_x, tracked_target_y,
-          pos_x, pos_y, yaw_clockwise_deg,
-          MEDICAL_DOCK_MOVE_TRACKED);
-      return 1U;
+      medical_docking_capture_targets(pos_x, pos_y, yaw_clockwise_deg);
+      if (medical_docking_get_tracked_target(
+              &tracked_target_x, &tracked_target_y) != 0U)
+      {
+        medical_set_state((s_state == MEDICAL_TASK_NAV_BED1)
+                              ? MEDICAL_TASK_DOCK_BED1
+                              : MEDICAL_TASK_DOCK_BED3);
+        medical_docking_start_absolute_move(
+            tracked_target_x, tracked_target_y,
+            pos_x, pos_y, yaw_clockwise_deg,
+            MEDICAL_DOCK_MOVE_TRACKED);
+        return 1U;
+      }
     }
     return 0U;
   }
@@ -1499,6 +1552,12 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
   if (medical_is_docking_state() == 0U)
   {
     return 0U;
+  }
+
+  if ((pose_valid != 0U) &&
+      (s_dock_phase != MEDICAL_DOCK_HANDOFF))
+  {
+    medical_docking_capture_targets(pos_x, pos_y, yaw_clockwise_deg);
   }
 
   if ((HAL_GetTick() - s_state_enter_ms) >= MEDICAL_DOCK_TIMEOUT_MS)
@@ -1510,25 +1569,45 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
   if (s_dock_phase == MEDICAL_DOCK_HANDOFF)
   {
     ChassisCtrl_Enable(false);
-    if (medical_docking_handoff_target(
-            pose_valid,
-            pos_x,
-            pos_y,
-            yaw_clockwise_deg,
-            measured_forward_mm_s,
-            measured_left_mm_s,
-            &tracked_target_x,
-            &tracked_target_y) != 0U)
+    if (pose_valid == 0U)
+    {
+      s_dock_still_tracking = 0U;
+      return 1U;
+    }
+
+    if (medical_docking_get_tracked_target(
+            &tracked_target_x, &tracked_target_y) != 0U)
     {
       medical_docking_start_absolute_move(
           tracked_target_x, tracked_target_y,
           pos_x, pos_y, yaw_clockwise_deg,
           MEDICAL_DOCK_MOVE_TRACKED);
     }
-    else if ((s_dock_handoff_slow_since_ms != 0U) &&
-             ((HAL_GetTick() - s_dock_handoff_slow_since_ms) >=
-              MEDICAL_DOCK_HANDOFF_FALLBACK_MS))
+    else
     {
+      planar_speed = sqrtf(
+          measured_forward_mm_s * measured_forward_mm_s +
+          measured_left_mm_s * measured_left_mm_s);
+      if ((planar_speed > MEDICAL_DOCK_STILL_LINEAR_MM_S) ||
+          (fabsf(measured_yaw_ccw_cdeg_s) >
+           MEDICAL_DOCK_STILL_YAW_CDEG_S))
+      {
+        s_dock_still_tracking = 0U;
+        return 1U;
+      }
+
+      if (s_dock_still_tracking == 0U)
+      {
+        s_dock_still_since_ms = HAL_GetTick();
+        s_dock_still_tracking = 1U;
+        return 1U;
+      }
+      if ((HAL_GetTick() - s_dock_still_since_ms) <
+          MEDICAL_DOCK_FALLBACK_STILL_MS)
+      {
+        return 1U;
+      }
+
       s_dock_phase = MEDICAL_DOCK_SAMPLE_INITIAL;
       medical_docking_sample_reset();
     }
@@ -1567,7 +1646,9 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
         }
         else if (s_dock_phase == MEDICAL_DOCK_MOVE_SPLIT_FRONT)
         {
-          medical_docking_finish();
+          /* Split correction also requires the one-frame final check. */
+          s_dock_phase = MEDICAL_DOCK_SAMPLE_VERIFY;
+          medical_docking_sample_reset();
         }
         else
         {
@@ -1582,7 +1663,8 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
   ChassisCtrl_Enable(false);
   if (s_dock_phase == MEDICAL_DOCK_SAMPLE_SPLIT_FRONT)
   {
-    if (medical_docking_collect_front_samples() == 0U)
+    if (medical_docking_collect_front_samples(
+            MEDICAL_DOCK_SAMPLE_COUNT) == 0U)
     {
       if ((HAL_GetTick() - s_dock_phase_enter_ms) >=
           MEDICAL_DOCK_SAMPLE_TIMEOUT_MS)
@@ -1592,17 +1674,21 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
       return 1U;
     }
 
-    front_mm = medical_docking_filtered_distance(s_dock_front_samples);
-    front_error = (int32_t)front_mm - MEDICAL_DOCK_FRONT_TARGET_MM;
-    front_valid = (abs(front_error) <=
-                   (int32_t)MEDICAL_DOCK_LASER_MAX_CORRECTION_MM)
+    front_mm = medical_docking_filtered_distance(
+        s_dock_front_samples, MEDICAL_DOCK_SAMPLE_COUNT);
+    front_error = (float)front_mm - MEDICAL_DOCK_FRONT_TARGET_MM;
+    front_valid = (fabsf(front_error) <=
+                   MEDICAL_DOCK_LASER_MAX_CORRECTION_MM)
                       ? 1U
                       : 0U;
     if ((front_valid == 0U) ||
-        (abs(front_error) <= MEDICAL_DOCK_TOLERANCE_MM) ||
+        (fabsf(front_error) <= MEDICAL_DOCK_TOLERANCE_MM) ||
         (s_dock_correction_count >= MEDICAL_DOCK_MAX_CORRECTIONS))
     {
-      medical_docking_finish();
+      /* This branch follows a split-side correction; still perform the
+       * required one-frame final verification of both axes. */
+      s_dock_phase = MEDICAL_DOCK_SAMPLE_VERIFY;
+      medical_docking_sample_reset();
       return 1U;
     }
     if (pose_valid == 0U)
@@ -1619,7 +1705,12 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
     return 1U;
   }
 
-  if (medical_docking_collect_samples() == 0U)
+  sample_goal = (s_dock_phase == MEDICAL_DOCK_SAMPLE_INITIAL)
+                    ? MEDICAL_DOCK_FALLBACK_SAMPLE_COUNT
+                    : ((s_dock_phase == MEDICAL_DOCK_SAMPLE_VERIFY)
+                           ? MEDICAL_DOCK_VERIFY_SAMPLE_COUNT
+                           : MEDICAL_DOCK_SAMPLE_COUNT);
+  if (medical_docking_collect_samples(sample_goal) == 0U)
   {
     if ((HAL_GetTick() - s_dock_phase_enter_ms) <
         MEDICAL_DOCK_SAMPLE_TIMEOUT_MS)
@@ -1628,13 +1719,14 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
     }
 
     if ((s_dock_phase == MEDICAL_DOCK_SAMPLE_INITIAL) &&
-        (s_dock_side_sample_count == MEDICAL_DOCK_SAMPLE_COUNT) &&
+        (s_dock_side_sample_count == sample_goal) &&
         (pose_valid != 0U))
     {
-      side_mm = medical_docking_filtered_distance(s_dock_side_samples);
+      side_mm = medical_docking_filtered_distance(
+          s_dock_side_samples, sample_goal);
       if (side_mm > MEDICAL_DOCK_SIDE_SPLIT_THRESHOLD_MM)
       {
-        side_error = (int32_t)side_mm - MEDICAL_DOCK_SIDE_TARGET_MM;
+        side_error = (float)side_mm - medical_docking_side_target_mm();
         right_delta = (s_state == MEDICAL_TASK_DOCK_BED1)
                           ? -(float)side_error
                           : (float)side_error;
@@ -1652,12 +1744,14 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
     return 1U;
   }
 
-  front_mm = medical_docking_filtered_distance(s_dock_front_samples);
-  side_mm = medical_docking_filtered_distance(s_dock_side_samples);
-  front_error = (int32_t)front_mm - MEDICAL_DOCK_FRONT_TARGET_MM;
-  side_error = (int32_t)side_mm - MEDICAL_DOCK_SIDE_TARGET_MM;
-  front_valid = (abs(front_error) <=
-                 (int32_t)MEDICAL_DOCK_LASER_MAX_CORRECTION_MM)
+  front_mm = medical_docking_filtered_distance(
+      s_dock_front_samples, sample_goal);
+  side_mm = medical_docking_filtered_distance(
+      s_dock_side_samples, sample_goal);
+  front_error = (float)front_mm - MEDICAL_DOCK_FRONT_TARGET_MM;
+  side_error = (float)side_mm - medical_docking_side_target_mm();
+  front_valid = (fabsf(front_error) <=
+                 MEDICAL_DOCK_LASER_MAX_CORRECTION_MM)
                     ? 1U
                     : 0U;
 
@@ -1680,12 +1774,35 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
     return 1U;
   }
 
-  if ((((front_valid == 0U) ||
-        (abs(front_error) <= MEDICAL_DOCK_TOLERANCE_MM)) &&
-       (abs(side_error) <= MEDICAL_DOCK_TOLERANCE_MM)) ||
+  if ((front_valid != 0U) &&
+      (fabsf(front_error) <= MEDICAL_DOCK_TOLERANCE_MM) &&
+      (fabsf(side_error) <= MEDICAL_DOCK_TOLERANCE_MM))
+  {
+    if (s_dock_phase == MEDICAL_DOCK_SAMPLE_VERIFY)
+    {
+      medical_docking_finish();
+    }
+    else
+    {
+      /* Even an already-aligned fallback sample must be followed by the
+       * required fresh one-frame verification. */
+      s_dock_phase = MEDICAL_DOCK_SAMPLE_VERIFY;
+      medical_docking_sample_reset();
+    }
+    return 1U;
+  }
+
+  if ((s_dock_phase == MEDICAL_DOCK_SAMPLE_VERIFY) &&
       (s_dock_correction_count >= MEDICAL_DOCK_MAX_CORRECTIONS))
   {
-    medical_docking_finish();
+    medical_docking_skip_after_max_corrections();
+    return 1U;
+  }
+
+  if ((s_dock_phase == MEDICAL_DOCK_SAMPLE_INITIAL) &&
+      (s_dock_correction_count >= MEDICAL_DOCK_MAX_CORRECTIONS))
+  {
+    medical_docking_skip_after_max_corrections();
     return 1U;
   }
 

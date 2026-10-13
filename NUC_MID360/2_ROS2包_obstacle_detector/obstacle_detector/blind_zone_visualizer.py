@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Visualize the chassis X-shaped lidar shadows and current motion risk."""
+"""Visualize the chassis cardinal lidar shadows and current motion risk."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ class BlindZoneVisualizer(Node):
         self.angles_rad = tuple(
             math.radians(float(value))
             for value in self.declare_parameter(
-                "angles_deg", [45.0, 135.0, -135.0, -45.0]
+                "angles_deg", [0.0, 90.0, 180.0, -90.0]
             ).value
         )
         self.origin_x_m = float(
@@ -48,7 +48,7 @@ class BlindZoneVisualizer(Node):
             self.declare_parameter("origin_y_m", 0.0).value
         )
         self.start_distance_m = float(
-            self.declare_parameter("start_distance_m", 0.23).value
+            self.declare_parameter("start_distance_m", 0.24).value
         )
         self.width_m = float(self.declare_parameter("width_m", 0.18).value)
         self.min_length_m = float(
@@ -103,7 +103,7 @@ class BlindZoneVisualizer(Node):
         self.create_subscription(Twist, self.cmd_vel_topic, self._cmd_vel, 10)
         self.create_timer(1.0 / publish_rate_hz, self._publish)
         self.get_logger().info(
-            "X-shaped lidar blind-zone visualization ready | "
+            "Cardinal lidar blind-zone visualization ready | "
             f"angles={[round(math.degrees(value), 1) for value in self.angles_rad]} "
             f"width={self.width_m:.2f} m length={self.min_length_m:.2f}-"
             f"{self.max_length_m:.2f} m"

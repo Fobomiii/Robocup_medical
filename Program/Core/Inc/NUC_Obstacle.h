@@ -76,6 +76,12 @@ typedef enum {
   NUC_TTS_PENDING = 3
 } NUC_TtsStatus;
 
+typedef enum {
+  NUC_ARM_DEBUG_ACCEPTED = 1,
+  NUC_ARM_DEBUG_WRONG_STATE = 2,
+  NUC_ARM_DEBUG_INVALID_COMMAND = 3
+} NUC_ArmDebugStatus;
+
 typedef struct {
   int32_t x_mm;
   int32_t y_mm;
@@ -90,6 +96,11 @@ typedef struct {
   uint8_t length;
   char value[NUC_NAV_SCAN_CODE_MAX];
 } NUC_NavScanResult;
+
+typedef struct {
+  uint16_t request_id;
+  uint8_t deployed;
+} NUC_ArmDebugCommand;
 
 extern UART_HandleTypeDef huart8;
 
@@ -127,6 +138,9 @@ uint8_t NUC_IsObstacleValid(void);
 /** Start or maintain a navigation request. A new goal increments request_id. */
 void NUC_Nav_RequestGoal(NUC_NavGoal goal);
 
+/** Start a new execution generation, even when the destination is unchanged. */
+void NUC_Nav_RestartGoal(NUC_NavGoal goal);
+
 /** Ask the NUC to play the bed announcement; valid beds are 1 and 3. */
 HAL_StatusTypeDef NUC_Nav_RequestTTS(uint8_t bed);
 
@@ -138,6 +152,7 @@ void NUC_Nav_ClearTTS(void);
 
 /** Periodic bidirectional telemetry service; call from the 100 Hz nav task. */
 void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
+                     uint32_t ops_sample_ms, uint32_t hwt_yaw_sample_ms,
                      uint8_t task_state, NUC_NavStatus nav_status,
                      uint16_t path_id, uint8_t waypoint_index);
 
@@ -169,12 +184,15 @@ uint8_t NUC_Nav_GetWaypoint(uint8_t index, NUC_NavWaypoint *waypoint);
  * Read the latest fresh Nav2 body velocity command.
  * Units/signs follow ROS: forward mm/s, left mm/s, counter-clockwise cdeg/s.
  * Returns 0 and writes zeros when no valid command arrived in the last 600 ms.
- * The caller feeds that zero into the STM32 chassis deceleration ramp; pose,
- * yaw and wheel-health failures use an immediate stop separately.
+ * The caller applies that zero directly to the chassis speed target; pose,
+ * yaw and wheel-health failures use the forced-stop path separately.
  */
 uint8_t NUC_Nav_GetVelocityCommand(int16_t *forward_mm_s,
                                    int16_t *left_mm_s,
                                    int16_t *yaw_ccw_cdeg_s);
+
+/** Fresh explicit collision-stop frame; overrides docking and navigation. */
+uint8_t NUC_Nav_EmergencyStopActive(void);
 
 /** Invalidate the current Nav2 velocity command immediately. */
 void NUC_Nav_ClearVelocity(void);
@@ -188,6 +206,14 @@ void NUC_Nav_ClearScanResult(void);
 /** Acknowledge a camera scan after the medical task validates it. */
 HAL_StatusTypeDef NUC_Nav_SendScanAck(uint16_t scan_id,
                                       NUC_ScanAckStatus status);
+
+/** Atomically consume a dashboard arm command received from the NUC. */
+uint8_t NUC_Nav_TakeArmDebugCommand(NUC_ArmDebugCommand *command);
+
+/** Report whether the pre-start arm command was accepted by MedicalTask. */
+HAL_StatusTypeDef NUC_Nav_SendArmDebugStatus(uint16_t request_id,
+                                             uint8_t deployed,
+                                             NUC_ArmDebugStatus status);
 
 /** Last navigation action status reported by the NUC. */
 NUC_NavStatus NUC_Nav_GetStatus(void);

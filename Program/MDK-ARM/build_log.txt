@@ -2,7 +2,7 @@
 Build target 'Program'
 compiling MedicalTask.c...
 linking...
-Program Size: Code=59110 RO-data=2422 RW-data=420 ZI-data=85444  
+Program Size: Code=65258 RO-data=2394 RW-data=508 ZI-data=85964  
 FromELF: creating hex file...
 "Program\Program.axf" - 0 Error(s), 0 Warning(s).
-Build Time Elapsed:  00:00:04
+Build Time Elapsed:  00:00:05

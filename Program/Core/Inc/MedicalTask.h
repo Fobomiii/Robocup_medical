@@ -39,7 +39,7 @@ typedef enum {
   MEDICAL_TASK_WAIT_BED3_START = 16
 } MedicalTaskState;
 
-/** Reset the delivery sequence and request the nurse-station Nav2 goal. */
+/** Reset the delivery sequence and request its configured first Nav2 goal. */
 void MedicalTask_Init(void);
 
 /** Periodic non-blocking update. Call from the 100 Hz NUC service task. */
@@ -67,7 +67,8 @@ uint8_t MedicalTask_DockingControl(uint8_t pose_valid,
                                    float pos_y,
                                    float yaw_clockwise_deg,
                                    float measured_forward_mm_s,
-                                   float measured_left_mm_s);
+                                   float measured_left_mm_s,
+                                   float measured_yaw_ccw_cdeg_s);
 
 #ifdef __cplusplus
 }

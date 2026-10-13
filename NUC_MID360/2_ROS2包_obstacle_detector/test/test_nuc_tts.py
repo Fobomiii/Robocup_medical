@@ -87,7 +87,7 @@ class NucTtsPlayerTest(unittest.TestCase):
             environment["PULSE_SERVER"], "unix:/run/user/1000/pulse/native"
         )
 
-    def test_bed_mp3_is_decoded_then_played_at_maximum_volume(self):
+    def test_bed_wav_is_decoded_then_played_at_maximum_volume(self):
         mixer_result = subprocess.CompletedProcess([], 0, b"", b"")
         decode_result = subprocess.CompletedProcess([], 0, b"RIFF-test", b"")
         playback_result = subprocess.CompletedProcess([], 0, b"", b"")
@@ -101,8 +101,8 @@ class NucTtsPlayerTest(unittest.TestCase):
             ]
         )
         with tempfile.TemporaryDirectory() as directory:
-            bed1_audio = Path(directory) / "1_.mp3"
-            bed3_audio = Path(directory) / "3_.mp3"
+            bed1_audio = Path(directory) / "1_.wav"
+            bed3_audio = Path(directory) / "3_.wav"
             bed1_audio.write_bytes(b"test")
             bed3_audio.write_bytes(b"test")
             player = NucTtsPlayer(
@@ -127,8 +127,8 @@ class NucTtsPlayerTest(unittest.TestCase):
     def test_missing_audio_file_reports_failure_without_starting_player(self):
         runner = Mock()
         player = NucTtsPlayer(
-            bed1_audio_file="/missing/1_.mp3",
-            bed3_audio_file="/missing/3_.mp3",
+            bed1_audio_file="/missing/1_.wav",
+            bed3_audio_file="/missing/3_.wav",
             run_command=runner,
         )
 

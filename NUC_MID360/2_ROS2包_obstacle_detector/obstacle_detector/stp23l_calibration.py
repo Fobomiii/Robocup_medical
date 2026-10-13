@@ -11,6 +11,7 @@ from .nav_protocol import NAV_FOLLOWING, NAV_REACHED, Stp23lTelemetry
 
 
 SENSOR_BITS = {"a": 0x01, "b": 0x02, "c": 0x04}
+LEFT_SIDE_SENSOR = "a"
 
 
 @dataclass(frozen=True)
@@ -25,7 +26,7 @@ class BedGeometry:
 
     @property
     def true_x_mm(self) -> float:
-        if self.side_sensor == "c":
+        if self.side_sensor == LEFT_SIDE_SENSOR:
             return self.side_reference_x_mm + self.expected_center_side_distance_mm
         return self.side_reference_x_mm - self.expected_center_side_distance_mm
 
@@ -92,7 +93,7 @@ def load_calibration_config(path: str) -> CalibrationConfig:
 
     return CalibrationConfig(
         enabled=bool(section.get("enabled", False)),
-        sensor_radius_mm=float(section.get("sensor_radius_mm", 153.0)),
+        sensor_radius_mm=float(section.get("sensor_radius_mm", 144.3)),
         samples_required=max(3, int(section.get("samples_required", 7))),
         max_offset_spread_mm=float(section.get("max_offset_spread_mm", 40.0)),
         distance_tolerance_mm=float(section.get("distance_tolerance_mm", 200.0)),
@@ -190,7 +191,7 @@ class OpsRangeCalibrator:
         center_front_mm = (front_mm + self.config.sensor_radius_mm) * projection
         center_side_mm = (side_mm + self.config.sensor_radius_mm) * projection
         measured_y_mm = bed.front_reference_y_mm - center_front_mm
-        if bed.side_sensor == "c":
+        if bed.side_sensor == LEFT_SIDE_SENSOR:
             measured_x_mm = bed.side_reference_x_mm + center_side_mm
         else:
             measured_x_mm = bed.side_reference_x_mm - center_side_mm

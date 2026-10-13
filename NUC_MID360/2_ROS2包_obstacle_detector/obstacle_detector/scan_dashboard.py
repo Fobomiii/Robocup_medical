@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 """Fullscreen bedside scan dashboard for the NUC display."""
 
+import json
+import os
 import signal
 import sys
 import time
+
+os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "0")
+os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
+os.environ.setdefault("QT_SCALE_FACTOR", "1")
+os.environ.pop("QT_SCREEN_SCALE_FACTORS", None)
+os.environ.pop("QT_FONT_DPI", None)
+os.environ.pop("QT_DEVICE_PIXEL_RATIO", None)
 
 import rclpy
 from PyQt5.QtCore import QSize, Qt, QTimer
@@ -36,7 +45,53 @@ from .scan_dashboard_core import (
     parse_scan_result,
     parse_scan_status,
     parse_tele_scan_state,
+    describe_start_reason,
 )
+
+
+def _acquire_instance_lock():
+    import fcntl
+
+    cache_directory = os.path.expanduser("~/.cache")
+    os.makedirs(cache_directory, exist_ok=True)
+    lock_path = os.path.join(
+        cache_directory, "medical-scan-dashboard.lock"
+    )
+    lock_handle = open(lock_path, "a+", encoding="ascii")
+    try:
+        fcntl.flock(
+            lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB
+        )
+    except BlockingIOError:
+        lock_handle.close()
+        return None
+
+    process_id = str(os.getpid())
+    lock_handle.seek(0)
+    lock_handle.truncate()
+    lock_handle.write(process_id + "\n")
+    lock_handle.flush()
+
+    pid_path = os.path.join(
+        cache_directory, "medical-scan-dashboard.pid"
+    )
+    with open(pid_path, "w", encoding="ascii") as pid_file:
+        pid_file.write(process_id + "\n")
+    return lock_handle, pid_path
+
+
+def _release_instance_lock(instance_lock) -> None:
+    if instance_lock is None:
+        return
+    lock_handle, pid_path = instance_lock
+    try:
+        with open(pid_path, "r", encoding="ascii") as pid_file:
+            owned_pid = pid_file.read().strip()
+        if owned_pid == str(os.getpid()):
+            os.unlink(pid_path)
+    except (FileNotFoundError, OSError):
+        pass
+    lock_handle.close()
 
 
 class CameraView(QLabel):
@@ -49,18 +104,21 @@ class CameraView(QLabel):
         self.aspect_ratio = aspect_ratio
         self.setObjectName("cameraView")
         self.setAlignment(Qt.AlignCenter)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setMinimumWidth(260)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setMinimumWidth(160)
+        self.setMinimumHeight(80)
 
     def hasHeightForWidth(self) -> bool:
-        return True
+        return False
 
     def heightForWidth(self, width: int) -> int:
         return max(140, round(width / self.aspect_ratio))
 
     def sizeHint(self) -> QSize:
-        width = max(320, super().sizeHint().width())
-        return QSize(width, self.heightForWidth(width))
+        return QSize(240, 135)
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(160, 80)
 
 
 class ScanDashboardWindow(QMainWindow):
@@ -72,19 +130,36 @@ class ScanDashboardWindow(QMainWindow):
         self._camera_pixmap = None
         self._tele_camera_pixmap = None
         self._tele_scan_state = "standby"
+        self._start_status = None
         self._hide_order_value = True
         self._last_health_status_monotonic = 0.0
+        self._arm_debug_allowed = False
+        self._arm_debug_deployed = False
+        self._arm_debug_pending = False
+        self._arm_debug_requested_deployed = False
+        self.arm_debug_command_callback = None
+        self._tts_debug_allowed = False
+        self._tts_debug_playing = False
+        self._tts_debug_bed = None
+        self.tts_debug_command_callback = None
 
         root = QWidget()
         root.setObjectName("root")
         layout = QHBoxLayout(root)
-        layout.setContentsMargins(32, 18, 32, 18)
-        layout.setSpacing(28)
 
         screen = QApplication.primaryScreen()
         screen_height = screen.geometry().height() if screen is not None else 720
         screen_width = screen.geometry().width() if screen is not None else 1280
-        camera_width = max(260, round((screen_width - 92) / 4.0))
+        compact = screen_height < 720 or screen_width < 1200
+        horizontal_margin = 12 if compact else 32
+        vertical_margin = 8 if compact else 18
+        layout.setContentsMargins(
+            horizontal_margin,
+            vertical_margin,
+            horizontal_margin,
+            vertical_margin,
+        )
+        layout.setSpacing(12 if compact else 28)
         title_size = max(16, min(22, round(screen_height * 0.020)))
         nurse_value_size = max(20, min(28, round(screen_height * 0.028)))
         bed_value_size = max(30, min(46, round(screen_height * 0.045)))
@@ -123,12 +198,16 @@ class ScanDashboardWindow(QMainWindow):
             QFont("Noto Sans CJK SC", max(28, bed_value_size // 2), QFont.Bold)
         )
         self.start_value.setAlignment(Qt.AlignCenter)
+        self.start_detail = QLabel("等待导航桥接状态")
+        self.start_detail.setAlignment(Qt.AlignCenter)
+        self.start_detail.setWordWrap(True)
+        self.start_detail.setFont(QFont("Noto Sans CJK SC", max(12, title_size - 4)))
+        self.start_detail.setStyleSheet("color: #667085;")
 
         camera_title = QLabel("扫码摄像头")
         camera_title.setFont(QFont("Noto Sans CJK SC", title_size, QFont.Bold))
         camera_title.setAlignment(Qt.AlignCenter)
         self.camera_view = CameraView(16.0 / 10.0)
-        self.camera_view.setFixedHeight(self.camera_view.heightForWidth(camera_width))
         tele_camera_title = QLabel("长焦辅助摄像头")
         tele_camera_title.setFont(
             QFont("Noto Sans CJK SC", title_size, QFont.Bold)
@@ -138,19 +217,42 @@ class ScanDashboardWindow(QMainWindow):
             16.0 / 9.0,
             "等待长焦摄像头画面…",
         )
-        self.tele_camera_view.setFixedHeight(
-            self.tele_camera_view.heightForWidth(camera_width)
-        )
         nurse_card, self.nurse_value = self._make_card(
             "护士台二维码", nurse_value_size, title_size, minimum_height=84
         )
         nurse_card.setMaximumHeight(max(96, round(screen_height * 0.13)))
+        self.arm_debug_button = QPushButton("机械臂调试（仅发车前）")
+        self.arm_debug_button.setObjectName("armDebugButton")
+        self.arm_debug_button.setMinimumHeight(52)
+        self.arm_debug_button.setCursor(Qt.PointingHandCursor)
+        self.arm_debug_button.setEnabled(False)
+        self.arm_debug_button.clicked.connect(self._toggle_arm_debug)
+        tts_debug_layout = QHBoxLayout()
+        tts_debug_layout.setContentsMargins(0, 0, 0, 0)
+        tts_debug_layout.setSpacing(6)
+        self.tts_bed1_button = QPushButton("一号语音")
+        self.tts_bed3_button = QPushButton("三号语音")
+        for button in (self.tts_bed1_button, self.tts_bed3_button):
+            button.setObjectName("ttsDebugButton")
+            button.setMinimumHeight(46)
+            button.setCursor(Qt.PointingHandCursor)
+            button.setEnabled(False)
+            tts_debug_layout.addWidget(button)
+        self.tts_bed1_button.clicked.connect(
+            lambda: self._play_tts_debug(1)
+        )
+        self.tts_bed3_button.clicked.connect(
+            lambda: self._play_tts_debug(3)
+        )
         camera_layout.addWidget(self.start_value)
+        camera_layout.addWidget(self.start_detail)
         camera_layout.addWidget(camera_title)
         camera_layout.addWidget(self.camera_view, 1)
         camera_layout.addWidget(tele_camera_title)
         camera_layout.addWidget(self.tele_camera_view, 1)
         camera_layout.addWidget(nurse_card)
+        camera_layout.addWidget(self.arm_debug_button)
+        camera_layout.addLayout(tts_debug_layout)
         camera_layout.addStretch(1)
 
         layout.addWidget(information, 3)
@@ -208,6 +310,46 @@ class ScanDashboardWindow(QMainWindow):
             }
             QPushButton#exitButton:pressed {
                 background: #991f1f;
+            }
+            QPushButton#armDebugButton {
+                color: white;
+                background: #0068d9;
+                border: none;
+                border-radius: 12px;
+                font-family: "Noto Sans CJK SC";
+                font-size: 20px;
+                font-weight: bold;
+                padding: 8px 14px;
+            }
+            QPushButton#armDebugButton:hover {
+                background: #0055b3;
+            }
+            QPushButton#armDebugButton:pressed {
+                background: #003f87;
+            }
+            QPushButton#armDebugButton:disabled {
+                color: #8a94a6;
+                background: #e5e9f0;
+            }
+            QPushButton#ttsDebugButton {
+                color: white;
+                background: #138a36;
+                border: none;
+                border-radius: 10px;
+                font-family: "Noto Sans CJK SC";
+                font-size: 18px;
+                font-weight: bold;
+                padding: 7px 10px;
+            }
+            QPushButton#ttsDebugButton:hover {
+                background: #0f722c;
+            }
+            QPushButton#ttsDebugButton:pressed {
+                background: #0b5922;
+            }
+            QPushButton#ttsDebugButton:disabled {
+                color: #8a94a6;
+                background: #e5e9f0;
             }
             """
         )
@@ -354,14 +496,96 @@ class ScanDashboardWindow(QMainWindow):
         if self._hide_order_value:
             self.nurse_value.setText("--")
 
+    def _toggle_arm_debug(self) -> None:
+        if not self._arm_debug_allowed or self._arm_debug_pending:
+            return
+        target_deployed = not self._arm_debug_deployed
+        if self.arm_debug_command_callback is None:
+            return
+        self.arm_debug_command_callback(target_deployed)
+        self._arm_debug_pending = True
+        self._arm_debug_requested_deployed = target_deployed
+        self._refresh_arm_debug_button()
+
+    def set_arm_debug_status(self, status: dict) -> None:
+        self._arm_debug_allowed = bool(status.get("allowed"))
+        self._arm_debug_deployed = bool(status.get("deployed"))
+        self._arm_debug_pending = bool(status.get("pending"))
+        self._arm_debug_requested_deployed = bool(
+            status.get("requested_deployed")
+        )
+        self._refresh_arm_debug_button()
+
+    def _refresh_arm_debug_button(self) -> None:
+        self.arm_debug_button.setEnabled(
+            self._arm_debug_allowed and not self._arm_debug_pending
+        )
+        if not self._arm_debug_allowed:
+            text = "机械臂调试（仅发车前）"
+        elif self._arm_debug_pending:
+            text = (
+                "机械臂伸出中…"
+                if self._arm_debug_requested_deployed
+                else "机械臂收回中…"
+            )
+        elif self._arm_debug_deployed:
+            text = "收回机械臂"
+        else:
+            text = "伸出机械臂"
+        self.arm_debug_button.setText(text)
+
+    def _play_tts_debug(self, bed: int) -> None:
+        if not self._tts_debug_allowed or self._tts_debug_playing:
+            return
+        if self.tts_debug_command_callback is None:
+            return
+        self.tts_debug_command_callback(bed)
+        self._tts_debug_playing = True
+        self._tts_debug_bed = bed
+        self._refresh_tts_debug_buttons()
+
+    def set_tts_debug_status(self, status: dict) -> None:
+        self._tts_debug_allowed = bool(status.get("allowed"))
+        self._tts_debug_playing = bool(status.get("playing"))
+        bed = status.get("bed")
+        self._tts_debug_bed = bed if bed in (1, 3) else None
+        self._refresh_tts_debug_buttons()
+
+    def _refresh_tts_debug_buttons(self) -> None:
+        enabled = self._tts_debug_allowed and not self._tts_debug_playing
+        self.tts_bed1_button.setEnabled(enabled)
+        self.tts_bed3_button.setEnabled(enabled)
+        self.tts_bed1_button.setText(
+            "播放中…"
+            if self._tts_debug_playing and self._tts_debug_bed == 1
+            else "一号语音"
+        )
+        self.tts_bed3_button.setText(
+            "播放中…"
+            if self._tts_debug_playing and self._tts_debug_bed == 3
+            else "三号语音"
+        )
+
     def set_start_status(self, payload: str) -> None:
         status = parse_bridge_status(payload)
+        self._start_status = status
         if status is not None:
             self.set_task_state(status["task_state"])
+            self.set_arm_debug_status(status["arm_debug"])
+            self.set_tts_debug_status(status["tts_debug"])
+        else:
+            self.set_arm_debug_status({})
+            self.set_tts_debug_status({})
         # 等待 / 发车 / 运行 / 成功, all from the one task state the bridge
         # forwards.  Before the first bridge status the C button cannot start
         # the robot, so the label stays on the red 等待 placeholder.
-        _, text, color = describe_start_status(status)
+        self._refresh_start_status()
+        self.start_detail.setText(describe_start_reason(status))
+
+    def _refresh_start_status(self) -> None:
+        _, text, color = describe_start_status(
+            self._start_status, self._tele_scan_state
+        )
         self.start_value.setText(text)
         self.start_value.setStyleSheet(f"color: {color};")
 
@@ -383,6 +607,7 @@ class ScanDashboardWindow(QMainWindow):
 
     def set_tele_scan_state(self, state: str) -> None:
         self._tele_scan_state = state
+        self._refresh_start_status()
         if state == "failed":
             self._tele_camera_pixmap = None
             self.tele_camera_view.clear()
@@ -408,21 +633,15 @@ class ScanDashboardWindow(QMainWindow):
         size = view.contentsRect().size()
         if size.width() <= 0 or size.height() <= 0:
             return
-        scaled = pixmap.scaled(
-            size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+        view.setPixmap(
+            pixmap.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         )
-        left = max(0, (scaled.width() - size.width()) // 2)
-        top = max(0, (scaled.height() - size.height()) // 2)
-        view.setPixmap(scaled.copy(left, top, size.width(), size.height()))
 
     def _refresh_cameras(self) -> None:
         self._refresh_camera_view(self.camera_view, self._camera_pixmap)
         self._refresh_camera_view(self.tele_camera_view, self._tele_camera_pixmap)
 
     def enter_fullscreen(self) -> None:
-        screen = self.screen() or QApplication.primaryScreen()
-        if screen is not None:
-            self.setGeometry(screen.geometry())
         self.showFullScreen()
         self.raise_()
         self.activateWindow()
@@ -461,6 +680,14 @@ class ScanDashboardNode(Node):
         self.create_subscription(
             String, "/medical_nav/health_status", self._health_status, 10
         )
+        self.arm_debug_pub = self.create_publisher(
+            String, "/medical_nav/arm_debug_command", 10
+        )
+        self.window.arm_debug_command_callback = self._publish_arm_debug_command
+        self.tts_debug_pub = self.create_publisher(
+            String, "/medical_nav/tts_debug_command", 10
+        )
+        self.window.tts_debug_command_callback = self._publish_tts_debug_command
         self.create_subscription(
             CompressedImage,
             "/medical_nav/scanner_preview/compressed",
@@ -500,27 +727,50 @@ class ScanDashboardNode(Node):
     def _health_status(self, message: String) -> None:
         self.window.set_health_status(message.data)
 
+    def _publish_arm_debug_command(self, deployed: bool) -> None:
+        message = String()
+        message.data = json.dumps({"deployed": bool(deployed)})
+        self.arm_debug_pub.publish(message)
+
+    def _publish_tts_debug_command(self, bed: int) -> None:
+        message = String()
+        message.data = json.dumps({"bed": int(bed)})
+        self.tts_debug_pub.publish(message)
+
 
 def main(args=None) -> None:
-    rclpy.init(args=args)
-    application = QApplication(sys.argv)
-    application.setApplicationName("medical-scan-dashboard")
-    window = ScanDashboardWindow()
-    node = ScanDashboardNode(window)
+    instance_lock = _acquire_instance_lock()
+    if instance_lock is None:
+        print(
+            "scan_dashboard is already running; duplicate instance exits.",
+            file=sys.stderr,
+        )
+        return
+    try:
+        rclpy.init(args=args)
+        QApplication.setAttribute(Qt.AA_DisableHighDpiScaling, True)
+        application = QApplication(sys.argv)
+        application.setApplicationName("medical-scan-dashboard")
+        window = ScanDashboardWindow()
+        node = ScanDashboardNode(window)
 
-    spin_timer = QTimer()
-    spin_timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0.0))
-    spin_timer.start(10)
-    signal.signal(signal.SIGINT, lambda *_: application.quit())
+        spin_timer = QTimer()
+        spin_timer.timeout.connect(
+            lambda: rclpy.spin_once(node, timeout_sec=0.0)
+        )
+        spin_timer.start(10)
+        signal.signal(signal.SIGINT, lambda *_: application.quit())
 
-    window.enter_fullscreen()
-    QTimer.singleShot(300, window.enter_fullscreen)
-    exit_code = application.exec_()
-    spin_timer.stop()
-    node.destroy_node()
-    if rclpy.ok():
-        rclpy.shutdown()
-    raise SystemExit(exit_code)
+        window.enter_fullscreen()
+        QTimer.singleShot(300, window.enter_fullscreen)
+        exit_code = application.exec_()
+        spin_timer.stop()
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+        raise SystemExit(exit_code)
+    finally:
+        _release_instance_lock(instance_lock)
 
 
 if __name__ == "__main__":

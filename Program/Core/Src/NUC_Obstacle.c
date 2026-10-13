@@ -24,9 +24,9 @@
 #define NAV_MAX_PAYLOAD      48U
 #define NAV_FRAME_MAX_LEN    (2U + 4U + NAV_MAX_PAYLOAD + 2U)
 #define NAV_ONLINE_MS        500U
-/* This gate absorbs the longest measured NUC command gap.  Expiry feeds a
- * zero command into the STM32 chassis ramp; pose/yaw or wheel-health failures
- * use the separate immediate-stop path in main.c. */
+/* This gate absorbs the longest measured NUC command gap. Expiry sets the
+ * chassis speed target directly to zero; pose/yaw or wheel-health failures
+ * use the separate forced-stop path in main.c. */
 #define NAV_VELOCITY_TIMEOUT_MS 600U
 #define NAV_STM32_MAX_LINEAR_MM_S 3000
 #define NAV_POSE_PERIOD_MS   20U
@@ -45,6 +45,7 @@
 #define NAV_MSG_WHEEL_ODOM   0x15U
 #define NAV_MSG_TTS_REQUEST  0x16U
 #define NAV_MSG_WHEEL_DIAGNOSTICS 0x17U
+#define NAV_MSG_ARM_DEBUG_STATUS 0x18U
 #define NAV_MSG_PATH_BEGIN   0x20U
 #define NAV_MSG_WAYPOINT     0x21U
 #define NAV_MSG_PATH_COMMIT  0x22U
@@ -53,6 +54,9 @@
 #define NAV_MSG_VEL_CMD      0x40U
 #define NAV_MSG_SCAN_RESULT  0x41U
 #define NAV_MSG_TTS_STATUS   0x42U
+#define NAV_MSG_EMERGENCY_STOP 0x43U
+#define NAV_MSG_EMERGENCY_CLEAR 0x44U
+#define NAV_MSG_ARM_DEBUG_COMMAND 0x45U
 
 static uint8_t s_it_byte;
 static uint8_t s_buf[NUC_FRAME_LEN];
@@ -116,9 +120,12 @@ static volatile int16_t s_nav_left_mm_s;
 static volatile int16_t s_nav_yaw_ccw_cdeg_s;
 static volatile uint16_t s_nav_velocity_stamp_cs;
 static volatile uint32_t s_nav_last_velocity_ms;
+static volatile uint8_t s_nav_emergency_stop;
 static volatile NUC_NavStatus s_nav_status;
 static NUC_NavScanResult s_nav_scan_result;
 static volatile uint8_t s_nav_scan_pending;
+static NUC_ArmDebugCommand s_nav_arm_debug_command;
+static volatile uint8_t s_nav_arm_debug_pending;
 static volatile uint8_t s_nav_rx_seq;
 static volatile uint8_t s_nav_rx_seq_valid;
 static volatile uint8_t s_nav_velocity_stamp_valid;
@@ -140,8 +147,8 @@ static uint8_t nav_stamp_is_newer(uint16_t stamp, uint16_t previous)
   return ((int16_t)(stamp - previous) > 0) ? 1U : 0U;
 }
 
-/* Per-axis guard on the STM32 side. DJI_Chassis_SetVelocityCommand applies the
- * final circular 3000 mm/s body-speed limit before X-drive wheel allocation. */
+/* Per-axis guard on the STM32 side. DJI_Chassis_SetVelocityCommand repeats the
+ * same independent +/-3000 mm/s limits before cross-drive wheel allocation. */
 static int16_t clamp_nav_linear_speed(int16_t speed_mm_s)
 {
   if (speed_mm_s > NAV_STM32_MAX_LINEAR_MM_S)
@@ -205,6 +212,14 @@ static void write_i32_be(uint8_t *data, int32_t value)
   data[1] = (uint8_t)(raw >> 16);
   data[2] = (uint8_t)(raw >> 8);
   data[3] = (uint8_t)raw;
+}
+
+static void write_u32_be(uint8_t *data, uint32_t value)
+{
+  data[0] = (uint8_t)(value >> 24);
+  data[1] = (uint8_t)(value >> 16);
+  data[2] = (uint8_t)(value >> 8);
+  data[3] = (uint8_t)value;
 }
 
 static uint16_t nav_crc16(const uint8_t *data, uint8_t length)
@@ -371,6 +386,7 @@ static void nav_parse_frame(void)
       s_nav_velocity_stamp_cs = 0U;
       s_nav_velocity_stamp_valid = 0U;
       s_nav_last_velocity_ms = 0U;
+      /* A late motion frame must not release a previously accepted stop. */
     }
     return;
   }
@@ -460,6 +476,37 @@ static void nav_parse_frame(void)
       s_nav_velocity_stamp_cs = velocity_stamp;
       s_nav_velocity_stamp_valid = 1U;
       s_nav_last_velocity_ms = HAL_GetTick();
+      if (s_nav_forward_mm_s != 0 || s_nav_left_mm_s != 0 ||
+          s_nav_yaw_ccw_cdeg_s != 0)
+      {
+        s_nav_emergency_stop = 0U;
+      }
+    }
+  }
+  else if (type == NAV_MSG_EMERGENCY_STOP && payload_len == 2U)
+  {
+    uint16_t stop_stamp = read_u16_be(payload);
+    if ((s_nav_velocity_stamp_valid == 0U) ||
+        stop_stamp == s_nav_velocity_stamp_cs ||
+        nav_stamp_is_newer(stop_stamp, s_nav_velocity_stamp_cs) != 0U)
+    {
+      s_nav_forward_mm_s = 0;
+      s_nav_left_mm_s = 0;
+      s_nav_yaw_ccw_cdeg_s = 0;
+      s_nav_velocity_stamp_cs = stop_stamp;
+      s_nav_velocity_stamp_valid = 1U;
+      s_nav_last_velocity_ms = HAL_GetTick();
+      s_nav_emergency_stop = 1U;
+    }
+  }
+  else if (type == NAV_MSG_EMERGENCY_CLEAR && payload_len == 2U)
+  {
+    uint16_t clear_stamp = read_u16_be(payload);
+    if ((s_nav_velocity_stamp_valid == 0U) ||
+        clear_stamp == s_nav_velocity_stamp_cs ||
+        nav_stamp_is_newer(clear_stamp, s_nav_velocity_stamp_cs) != 0U)
+    {
+      s_nav_emergency_stop = 0U;
     }
   }
   else if (type == NAV_MSG_SCAN_RESULT && payload_len >= 6U)
@@ -503,6 +550,16 @@ static void nav_parse_frame(void)
     {
       s_nav_tts_status = (NUC_TtsStatus)status;
     }
+  }
+  else if (type == NAV_MSG_ARM_DEBUG_COMMAND && payload_len == 3U)
+  {
+    if (payload[2] > 1U)
+    {
+      return;
+    }
+    s_nav_arm_debug_command.request_id = read_u16_be(&payload[0]);
+    s_nav_arm_debug_command.deployed = payload[2];
+    s_nav_arm_debug_pending = 1U;
   }
 }
 
@@ -722,8 +779,11 @@ void NUC_Obstacle_Init(void)
   s_nav_velocity_stamp_cs = 0U;
   s_nav_velocity_stamp_valid = 0U;
   s_nav_last_velocity_ms = 0U;
+  s_nav_emergency_stop = 0U;
   s_nav_status = NUC_NAV_IDLE;
   s_nav_scan_pending = 0U;
+  s_nav_arm_debug_pending = 0U;
+  memset(&s_nav_arm_debug_command, 0, sizeof(s_nav_arm_debug_command));
   memset((void *)g_nuc_debug_buf, 0, sizeof(g_nuc_debug_buf));
   memset((void *)g_nuc_rx_history, 0, sizeof(g_nuc_rx_history));
   g_nuc_history_idx = 0;
@@ -850,24 +910,33 @@ uint8_t NUC_IsObstacleValid(void)
   return (HAL_GetTick() - s_last_valid_ms) < NUC_TIMEOUT_MS ? 1U : 0U;
 }
 
+static void nav_start_goal_request(NUC_NavGoal goal)
+{
+  s_nav_requested_goal = goal;
+  s_nav_status = NUC_NAV_WAIT_PATH;
+  NUC_Nav_ClearVelocity();
+  s_nav_request_id++;
+  if (s_nav_request_id == 0U)
+  {
+    s_nav_request_id = 1U;
+  }
+  s_nav_last_goal_tx_ms = 0U;
+  s_nav_staging_valid = 0U;
+}
+
 void NUC_Nav_RequestGoal(NUC_NavGoal goal)
 {
-  if (goal == NUC_NAV_GOAL_NONE)
+  if (goal != NUC_NAV_GOAL_NONE && goal != s_nav_requested_goal)
   {
-    return;
+    nav_start_goal_request(goal);
   }
-  if (goal != s_nav_requested_goal)
+}
+
+void NUC_Nav_RestartGoal(NUC_NavGoal goal)
+{
+  if (goal != NUC_NAV_GOAL_NONE)
   {
-    s_nav_requested_goal = goal;
-    s_nav_status = NUC_NAV_WAIT_PATH;
-    NUC_Nav_ClearVelocity();
-    s_nav_request_id++;
-    if (s_nav_request_id == 0U)
-    {
-      s_nav_request_id = 1U;
-    }
-    s_nav_last_goal_tx_ms = 0U;
-    s_nav_staging_valid = 0U;
+    nav_start_goal_request(goal);
   }
 }
 
@@ -909,6 +978,7 @@ void NUC_Nav_ClearTTS(void)
 }
 
 void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
+                     uint32_t ops_sample_ms, uint32_t hwt_yaw_sample_ms,
                      uint8_t task_state, NUC_NavStatus nav_status,
                      uint16_t path_id, uint8_t waypoint_index)
 {
@@ -952,7 +1022,7 @@ void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
 
   if ((now - s_nav_last_pose_tx_ms) >= NAV_POSE_PERIOD_MS)
   {
-    uint8_t payload[15];
+    uint8_t payload[27];
     write_i32_be(&payload[0], x_mm);
     write_i32_be(&payload[4], y_mm);
     write_i16_be(&payload[8], yaw_cdeg);
@@ -960,6 +1030,9 @@ void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
     payload[11] = (uint8_t)nav_status;
     write_u16_be(&payload[12], path_id);
     payload[14] = waypoint_index;
+    write_u32_be(&payload[15], ops_sample_ms);
+    write_u32_be(&payload[19], hwt_yaw_sample_ms);
+    write_u32_be(&payload[23], now);
     (void)nav_send_frame(NAV_MSG_POSE, payload, sizeof(payload));
     s_nav_last_pose_tx_ms = now;
   }
@@ -1011,7 +1084,7 @@ void NUC_Nav_ServiceSTP23L(void)
     valid_mask |= 0x04U;
   }
 
-  /* A=right, B=front, C=left. Distances are sensor-face millimetres. */
+  /* A=left, B=front, C=right. Distances are sensor-face millimetres. */
   write_u16_be(&payload[0], STP32_getA());
   write_u16_be(&payload[2], STP32_getB());
   write_u16_be(&payload[4], STP32_getC());
@@ -1158,6 +1231,19 @@ uint8_t NUC_Nav_GetVelocityCommand(int16_t *forward_mm_s,
   return 1U;
 }
 
+uint8_t NUC_Nav_EmergencyStopActive(void)
+{
+  uint32_t primask = __get_PRIMASK();
+  uint8_t active;
+  __disable_irq();
+  active = s_nav_emergency_stop;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+  return active;
+}
+
 void NUC_Nav_ClearVelocity(void)
 {
   uint32_t primask = __get_PRIMASK();
@@ -1227,6 +1313,50 @@ HAL_StatusTypeDef NUC_Nav_SendScanAck(uint16_t scan_id,
   write_u16_be(&payload[0], scan_id);
   payload[2] = (uint8_t)status;
   return nav_send_frame(NAV_MSG_SCAN_ACK, payload, sizeof(payload));
+}
+
+uint8_t NUC_Nav_TakeArmDebugCommand(NUC_ArmDebugCommand *command)
+{
+  uint32_t primask;
+
+  if (command == NULL)
+  {
+    return 0U;
+  }
+  primask = __get_PRIMASK();
+  __disable_irq();
+  if (s_nav_arm_debug_pending == 0U)
+  {
+    if (primask == 0U)
+    {
+      __enable_irq();
+    }
+    return 0U;
+  }
+  *command = s_nav_arm_debug_command;
+  s_nav_arm_debug_pending = 0U;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+  return 1U;
+}
+
+HAL_StatusTypeDef NUC_Nav_SendArmDebugStatus(uint16_t request_id,
+                                             uint8_t deployed,
+                                             NUC_ArmDebugStatus status)
+{
+  uint8_t payload[4];
+
+  if (deployed > 1U || status < NUC_ARM_DEBUG_ACCEPTED ||
+      status > NUC_ARM_DEBUG_INVALID_COMMAND)
+  {
+    return HAL_ERROR;
+  }
+  write_u16_be(&payload[0], request_id);
+  payload[2] = deployed;
+  payload[3] = (uint8_t)status;
+  return nav_send_frame(NAV_MSG_ARM_DEBUG_STATUS, payload, sizeof(payload));
 }
 
 NUC_NavStatus NUC_Nav_GetStatus(void)

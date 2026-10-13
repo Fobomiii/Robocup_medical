@@ -3,8 +3,12 @@
 
 Outbound (STM32 -> Nav2)
     MSG_POSE supplies OPS9 position and HWT101CT yaw. MSG_WHEEL_ODOM supplies
-    encoder-derived body velocity. A planar EKF fuses both into odom->base_link
-    and Odometry, with pose differentiation retained as a firmware fallback.
+    encoder-derived body velocity. Pose/TF use corrected OPS9 XY and direct
+    HWT101CT yaw at their MCU sample times. A bounded wheel-velocity
+    propagation only aligns asynchronous XY/yaw samples; it is not persistent
+    wheel integration or EKF fusion. Odometry velocity uses fresh measured
+    wheel telemetry, with OPS/HWT differentiation as a fallback when the
+    wheels are offline or their telemetry expires.
 
 Inbound (Nav2 -> STM32)
     /cmd_vel_safe from Collision Monitor becomes MSG_VEL_CMD frames. A watchdog sends an explicit zero
@@ -31,13 +35,17 @@ from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseStamped, TransformStamped, Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
 from sensor_msgs.msg import Range
-from std_msgs.msg import Bool, String, UInt8
+from std_msgs.msg import Bool, String, UInt8, UInt32
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
 from .nav_protocol import (
+    ARM_DEBUG_ACCEPTED,
     GOAL_NONE,
     Frame,
+    MSG_ARM_DEBUG_COMMAND,
+    MSG_ARM_DEBUG_STATUS,
     MSG_GOAL_REQUEST,
     MSG_HEARTBEAT,
     MSG_NAV_STATUS,
@@ -48,6 +56,8 @@ from .nav_protocol import (
     MSG_TTS_REQUEST,
     MSG_TTS_STATUS,
     MSG_VEL_CMD,
+    MSG_EMERGENCY_STOP,
+    MSG_EMERGENCY_CLEAR,
     MSG_WHEEL_DIAGNOSTICS,
     MSG_WHEEL_ODOM,
     NAV_FOLLOWING,
@@ -58,9 +68,11 @@ from .nav_protocol import (
     SCAN_CONTEXT_BED3,
     SCAN_CONTEXT_ORDER,
     START_WAIT_TASK_STATES,
+    TASK_WAIT_START,
     TTS_STATUS_COMPLETED,
     TTS_STATUS_ERROR,
     decode_goal_request,
+    decode_arm_debug_status,
     decode_pose,
     decode_scan_ack,
     decode_stp23l,
@@ -68,26 +80,32 @@ from .nav_protocol import (
     decode_wheel_diagnostics,
     decode_wheel_odom,
     encode_frame,
+    encode_arm_debug_command,
     encode_heartbeat,
     encode_nav_status,
     encode_scan_result,
     encode_tts_status,
     encode_velocity,
+    encode_emergency_stop,
+    encode_emergency_clear,
 )
 from .bridge_safety import (
     GateReleaseLimiter,
+    CollisionStopGate,
     HeadingHoldController,
     SettledStopDetector,
     Stm32ReadinessGate,
-    limit_xdrive_command,
+    limit_crossdrive_command,
     medical_mission_restarted,
+    mcu_timestamp_restarted,
+    start_gate_status,
     navigation_motion_is_authorized,
 )
 from .field_goals import load_field_goals
+from .mcu_time import align_pose_measurements, sample_ros_time_ns
 from .nuc_tts import NucTtsPlayer, TtsPlaybackResult
 from .scanner_core import (
     TASK_NAV_NURSE,
-    TASK_WAIT_START,
     scan_matches_task,
     scan_position_is_allowed,
 )
@@ -96,10 +114,6 @@ from .stp23l_calibration import (
     CalibrationConfig,
     OpsRangeCalibrator,
     load_calibration_config,
-)
-from .wheel_odometry_ekf import (
-    PlanarWheelOdometryEkf,
-    WheelOdometryEkfConfig,
 )
 
 
@@ -121,6 +135,7 @@ class Stm32Bridge(Node):
         self.declare_parameter("odom_frame", "odom")
         self.declare_parameter("base_frame", "base_link")
         self.declare_parameter("cmd_vel_topic", "/cmd_vel_safe")
+        self.declare_parameter("collision_input_topic", "/cmd_vel_home_limited")
         # 1.0 = STM32 yaw already counter-clockwise, -1.0 = clockwise as shipped.
         self.declare_parameter("yaw_sign", -1.0)
         self.declare_parameter("pose_timeout_s", 0.5)
@@ -129,14 +144,15 @@ class Stm32Bridge(Node):
         self.declare_parameter("heartbeat_rate_hz", 10.0)
         self.declare_parameter("scan_retry_s", 0.15)
         self.declare_parameter("bed_scan_activation_distance_m", 1.2)
-        self.declare_parameter("goal_handoff_hold_s", 0.5)
-        self.declare_parameter("navigator_following_hold_s", 0.3)
+        # Match launch: no fixed start delay or post-safety acceleration ramp.
+        # Fresh request/FOLLOWING/task/readiness gates still authorize motion.
+        self.declare_parameter("goal_handoff_hold_s", 0.0)
+        self.declare_parameter("navigator_following_hold_s", 0.0)
         self.declare_parameter("navigator_status_timeout_s", 1.2)
-        self.declare_parameter("gate_release_wheel_accel_m_s2", 2.8)
+        self.declare_parameter("gate_release_wheel_accel_m_s2", 0.0)
         self.declare_parameter("gate_release_yaw_radius_m", 0.25)
         self.declare_parameter("gate_release_rearm_drop_m_s", 0.25)
-        self.declare_parameter("max_planar_speed_m_s", 3.0)
-        self.declare_parameter("max_wheel_speed_m_s", 3.0)
+        self.declare_parameter("max_axis_speed_m_s", 3.0)
         self.declare_parameter("heading_correction_max_wz_rad_s", 0.30)
         self.declare_parameter("active_rotation_max_wz_rad_s", 0.80)
         self.declare_parameter("active_rotation_linear_threshold_m_s", 0.05)
@@ -165,16 +181,16 @@ class Stm32Bridge(Node):
         self.declare_parameter("stm32_recovery_hold_s", 0.75)
         self.declare_parameter("stm32_recovery_max_linear_m_s", 0.03)
         self.declare_parameter("stm32_recovery_max_angular_rad_s", 0.05)
-        self.declare_parameter("ekf_ops_position_std_m", 0.02)
-        self.declare_parameter("ekf_wheel_forward_std_m_s", 0.08)
-        self.declare_parameter("ekf_wheel_lateral_std_m_s", 0.16)
-        self.declare_parameter("ekf_wheel_yaw_std_rad_s", 0.12)
-        self.declare_parameter("ekf_linear_accel_std_m_s2", 1.5)
+        # Measurement covariance metadata only; these do not filter signals.
+        self.declare_parameter("ops_position_std_m", 0.02)
+        self.declare_parameter("wheel_forward_std_m_s", 0.08)
+        self.declare_parameter("wheel_lateral_std_m_s", 0.16)
+        self.declare_parameter("wheel_yaw_std_rad_s", 0.12)
         self.declare_parameter(
-            "tts_bed1_audio_file", "/home/fzurobot/Downloads/1_.mp3"
+            "tts_bed1_audio_file", "/home/fzurobot/Downloads/1_wav.wav"
         )
         self.declare_parameter(
-            "tts_bed3_audio_file", "/home/fzurobot/Downloads/3_.mp3"
+            "tts_bed3_audio_file", "/home/fzurobot/Downloads/3_wav.wav"
         )
         self.declare_parameter("tts_volume_percent", 100)
         self.declare_parameter("tts_audio_device", "pulse")
@@ -182,7 +198,7 @@ class Stm32Bridge(Node):
         self.declare_parameter("tts_tail_silence_s", 0.0)
         self.declare_parameter("tts_keepalive_enabled", True)
         self.declare_parameter("tts_timeout_s", 8.0)
-        # Circular body and physical X-drive wheel caps precede these guards.
+        # Independent cross-drive axis caps precede these protocol guards.
         self.declare_parameter("max_speed_mm_s", 3000.0)
         self.declare_parameter("max_yaw_cdeg_s", 9000.0)
         # Competition mode also applies when this node is launched directly.
@@ -200,15 +216,14 @@ class Stm32Bridge(Node):
         self.odom_frame = str(get("odom_frame"))
         self.base_frame = str(get("base_frame"))
         self.cmd_vel_topic = str(get("cmd_vel_topic"))
+        self.collision_input_topic = str(get("collision_input_topic"))
+        self.collision_stop_gate = CollisionStopGate()
         self.yaw_sign = float(get("yaw_sign"))
         self.pose_timeout_s = float(get("pose_timeout_s"))
         self.cmd_timeout_s = float(get("cmd_timeout_s"))
         self.max_speed_mm_s = float(get("max_speed_mm_s"))
         self.max_yaw_cdeg_s = float(get("max_yaw_cdeg_s"))
-        self.max_planar_speed_m_s = max(
-            0.0, float(get("max_planar_speed_m_s"))
-        )
-        self.max_wheel_speed_m_s = max(0.0, float(get("max_wheel_speed_m_s")))
+        self.max_axis_speed_m_s = max(0.0, float(get("max_axis_speed_m_s")))
         self.heading_correction_max_wz_rad_s = max(
             0.0, float(get("heading_correction_max_wz_rad_s"))
         )
@@ -307,49 +322,52 @@ class Stm32Bridge(Node):
                 f"STP23L calibration disabled: cannot load {field_config}: {exc}"
             )
             calibration_config = CalibrationConfig(
-                False, 153.0, 7, 40.0, 200.0, 8.0, 400.0, ()
+                False, 144.3, 7, 40.0, 200.0, 8.0, 400.0, ()
             )
         self.calibrator = OpsRangeCalibrator(calibration_config)
         self.sensor_radius_m = calibration_config.sensor_radius_mm / 1000.0
-        self.odom_ekf = PlanarWheelOdometryEkf(
-            WheelOdometryEkfConfig(
-                ops_position_std_m=max(
-                    0.001, float(get("ekf_ops_position_std_m"))
-                ),
-                wheel_forward_std_m_s=max(
-                    0.001, float(get("ekf_wheel_forward_std_m_s"))
-                ),
-                wheel_lateral_std_m_s=max(
-                    0.001, float(get("ekf_wheel_lateral_std_m_s"))
-                ),
-                wheel_yaw_std_rad_s=max(
-                    0.001, float(get("ekf_wheel_yaw_std_rad_s"))
-                ),
-                linear_accel_std_m_s2=max(
-                    0.01, float(get("ekf_linear_accel_std_m_s2"))
-                ),
+        self.ops_position_variance = max(
+            0.001, float(get("ops_position_std_m"))
+        ) ** 2
+        self.wheel_twist_variances = tuple(
+            max(0.001, float(get(name))) ** 2
+            for name in (
+                "wheel_forward_std_m_s",
+                "wheel_lateral_std_m_s",
+                "wheel_yaw_std_rad_s",
             )
         )
 
         self.pose = None
+        self.pose_ros = None
+        self.raw_pose_ros = None
+        self.pose_measurement_stamp_ns = 0
+        self.ops_measurement_stamp_ns = 0
+        self.hwt_measurement_stamp_ns = 0
+        self.pose_timing_source = "unavailable"
         self.previous_ros_pose = None
+        self.previous_pose_timing_source = None
+        # Keep the differential filter independent of measured wheel velocity:
+        # stale wheels must never seed the fallback's old filter state.
+        self.pose_twist = (0.0, 0.0, 0.0)
         self.twist = (0.0, 0.0, 0.0)
+        self.twist_source = "unavailable"
         self.hwt_yaw_rate_rad_s = 0.0
         self.last_hwt_yaw_rate_s = 0.0
         self.last_pose_s = 0.0
         self.last_cmd_s = 0.0
         self.last_sent = (0.0, 0.0, 0.0)
-        self.last_planar_normalization_scale = 1.0
-        self.last_wheel_normalization_scale = 1.0
+        self.last_axis_limit_scale = 1.0
+        self.last_yaw_headroom_scale = 1.0
         self.last_requested_wheel_peak_m_s = 0.0
         self.last_yaw_mode = "active_rotation"
         self.last_heading_hold = {
-            "mode": "mppi",
+            "mode": "navigation",
             "active": False,
             "target_yaw_deg": self.heading_hold_controller.target_yaw_deg,
             "current_yaw_deg": None,
             "error_deg": None,
-            "mppi_wz": 0.0,
+            "nav_wz": 0.0,
             "controller_wz": 0.0,
             "profile": "normal",
             "reverse_blend": 0.0,
@@ -364,7 +382,7 @@ class Stm32Bridge(Node):
         self.heartbeat_counter = 0
         self.stopped = False
         self.cmd_count = 0
-        self.rx_queue: Deque[Frame] = deque()
+        self.rx_queue: Deque[tuple[Frame, int]] = deque()
         self.started_s = time.monotonic()
         self.stp23l = None
         self.wheel_odom = None
@@ -374,16 +392,23 @@ class Stm32Bridge(Node):
         self.next_scan_id = 0
         self.pending_scan = None
         self.last_scan_ack = None
+        self.next_arm_debug_request_id = 0
+        self.pending_arm_debug = None
+        self.arm_debug_deployed = False
+        self.arm_debug_result = "idle"
         self.requested_request_id = 0
         self.requested_goal_id = GOAL_NONE
         self.navigator_request_id = 0
         self.navigator_goal_id = GOAL_NONE
         self.navigator_state = NAV_IDLE
         self.navigator_plan_ready = False
+        self.navigator_result = "waiting_navigator"
+        self.last_goal_publish_s = 0.0
         self.goal_request_s = 0.0
         self.last_navigator_status_s = 0.0
         self.navigator_following_s = 0.0
         self.mission_epoch = 0
+        self.last_pose_tx_stamp_ms = None
         self.tts_player = NucTtsPlayer(
             bed1_audio_file=str(get("tts_bed1_audio_file")),
             bed3_audio_file=str(get("tts_bed3_audio_file")),
@@ -397,7 +422,6 @@ class Stm32Bridge(Node):
         self.tts_keepalive_timer = self.create_timer(
             5.0, self._maintain_tts_keepalive
         )
-        self._maintain_tts_keepalive()
         self.tts_executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="nuc-tts"
         )
@@ -405,6 +429,9 @@ class Stm32Bridge(Node):
         self.tts_active_key = None
         self.tts_results = {}
         self.last_tts_status = None
+        self.tts_debug_future = None
+        self.tts_debug_bed = None
+        self.tts_debug_result = "idle"
 
         self.tf_broadcaster = TransformBroadcaster(self)
         self.static_tf_broadcaster = StaticTransformBroadcaster(self)
@@ -420,13 +447,21 @@ class Stm32Bridge(Node):
             String, "/medical_nav/wheel_diagnostics", 10
         )
         # High-rate, read-only visibility into the command that actually
-        # leaves the bridge after release limiting and X-drive saturation.
+        # leaves the bridge after release limiting and cross-drive axis caps.
         self.bridge_cmd_debug_pub = self.create_publisher(
             String, "/medical_nav/bridge_cmd_debug", 10
         )
         self.status_pub = self.create_publisher(String, "/medical_nav/bridge_status", 10)
         self.stm32_ready_pub = self.create_publisher(
             Bool, "/medical_nav/stm32_ready", 10
+        )
+        latched = QoSProfile(
+            depth=1,
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.mission_epoch_pub = self.create_publisher(
+            UInt32, "/medical_nav/mission_epoch", latched
         )
         self.goal_pub = self.create_publisher(String, "/medical_nav/goal_request", 10)
         self.stp23l_pub = self.create_publisher(String, "/medical_nav/stp23l", 10)
@@ -438,17 +473,32 @@ class Stm32Bridge(Node):
             String, "/medical_nav/scan_transport_status", 10
         )
         self.range_pubs = {
-            "a": self.create_publisher(Range, "/medical_nav/stp23l/right", 10),
+            "a": self.create_publisher(Range, "/medical_nav/stp23l/left", 10),
             "b": self.create_publisher(Range, "/medical_nav/stp23l/front", 10),
-            "c": self.create_publisher(Range, "/medical_nav/stp23l/left", 10),
+            "c": self.create_publisher(Range, "/medical_nav/stp23l/right", 10),
         }
 
         self.create_subscription(Twist, self.cmd_vel_topic, self._cmd_vel, 10)
+        self.create_subscription(
+            Twist, self.collision_input_topic, self._collision_input, 10
+        )
         self.create_subscription(
             String, "/medical_nav/navigator_status", self._navigator_status, 10
         )
         self.create_subscription(
             String, "/medical_nav/scan_result", self._scanner_result, 10
+        )
+        self.create_subscription(
+            String,
+            "/medical_nav/arm_debug_command",
+            self._arm_debug_command,
+            10,
+        )
+        self.create_subscription(
+            String,
+            "/medical_nav/tts_debug_command",
+            self._tts_debug_command,
+            10,
         )
 
         self.transport = SerialTransport(
@@ -459,6 +509,14 @@ class Stm32Bridge(Node):
         )
         self.transport.start()
         self._publish_static_map_to_odom()
+
+        # Audio is auxiliary.  Do not open PulseAudio while the bridge is
+        # still constructing its TF publishers and serial transport: on a
+        # cold boot that can delay the first pose/TF samples and make Nav2
+        # report an unconnected odom -> base_link tree.  The five-second
+        # timer maintains the stream after the navigation link is ready, and
+        # a TTS request starts it immediately if needed before then.
+        self._maintain_tts_keepalive()
 
         rate = max(5.0, float(get("publish_rate_hz")))
         self.create_timer(1.0 / rate, self._tick)
@@ -477,14 +535,14 @@ class Stm32Bridge(Node):
     # ------------------------------------------------------------------
 
     def _queue_frame(self, frame: Frame) -> None:
-        self.rx_queue.append(frame)
+        self.rx_queue.append((frame, self.get_clock().now().nanoseconds))
 
     def _drain_frames(self) -> None:
         while self.rx_queue:
-            frame = self.rx_queue.popleft()
+            frame, received_ros_ns = self.rx_queue.popleft()
             try:
                 if frame.msg_type == MSG_POSE:
-                    self._handle_pose(frame)
+                    self._handle_pose(frame, received_ros_ns)
                 elif frame.msg_type == MSG_GOAL_REQUEST:
                     self._handle_goal_request(frame)
                 elif frame.msg_type == MSG_STP23L:
@@ -497,16 +555,25 @@ class Stm32Bridge(Node):
                     self._handle_scan_ack(frame)
                 elif frame.msg_type == MSG_TTS_REQUEST:
                     self._handle_tts_request(frame)
+                elif frame.msg_type == MSG_ARM_DEBUG_STATUS:
+                    self._handle_arm_debug_status(frame)
             except (ValueError, struct.error) as exc:
                 self.get_logger().warn(
                     f"Rejected frame 0x{frame.msg_type:02X}: {exc}", throttle_duration_sec=2.0
                 )
 
-    def _handle_pose(self, frame: Frame) -> None:
+    def _handle_pose(self, frame: Frame, received_ros_ns: int | None = None) -> None:
         previous_task_state = self.pose.task_state if self.pose is not None else None
         previous_nav_status = self.pose.nav_status if self.pose is not None else None
         pose = decode_pose(frame.payload)
+        mcu_time_reset = mcu_timestamp_restarted(
+            getattr(self, "last_pose_tx_stamp_ms", None), pose.tx_stamp_ms
+        )
+        if pose.tx_stamp_ms:
+            self.last_pose_tx_stamp_ms = pose.tx_stamp_ms
         received_s = time.monotonic()
+        if received_ros_ns is None:
+            received_ros_ns = self.get_clock().now().nanoseconds
         pose_gap_s = (
             received_s - self.last_pose_s
             if self.last_pose_s > 0.0
@@ -519,6 +586,7 @@ class Stm32Bridge(Node):
             pose.nav_status,
             pose_gap_s,
             self.pose_timeout_s,
+            mcu_time_reset,
         )
         if mission_restarted:
             self.gate_release_limiter.reset(received_s)
@@ -532,18 +600,23 @@ class Stm32Bridge(Node):
             self.navigator_goal_id = GOAL_NONE
             self.navigator_state = NAV_IDLE
             self.navigator_plan_ready = False
+            self.navigator_result = "waiting_navigator"
+            self.last_goal_publish_s = 0.0
             self.goal_request_s = 0.0
             self.last_navigator_status_s = 0.0
             self.navigator_following_s = 0.0
             self.pending_scan = None
             self.last_scan_ack = None
+            self.pending_arm_debug = None
+            self.arm_debug_deployed = False
+            self.arm_debug_result = "reset_by_mission"
             self.tts_results.clear()
             self.last_tts_status = None
             self.nurse_scan_soft_stop = False
             self.nurse_scan_stop_detector.reset()
             self.calibrator.reset()
-            self.odom_ekf.reset()
             self.previous_ros_pose = None
+            self.pose_twist = (0.0, 0.0, 0.0)
             self.twist = (0.0, 0.0, 0.0)
             self.hwt_yaw_rate_rad_s = 0.0
             self.last_hwt_yaw_rate_s = 0.0
@@ -556,16 +629,60 @@ class Stm32Bridge(Node):
             and previous_task_state not in (TASK_WAIT_START, TASK_NAV_NURSE)
         ):
             self.calibrator.reset()
-            self.odom_ekf.reset()
             self.previous_ros_pose = None
+            self.pose_twist = (0.0, 0.0, 0.0)
             self.twist = (0.0, 0.0, 0.0)
             self.hwt_yaw_rate_rad_s = 0.0
             self.last_hwt_yaw_rate_s = 0.0
         x, y, yaw = self._as_ros(pose.x_mm, pose.y_mm, pose.yaw_cdeg)
+        raw_x, raw_y, raw_yaw = self._as_ros(
+            pose.x_mm, pose.y_mm, pose.yaw_cdeg, corrected=False
+        )
+        ops_stamp_ns = sample_ros_time_ns(
+            pose.ops_sample_ms, pose.tx_stamp_ms, received_ros_ns
+        )
+        hwt_stamp_ns = sample_ros_time_ns(
+            pose.hwt_yaw_sample_ms, pose.tx_stamp_ms, received_ros_ns
+        )
+        if ops_stamp_ns is not None and hwt_stamp_ns is not None:
+            if self._wheel_odom_is_fresh():
+                body_vx = self.wheel_odom.forward_mm_s / 1000.0
+                body_vy = self.wheel_odom.left_mm_s / 1000.0
+                yaw_rate = math.radians(
+                    self.wheel_odom.yaw_ccw_cdeg_s / 100.0
+                )
+            else:
+                body_vx, body_vy, yaw_rate = 0.0, 0.0, 0.0
+            aligned = align_pose_measurements(
+                x, y, yaw, ops_stamp_ns, hwt_stamp_ns,
+                body_vx, body_vy, yaw_rate,
+            )
+            raw_aligned = align_pose_measurements(
+                raw_x, raw_y, raw_yaw, ops_stamp_ns, hwt_stamp_ns,
+                body_vx, body_vy, yaw_rate,
+            )
+            x, y, yaw = aligned.x, aligned.y, aligned.yaw
+            raw_x, raw_y, raw_yaw = (
+                raw_aligned.x, raw_aligned.y, raw_aligned.yaw
+            )
+            measurement_stamp_ns = aligned.stamp_ns
+            self.pose_timing_source = "stm32_sample_time"
+            measurement_s = measurement_stamp_ns / 1.0e9
+        else:
+            measurement_stamp_ns = received_ros_ns
+            ops_stamp_ns = received_ros_ns
+            hwt_stamp_ns = received_ros_ns
+            self.pose_timing_source = "nuc_receive_fallback"
+            measurement_s = received_s
+        if (
+            self.previous_pose_timing_source is not None
+            and self.previous_pose_timing_source != self.pose_timing_source
+        ):
+            self.previous_ros_pose = None
 
         if self.previous_ros_pose is not None:
             old_x, old_y, old_yaw, old_s = self.previous_ros_pose
-            dt = received_s - old_s
+            dt = measurement_s - old_s
             if 0.01 <= dt <= self.pose_timeout_s:
                 world_vx = (x - old_x) / dt
                 world_vy = (y - old_y) / dt
@@ -587,27 +704,41 @@ class Stm32Bridge(Node):
                     self.hwt_yaw_rate_rad_s = 0.0
                     self.last_hwt_yaw_rate_s = 0.0
                 # Reject coordinate resets and corrupt frames instead of feeding a
-                # one-cycle velocity spike into MPPI.
-                if math.hypot(raw_vx, raw_vy) <= 2.0 and abs(raw_wz) <= 6.0:
+                # one-cycle velocity spike into the navigation controller.
+                # Independent axis caps allow diagonal speed above 2 m/s.
+                # Allow 25% sampling noise while still rejecting reset jumps.
+                axis_limit = 1.25 * self.max_axis_speed_m_s
+                if (
+                    abs(raw_vx) <= axis_limit
+                    and abs(raw_vy) <= axis_limit
+                    and abs(raw_wz) <= 6.0
+                ):
                     alpha = self.twist_filter_alpha
-                    self.twist = tuple(
+                    self.pose_twist = tuple(
                         alpha * new + (1.0 - alpha) * old
-                        for new, old in zip((raw_vx, raw_vy, raw_wz), self.twist)
+                        for new, old in zip((raw_vx, raw_vy, raw_wz), self.pose_twist)
                     )
                 else:
-                    self.twist = (0.0, 0.0, 0.0)
+                    self.pose_twist = (0.0, 0.0, 0.0)
             elif dt > self.pose_timeout_s:
-                self.twist = (0.0, 0.0, 0.0)
+                self.pose_twist = (0.0, 0.0, 0.0)
                 self.hwt_yaw_rate_rad_s = 0.0
                 self.last_hwt_yaw_rate_s = 0.0
 
-        self.previous_ros_pose = (x, y, yaw, received_s)
-        self.odom_ekf.update_pose(x, y, yaw)
-        if self._wheel_odom_is_fresh():
-            self.twist = self.odom_ekf.twist
+        self.previous_ros_pose = (x, y, yaw, measurement_s)
+        self.previous_pose_timing_source = self.pose_timing_source
         self.pose = pose
+        self.pose_ros = (x, y, yaw)
+        self.raw_pose_ros = (raw_x, raw_y, raw_yaw)
+        self.pose_measurement_stamp_ns = measurement_stamp_ns
+        self.ops_measurement_stamp_ns = ops_stamp_ns
+        self.hwt_measurement_stamp_ns = hwt_stamp_ns
         self.last_pose_s = received_s
+        self._update_measured_twist()
         if previous_task_state is not None and previous_task_state != pose.task_state:
+            self.pending_arm_debug = None
+            self.arm_debug_deployed = False
+            self.arm_debug_result = "reset_by_task_state"
             self.stopped = True
             self.gate_release_limiter.reset(received_s)
             self.heading_hold_controller.reset()
@@ -643,20 +774,44 @@ class Stm32Bridge(Node):
             self.navigator_request_id = 0
             self.navigator_goal_id = GOAL_NONE
             self.navigator_plan_ready = False
+            self.navigator_result = "waiting_navigator"
             self.last_navigator_status_s = 0.0
             self.navigator_following_s = 0.0
             self.stopped = True
             self.gate_release_limiter.reset(self.goal_request_s)
             self._send_velocity(0.0, 0.0, 0.0, source="goal_handoff")
+        self._publish_goal_request()
         name = POINT_NAMES.get(request.goal_id, str(request.goal_id))
-        message = String()
-        message.data = json.dumps(
-            {"request_id": request.request_id, "goal_id": request.goal_id, "point": name}
-        )
-        self.goal_pub.publish(message)
         self.get_logger().info(
             f"STM32 goal request #{request.request_id} -> {name}", throttle_duration_sec=1.0
         )
+
+    def _publish_goal_request(self) -> None:
+        name = POINT_NAMES.get(self.requested_goal_id, str(self.requested_goal_id))
+        message = String()
+        message.data = json.dumps(
+            {"request_id": self.requested_request_id,
+             "goal_id": self.requested_goal_id, "point": name}
+        )
+        self.goal_pub.publish(message)
+        self.last_goal_publish_s = time.monotonic()
+
+    def _republish_goal_if_needed(self) -> None:
+        # Once the MCU sees FOLLOWING it stops repeating GOAL_REQUEST. A
+        # late/restarted ROS subscriber still needs the current request.
+        # Mission reset clears requested_goal_id, so no old goal is replayed.
+        now = time.monotonic()
+        if (self.requested_goal_id == GOAL_NONE or not self._pose_is_fresh()
+                or self.pose.task_state not in START_WAIT_TASK_STATES
+                or now - self.last_goal_publish_s < 1.0):
+            return
+        matched_fresh = (
+            self.navigator_request_id == self.requested_request_id
+            and self.navigator_goal_id == self.requested_goal_id
+            and self.last_navigator_status_s > 0.0
+            and now - self.last_navigator_status_s <= self.navigator_status_timeout_s)
+        if not matched_fresh:
+            self._publish_goal_request()
 
     def _handle_wheel_odom(self, frame: Frame) -> None:
         telemetry = decode_wheel_odom(frame.payload)
@@ -664,17 +819,9 @@ class Stm32Bridge(Node):
         forward_m_s = telemetry.forward_mm_s / 1000.0
         left_m_s = telemetry.left_mm_s / 1000.0
         yaw_ccw_rad_s = math.radians(telemetry.yaw_ccw_cdeg_s / 100.0)
-        accepted = self.odom_ekf.update_wheel(
-            forward_m_s,
-            left_m_s,
-            yaw_ccw_rad_s,
-            telemetry.online_mask,
-            telemetry.stamp_cs,
-        )
         self.wheel_odom = telemetry
         self.last_wheel_odom_s = received_s
-        if accepted and self.odom_ekf.initialized:
-            self.twist = self.odom_ekf.twist
+        self._update_measured_twist()
 
         message = Odometry()
         message.header.stamp = self.get_clock().now().to_msg()
@@ -688,21 +835,8 @@ class Stm32Bridge(Node):
         message.pose.covariance[0] = invalid_variance
         message.pose.covariance[7] = invalid_variance
         message.pose.covariance[35] = invalid_variance
-        message.twist.covariance[0] = (
-            self.odom_ekf.config.wheel_forward_std_m_s**2
-            if valid
-            else invalid_variance
-        )
-        message.twist.covariance[7] = (
-            self.odom_ekf.config.wheel_lateral_std_m_s**2
-            if valid
-            else invalid_variance
-        )
-        message.twist.covariance[35] = (
-            self.odom_ekf.config.wheel_yaw_std_rad_s**2
-            if valid
-            else invalid_variance
-        )
+        for index, variance in zip((0, 7, 35), self.wheel_twist_variances):
+            message.twist.covariance[index] = variance if valid else invalid_variance
         self.wheel_odom_pub.publish(message)
 
     def _handle_wheel_diagnostics(self, frame: Frame) -> None:
@@ -734,9 +868,9 @@ class Stm32Bridge(Node):
         self.stp23l = telemetry
         stamp = self.get_clock().now().to_msg()
         sensor_data = {
-            "a": ("right", "stp23l_right", telemetry.a_mm, 0x01),
+            "a": ("left", "stp23l_left", telemetry.a_mm, 0x01),
             "b": ("front", "stp23l_front", telemetry.b_mm, 0x02),
-            "c": ("left", "stp23l_left", telemetry.c_mm, 0x04),
+            "c": ("right", "stp23l_right", telemetry.c_mm, 0x04),
         }
         aggregate = {"valid_mask": telemetry.valid_mask, "sensors": {}}
         for sensor, (direction, frame_id, distance_mm, bit) in sensor_data.items():
@@ -785,14 +919,8 @@ class Stm32Bridge(Node):
             # Do not differentiate the deliberate pose correction into a
             # one-cycle velocity spike.
             self.previous_ros_pose = None
-            self.twist = (0.0, 0.0, 0.0)
-            self.odom_ekf.reset()
-            corrected_x, corrected_y, corrected_yaw = self._as_ros(
-                self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg
-            )
-            self.odom_ekf.update_pose(
-                corrected_x, corrected_y, corrected_yaw
-            )
+            self.pose_twist = (0.0, 0.0, 0.0)
+            self._update_measured_twist()
             self.get_logger().info(
                 f"STP23L calibrated at {event.bed}: "
                 f"OPS offset=({event.offset_x_mm:.1f}, {event.offset_y_mm:.1f}) mm, "
@@ -819,17 +947,113 @@ class Stm32Bridge(Node):
         self.nurse_scan_soft_stop = False
         self.nurse_scan_stop_detector.reset()
 
+    def _arm_debug_allowed(self) -> bool:
+        return (
+            not self.dry_run
+            and self.transport.connected
+            and self._pose_is_fresh()
+            and self.pose.task_state in START_WAIT_TASK_STATES
+            and not self._motion_is_authorized()
+        )
+
+    def _arm_debug_command(self, message: String) -> None:
+        try:
+            deployed = json.loads(message.data)["deployed"]
+        except (KeyError, TypeError, json.JSONDecodeError) as exc:
+            self.get_logger().warn(f"Bad arm debug command: {exc}")
+            return
+        if type(deployed) is not bool:
+            self.get_logger().warn("Bad arm debug command: deployed must be boolean")
+            return
+        if self.pending_arm_debug is not None:
+            self.get_logger().warn(
+                "Ignored arm debug command while an earlier command is pending",
+                throttle_duration_sec=1.0,
+            )
+            return
+        if not self._arm_debug_allowed():
+            self.arm_debug_result = "rejected_not_prestart"
+            self.get_logger().warn(
+                "Rejected arm debug command outside the pre-start wait state",
+                throttle_duration_sec=1.0,
+            )
+            return
+
+        self.next_arm_debug_request_id = (
+            self.next_arm_debug_request_id + 1
+        ) & 0xFFFF
+        if self.next_arm_debug_request_id == 0:
+            self.next_arm_debug_request_id = 1
+        self.pending_arm_debug = {
+            "request_id": self.next_arm_debug_request_id,
+            "deployed": deployed,
+            "payload": encode_arm_debug_command(
+                self.next_arm_debug_request_id, deployed
+            ),
+            "last_sent_s": 0.0,
+            "attempts": 0,
+        }
+        self.arm_debug_result = "pending"
+        self._send_pending_arm_debug(force=True)
+
+    def _send_pending_arm_debug(self, force: bool = False) -> None:
+        if self.pending_arm_debug is None:
+            return
+        if not self._arm_debug_allowed():
+            self.pending_arm_debug = None
+            self.arm_debug_result = "cancelled_not_prestart"
+            return
+        now = time.monotonic()
+        if not force and now - self.pending_arm_debug["last_sent_s"] < 0.15:
+            return
+        if self.pending_arm_debug["attempts"] >= 10:
+            self.pending_arm_debug = None
+            self.arm_debug_result = "timeout"
+            self.get_logger().error("STM32 arm debug command timed out")
+            return
+        frame = encode_frame(
+            MSG_ARM_DEBUG_COMMAND,
+            self.tx_seq,
+            self.pending_arm_debug["payload"],
+        )
+        if self.transport.send(frame):
+            self.tx_seq = (self.tx_seq + 1) & 0xFF
+            self.pending_arm_debug["last_sent_s"] = now
+            self.pending_arm_debug["attempts"] += 1
+
+    def _handle_arm_debug_status(self, frame: Frame) -> None:
+        status = decode_arm_debug_status(frame.payload)
+        if (
+            self.pending_arm_debug is None
+            or status.request_id != self.pending_arm_debug["request_id"]
+        ):
+            return
+        self.arm_debug_deployed = status.deployed
+        if status.status == ARM_DEBUG_ACCEPTED:
+            self.arm_debug_result = "accepted"
+            self.get_logger().info(
+                "STM32 accepted pre-start arm command: "
+                + ("deployed" if status.deployed else "retracted")
+            )
+        else:
+            self.arm_debug_result = f"rejected_{status.status}"
+            self.get_logger().warn(
+                f"STM32 rejected arm debug command with status {status.status}"
+            )
+        self.pending_arm_debug = None
+
     def _handle_tts_request(self, frame: Frame) -> None:
         request = decode_tts_request(frame.payload)
         key = (self.mission_epoch, request.request_id, request.bed)
 
         self._poll_tts()
+        self._poll_tts_debug()
         cached_status = self.tts_results.get(key)
         if cached_status is not None:
             self._send_tts_status(request.request_id, cached_status)
             return
 
-        if self.tts_future is not None:
+        if self.tts_future is not None or self.tts_debug_future is not None:
             if self.tts_active_key != key:
                 self.get_logger().warn(
                     "Deferred TTS request while another announcement is playing",
@@ -844,6 +1068,44 @@ class Stm32Bridge(Node):
         self.get_logger().info(
             f"Started NUC TTS request={request.request_id} bed={request.bed}"
         )
+
+    def _tts_debug_allowed(self) -> bool:
+        return (
+            self._arm_debug_allowed()
+            and self.tts_future is None
+            and self.tts_debug_future is None
+        )
+
+    def _tts_debug_command(self, message: String) -> None:
+        try:
+            bed = json.loads(message.data)["bed"]
+        except (KeyError, TypeError, json.JSONDecodeError) as exc:
+            self.get_logger().warn(f"Bad TTS debug command: {exc}")
+            return
+        if type(bed) is not int or bed not in (1, 3):
+            self.get_logger().warn("Bad TTS debug command: bed must be 1 or 3")
+            return
+        if not self._arm_debug_allowed():
+            self.tts_debug_result = "rejected_not_prestart"
+            self.get_logger().warn(
+                "Rejected TTS debug command outside the pre-start wait state",
+                throttle_duration_sec=1.0,
+            )
+            return
+        if self.tts_future is not None or self.tts_debug_future is not None:
+            self.tts_debug_result = "rejected_busy"
+            self.get_logger().warn(
+                "Rejected TTS debug command while audio is already playing",
+                throttle_duration_sec=1.0,
+            )
+            return
+
+        self.tts_debug_bed = bed
+        self.tts_debug_result = "playing"
+        self.tts_debug_future = self.tts_executor.submit(
+            self.tts_player.speak_bed, bed
+        )
+        self.get_logger().info(f"Started pre-start TTS test for bed={bed}")
 
     def _maintain_tts_keepalive(self) -> None:
         was_active = self.tts_player.keepalive_active
@@ -893,6 +1155,25 @@ class Stm32Bridge(Node):
                 f"NUC TTS failed request={request_id} bed={bed}: {result.detail}"
             )
 
+    def _poll_tts_debug(self) -> None:
+        if self.tts_debug_future is None or not self.tts_debug_future.done():
+            return
+        bed = self.tts_debug_bed
+        try:
+            result = self.tts_debug_future.result()
+        except Exception as exc:
+            result = TtsPlaybackResult(False, str(exc))
+        self.tts_debug_future = None
+        self.tts_debug_result = "completed" if result.success else "error"
+        if result.success:
+            self.get_logger().info(
+                f"Completed pre-start TTS test for bed={bed}: {result.detail}"
+            )
+        else:
+            self.get_logger().error(
+                f"Pre-start TTS test failed for bed={bed}: {result.detail}"
+            )
+
     def _send_tts_status(self, request_id: int, status: int) -> None:
         payload = encode_tts_status(request_id, status)
         frame = encode_frame(MSG_TTS_STATUS, self.tx_seq, payload)
@@ -927,7 +1208,7 @@ class Stm32Bridge(Node):
             self.bed_scan_activation_distance_mm,
         ):
             self.get_logger().warn(
-                f"Ignored bed scan outside target area: context={context} "
+                f"Ignored scan outside target area: context={context} "
                 f"pose=({corrected_x_mm:.0f}, {corrected_y_mm:.0f}) value={value}"
             )
             return
@@ -997,10 +1278,25 @@ class Stm32Bridge(Node):
         return (
             self.wheel_odom is not None
             and self.wheel_odom.online_mask == 0x0F
-            and self.odom_ekf.wheel_valid
             and time.monotonic() - self.last_wheel_odom_s
             <= self.wheel_odom_timeout_s
         )
+
+    def _update_measured_twist(self) -> None:
+        """Select one velocity measurement source; never fuse or integrate it."""
+        if self._wheel_odom_is_fresh():
+            self.twist = (
+                self.wheel_odom.forward_mm_s / 1000.0,
+                self.wheel_odom.left_mm_s / 1000.0,
+                math.radians(self.wheel_odom.yaw_ccw_cdeg_s / 100.0),
+            )
+            self.twist_source = "wheel_direct"
+        elif self._pose_is_fresh():
+            self.twist = self.pose_twist
+            self.twist_source = "ops_hwt_difference"
+        else:
+            self.twist = (0.0, 0.0, 0.0)
+            self.twist_source = "unavailable"
 
     def _wheel_telemetry_is_fresh(self) -> bool:
         """Raw frame freshness, independent of motor online-mask state."""
@@ -1037,7 +1333,7 @@ class Stm32Bridge(Node):
             wheel_angular_rad_s,
             recovery_allowed=(
                 self.pose is not None
-                and self.pose.task_state == TASK_WAIT_START
+                and self.pose.task_state in START_WAIT_TASK_STATES
             ),
         )
 
@@ -1053,7 +1349,7 @@ class Stm32Bridge(Node):
             self.last_safe_cmd = (0.0, 0.0, 0.0)
             self.gate_release_limiter.reset(time.monotonic())
             self.heading_hold_controller.reset()
-            self._send_velocity(0.0, 0.0, 0.0, source="stm32_reboot")
+            self._send_velocity(0.0, 0.0, 0.0, source="stm32_telemetry_pause")
             self.get_logger().warn(
                 "STM32 telemetry lost; blocked motion and lidar until recovery"
             )
@@ -1102,26 +1398,31 @@ class Stm32Bridge(Node):
     def _tick(self) -> None:
         self._drain_frames()
         self._update_stm32_readiness()
+        self._republish_goal_if_needed()
         self._poll_tts()
+        self._poll_tts_debug()
         self._send_pending_scan()
+        self._send_pending_arm_debug()
         if self._pose_is_fresh():
             self._publish_pose()
         self._command_watchdog()
 
     def _publish_pose(self) -> None:
-        fused = self._wheel_odom_is_fresh() and self.odom_ekf.initialized
-        # Position/velocity may use the wheel filter, but yaw is never taken
-        # from its state. HWT101CT is the authoritative heading source.
-        direct_x, direct_y, direct_yaw = self._as_ros(
-            self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg
-        )
-        if fused:
-            x, y, _ = self.odom_ekf.pose
-            yaw = direct_yaw
-            self.twist = self.odom_ekf.twist
+        # Position and heading remain anchored to OPS/HWT. Wheel velocity is
+        # used only for the few milliseconds between their two sample times.
+        if self.pose_ros is None:
+            x, y, yaw = self._as_ros(
+                self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg
+            )
         else:
-            x, y, yaw = direct_x, direct_y, direct_yaw
+            x, y, yaw = self.pose_ros
+        self._update_measured_twist()
+        stamp_ns = self.pose_measurement_stamp_ns
+        if stamp_ns <= 0:
+            stamp_ns = self.get_clock().now().nanoseconds
         stamp = self.get_clock().now().to_msg()
+        stamp.sec = int(stamp_ns // 1_000_000_000)
+        stamp.nanosec = int(stamp_ns % 1_000_000_000)
         half = yaw * 0.5
         qz, qw = math.sin(half), math.cos(half)
 
@@ -1146,14 +1447,14 @@ class Stm32Bridge(Node):
         odometry.twist.twist.linear.x = self.twist[0]
         odometry.twist.twist.linear.y = self.twist[1]
         odometry.twist.twist.angular.z = self.twist[2]
-        if fused:
-            covariance = self.odom_ekf.covariance
-            odometry.pose.covariance[0] = float(covariance[0, 0])
-            odometry.pose.covariance[7] = float(covariance[1, 1])
-            odometry.pose.covariance[35] = float(covariance[2, 2])
-            odometry.twist.covariance[0] = float(covariance[3, 3])
-            odometry.twist.covariance[7] = float(covariance[4, 4])
-            odometry.twist.covariance[35] = float(covariance[5, 5])
+        odometry.pose.covariance[0] = self.ops_position_variance
+        odometry.pose.covariance[7] = self.ops_position_variance
+        # Configured sensor uncertainty, not an EKF posterior. The fallback
+        # difference has no calibrated variance, so publish high uncertainty.
+        for index, variance in zip((0, 7, 35), self.wheel_twist_variances):
+            odometry.twist.covariance[index] = (
+                variance if self.twist_source == "wheel_direct" else 1.0e6
+            )
         self.odom_pub.publish(odometry)
 
         pose_message = PoseStamped()
@@ -1161,9 +1462,13 @@ class Stm32Bridge(Node):
         pose_message.pose = odometry.pose.pose
         self.pose_pub.publish(pose_message)
 
-        raw_x, raw_y, raw_yaw = self._as_ros(
-            self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg, corrected=False
-        )
+        if self.raw_pose_ros is None:
+            raw_x, raw_y, raw_yaw = self._as_ros(
+                self.pose.x_mm, self.pose.y_mm, self.pose.yaw_cdeg,
+                corrected=False,
+            )
+        else:
+            raw_x, raw_y, raw_yaw = self.raw_pose_ros
         raw_pose = PoseStamped()
         raw_pose.header = odometry.header
         raw_pose.pose.position.x = raw_x
@@ -1176,10 +1481,20 @@ class Stm32Bridge(Node):
     # Velocity in
     # ------------------------------------------------------------------
 
+    def _collision_input(self, msg: Twist) -> None:
+        self.collision_stop_gate.update_input(
+            (msg.linear.x, msg.linear.y, msg.angular.z), time.monotonic()
+        )
+
     def _cmd_vel(self, msg: Twist) -> None:
         now_s = time.monotonic()
         self.last_cmd_s = now_s
         self.last_safe_cmd = (msg.linear.x, msg.linear.y, msg.angular.z)
+        if self.collision_stop_gate.is_collision_stop(self.last_safe_cmd, now_s):
+            self.stopped = True
+            self.gate_release_limiter.reset(now_s)
+            self._send_velocity(0.0, 0.0, 0.0, source="collision_stop")
+            return
         if (
             self.nurse_scan_soft_stop
             and self._pose_is_fresh()
@@ -1191,16 +1506,27 @@ class Stm32Bridge(Node):
                 msg.linear.y,
                 msg.angular.z,
                 source="nurse_scan_soft_stop",
+                clear_emergency=True,
             )
             return
         if not self._motion_is_authorized():
             self.stopped = True
             self.gate_release_limiter.reset(now_s)
-            self._send_velocity(0.0, 0.0, 0.0, source="task_gate")
+            self._send_velocity(
+                0.0,
+                0.0,
+                0.0,
+                source="task_gate",
+                clear_emergency=True,
+            )
             return
         self.stopped = False
         self._send_velocity(
-            msg.linear.x, msg.linear.y, msg.angular.z, source="nav2"
+            msg.linear.x,
+            msg.linear.y,
+            msg.angular.z,
+            source="nav2",
+            clear_emergency=True,
         )
 
     def _motion_is_authorized(self) -> bool:
@@ -1242,8 +1568,8 @@ class Stm32Bridge(Node):
         source: str,
         release_limited_cmd,
         sent_cmd,
-        planar_scale: float,
-        wheel_scale: float,
+        axis_limit_scale: float,
+        yaw_headroom_scale: float,
         requested_wheel_peak: float,
         yaw_mode: str,
         transport_sent: bool,
@@ -1282,8 +1608,11 @@ class Stm32Bridge(Node):
                         ),
                     },
                     "xdrive": {
-                        "planar_scale": round(float(planar_scale), 4),
-                        "wheel_scale": round(float(wheel_scale), 4),
+                        "model": "cross",
+                        "axis_limit_scale": round(float(axis_limit_scale), 4),
+                        "yaw_headroom_scale": round(
+                            float(yaw_headroom_scale), 4
+                        ),
                         "requested_wheel_peak_m_s": round(
                             float(requested_wheel_peak), 4
                         ),
@@ -1302,12 +1631,27 @@ class Stm32Bridge(Node):
                 throttle_duration_sec=2.0,
             )
 
-    def _send_velocity(self, vx: float, vy: float, wz: float, source: str) -> None:
+    def _send_velocity(
+        self,
+        vx: float,
+        vy: float,
+        wz: float,
+        source: str,
+        clear_emergency: bool = False,
+    ) -> None:
         # Keep ROS body signs on the wire. The STM32 is the only layer that
         # knows motor mounting signs and converts these values to wheel RPM.
         now_s = time.monotonic()
-        mppi_wz = float(wz)
+        # The unified DWB controller supplies the navigation command. Nurse
+        # scan viewpoints are deliberately translation-only for this test;
+        # suppress both DWB's RotateToGoal output and any fallback path yaw
+        # before heading hold and wheel limiting are evaluated.
         task_state = self.pose.task_state if self.pose is not None else -1
+        nurse_scan_translation_only = (
+            task_state == TASK_NAV_NURSE
+            and source in ("nav2", "nurse_scan_soft_stop")
+        )
+        nav_wz = 0.0 if nurse_scan_translation_only else float(wz)
         current_yaw_rad = (
             self.yaw_sign * math.radians(self.pose.yaw_cdeg / 100.0)
             if self.pose is not None
@@ -1322,12 +1666,15 @@ class Stm32Bridge(Node):
         wz, heading_hold_mode, heading_error_rad = (
             self.heading_hold_controller.update(
                 task_state=task_state,
-                mppi_wz_rad_s=mppi_wz,
+                nav_wz_rad_s=nav_wz,
                 current_yaw_rad=current_yaw_rad,
                 pose_fresh=self._pose_is_fresh(),
                 now_s=now_s,
                 # Stop, watchdog and task-transition commands must remain zero.
-                allow_override=source == "nav2",
+                allow_override=(
+                    source == "nav2"
+                    and not CollisionStopGate.is_zero((vx, vy, nav_wz))
+                ),
                 forward_velocity_m_s=vx,
                 yaw_rate_rad_s=current_yaw_rate_rad_s,
             )
@@ -1348,7 +1695,7 @@ class Stm32Bridge(Node):
                 if heading_error_rad is not None
                 else None
             ),
-            "mppi_wz": round(mppi_wz, 4),
+            "nav_wz": round(nav_wz, 4),
             "controller_wz": round(float(wz), 4),
             "profile": self.heading_hold_controller.last_profile,
             "reverse_blend": round(
@@ -1385,16 +1732,15 @@ class Stm32Bridge(Node):
             vx,
             vy,
             wz,
-            planar_scale,
-            wheel_scale,
+            axis_limit_scale,
+            yaw_headroom_scale,
             requested_wheel_peak,
             yaw_mode,
-        ) = limit_xdrive_command(
+        ) = limit_crossdrive_command(
             vx,
             vy,
             wz,
-            self.max_planar_speed_m_s,
-            self.max_wheel_speed_m_s,
+            self.max_axis_speed_m_s,
             self.gate_release_limiter.yaw_radius_m,
             max(
                 self.heading_correction_max_wz_rad_s,
@@ -1407,8 +1753,8 @@ class Stm32Bridge(Node):
             self.active_rotation_max_wz_rad_s,
             self.active_rotation_linear_threshold_m_s,
         )
-        self.last_planar_normalization_scale = planar_scale
-        self.last_wheel_normalization_scale = wheel_scale
+        self.last_axis_limit_scale = axis_limit_scale
+        self.last_yaw_headroom_scale = yaw_headroom_scale
         self.last_requested_wheel_peak_m_s = requested_wheel_peak
         self.last_yaw_mode = yaw_mode
         vx_mm = vx * 1000.0
@@ -1437,13 +1783,29 @@ class Stm32Bridge(Node):
                     f"{source}: vx={vx_mm:.0f} vy={vy_mm:.0f} "
                     f"wz={wz_cdeg:.0f} mm/s,cdeg/s"
                 )
+            if source == "collision_stop":
+                stop_frame = encode_frame(
+                    MSG_EMERGENCY_STOP,
+                    self.tx_seq,
+                    encode_emergency_stop(stamp_cs),
+                )
+                if self.transport.send(stop_frame):
+                    self.tx_seq = (self.tx_seq + 1) & 0xFF
+            elif clear_emergency:
+                clear_frame = encode_frame(
+                    MSG_EMERGENCY_CLEAR,
+                    self.tx_seq,
+                    encode_emergency_clear(stamp_cs),
+                )
+                if self.transport.send(clear_frame):
+                    self.tx_seq = (self.tx_seq + 1) & 0xFF
 
         self._publish_bridge_cmd_debug(
             source,
             release_limited_cmd,
             sent_cmd,
-            planar_scale,
-            wheel_scale,
+            axis_limit_scale,
+            yaw_headroom_scale,
             requested_wheel_peak,
             yaw_mode,
             transport_sent,
@@ -1484,6 +1846,7 @@ class Stm32Bridge(Node):
             )
             self.navigator_state = effective_nav_state
             self.navigator_plan_ready = plan_ready
+            self.navigator_result = str(status.get("result", "waiting_path"))
             self.last_navigator_status_s = received_s
             if effective_nav_state == NAV_FOLLOWING:
                 if not was_following:
@@ -1534,6 +1897,7 @@ class Stm32Bridge(Node):
             self.tx_seq = (self.tx_seq + 1) & 0xFF
 
     def _publish_status(self) -> None:
+        self._update_measured_twist()
         status = {
             "serial": self.transport.connected,
             "pose": self._pose_is_fresh(),
@@ -1544,18 +1908,62 @@ class Stm32Bridge(Node):
             "stm32_ready_transitions": self.stm32_readiness.transitions,
             "stm32_recovery_hold_s": self.stm32_readiness.recovery_hold_s,
             "stm32_telemetry_timeout_s": self.stm32_telemetry_timeout_s,
-            "odom_source": (
-                "wheel_ekf_xy_hwt101ct_yaw"
-                if self._wheel_odom_is_fresh()
-                else "ops_hwt_direct"
-            ),
+            "odom_source": "ops_hwt_sample_timed",
+            "twist_source": self.twist_source,
             "yaw_source": "HWT101CT_direct",
+            "pose_timing": {
+                "source": self.pose_timing_source,
+                "pose_age_s": (
+                    round(
+                        max(
+                            0.0,
+                            (
+                                self.get_clock().now().nanoseconds
+                                - self.pose_measurement_stamp_ns
+                            )
+                            / 1.0e9,
+                        ),
+                        4,
+                    )
+                    if self.pose_measurement_stamp_ns > 0
+                    else None
+                ),
+                "ops_hwt_skew_ms": (
+                    round(
+                        abs(
+                            self.ops_measurement_stamp_ns
+                            - self.hwt_measurement_stamp_ns
+                        )
+                        / 1.0e6,
+                        2,
+                    )
+                    if self.ops_measurement_stamp_ns > 0
+                    and self.hwt_measurement_stamp_ns > 0
+                    else None
+                ),
+            },
             "mission_epoch": self.mission_epoch,
             "cmd_count": self.cmd_count,
             "stopped": self.stopped,
             "dry_run": self.dry_run,
             "task_gate": self.enforce_task_gate,
             "motion_authorized": self._motion_is_authorized(),
+            "arm_debug": {
+                "allowed": self._arm_debug_allowed(),
+                "deployed": self.arm_debug_deployed,
+                "pending": self.pending_arm_debug is not None,
+                "requested_deployed": (
+                    self.pending_arm_debug["deployed"]
+                    if self.pending_arm_debug is not None
+                    else self.arm_debug_deployed
+                ),
+                "attempts": (
+                    self.pending_arm_debug["attempts"]
+                    if self.pending_arm_debug is not None
+                    else 0
+                ),
+                "result": self.arm_debug_result,
+            },
             "nurse_scan_soft_stop": self.nurse_scan_soft_stop,
             "gate_release_limiter": {
                 "mode": "continuous_asymmetric",
@@ -1576,9 +1984,9 @@ class Stm32Bridge(Node):
                 },
             },
             "xdrive_limits": {
-                "enabled": self.max_wheel_speed_m_s > 0.0,
-                "max_planar_speed_m_s": self.max_planar_speed_m_s,
-                "max_wheel_speed_m_s": self.max_wheel_speed_m_s,
+                "model": "cross",
+                "enabled": self.max_axis_speed_m_s > 0.0,
+                "max_axis_speed_m_s": self.max_axis_speed_m_s,
                 "heading_correction_max_wz_rad_s": (
                     self.heading_correction_max_wz_rad_s
                 ),
@@ -1592,11 +2000,11 @@ class Stm32Bridge(Node):
                 "requested_peak_m_s": round(
                     self.last_requested_wheel_peak_m_s, 3
                 ),
-                "planar_scale": round(
-                    self.last_planar_normalization_scale, 3
+                "axis_limit_scale": round(
+                    self.last_axis_limit_scale, 3
                 ),
-                "translation_wheel_scale": round(
-                    self.last_wheel_normalization_scale, 3
+                "yaw_headroom_scale": round(
+                    self.last_yaw_headroom_scale, 3
                 ),
             },
             "heading_hold": {
@@ -1651,15 +2059,10 @@ class Stm32Bridge(Node):
             },
         }
         if self.pose is not None:
-            waiting_for_start = self.pose.task_state in START_WAIT_TASK_STATES
-            path_ready = (
-                waiting_for_start and self.pose.nav_status == NAV_FOLLOWING
-            )
-            status["start_gate"] = {
-                "waiting_for_button": waiting_for_start,
-                "path_ready": path_ready,
-                "can_start": path_ready,
-            }
+            status["start_gate"] = start_gate_status(
+                self.pose.task_state, self.pose.nav_status, status["pose"],
+                self.stm32_readiness.ready, self.stm32_readiness.state,
+                self.transport.connected, status["goal_gate"], self.navigator_result)
             status["stm32"] = {
                 "x_mm": self.pose.x_mm,
                 "y_mm": self.pose.y_mm,
@@ -1672,12 +2075,13 @@ class Stm32Bridge(Node):
                 "waiting_for_button": False,
                 "path_ready": False,
                 "can_start": False,
+                "reason": "waiting_pose" if self.transport.connected else "serial_disconnected",
             }
         if self.stp23l is not None:
             status["stp23l"] = {
-                "a_right_mm": self.stp23l.a_mm,
+                "a_left_mm": self.stp23l.a_mm,
                 "b_front_mm": self.stp23l.b_mm,
-                "c_left_mm": self.stp23l.c_mm,
+                "c_right_mm": self.stp23l.c_mm,
                 "valid_mask": self.stp23l.valid_mask,
             }
         if self.wheel_odom is not None:
@@ -1697,9 +2101,15 @@ class Stm32Bridge(Node):
             "last_ack": self.last_scan_ack,
         }
         status["tts"] = {
-            "playing": self.tts_future is not None,
+            "playing": (
+                self.tts_future is not None or self.tts_debug_future is not None
+            ),
             "keepalive": self.tts_player.keepalive_active,
             "last_status": self.last_tts_status,
+            "debug_allowed": self._tts_debug_allowed(),
+            "debug_playing": self.tts_debug_future is not None,
+            "debug_bed": self.tts_debug_bed,
+            "debug_result": self.tts_debug_result,
             "bed1_audio_file": self.tts_player.audio_files[1],
             "bed3_audio_file": self.tts_player.audio_files[3],
             "volume_percent": self.tts_player.volume_percent,
@@ -1707,6 +2117,9 @@ class Stm32Bridge(Node):
         message = String()
         message.data = json.dumps(status, ensure_ascii=False)
         self.status_pub.publish(message)
+        epoch = UInt32()
+        epoch.data = self.mission_epoch
+        self.mission_epoch_pub.publish(epoch)
 
     def destroy_node(self):
         self.tts_executor.shutdown(wait=False, cancel_futures=True)

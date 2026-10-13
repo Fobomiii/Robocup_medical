@@ -29,6 +29,14 @@ class StaticMapTest(unittest.TestCase):
         resolution = float(metadata["resolution"])
         origin_x, origin_y = (float(value) for value in metadata["origin"][:2])
 
+        def pixel_at(world_x, world_y):
+            grid_x = math.floor((world_x - origin_x) / resolution + 1.0e-9)
+            grid_y = math.floor((world_y - origin_y) / resolution + 1.0e-9)
+            self.assertTrue(0 <= grid_x < width)
+            self.assertTrue(0 <= grid_y < height)
+            row = height - 1 - grid_y
+            return pixels[row * width + grid_x]
+
         # Every fixed fixture, including the three bedside cabinets, must be
         # represented by an occupied cell at its surveyed centre.
         for fixture in field["fixtures"]:
@@ -46,6 +54,11 @@ class StaticMapTest(unittest.TestCase):
             row = height - 1 - int(round((ros_y - origin_y) / resolution))
             self.assertTrue(0 <= col < width and 0 <= row < height, name)
             self.assertNotEqual(pixels[row * width + col], 0, name)
+
+        self.assertNotEqual(pixel_at(5.4, 2.475), 0)
+        self.assertEqual(pixel_at(5.4, 2.525), 0)
+        self.assertNotEqual(pixel_at(5.4, -2.475), 0)
+        self.assertEqual(pixel_at(5.4, -2.525), 0)
 
         fixtures = {fixture["name"]: fixture for fixture in field["fixtures"]}
         for bed_name in ("bed1", "bed2", "bed3"):

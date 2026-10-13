@@ -17,31 +17,55 @@ import threading
 import time
 
 from ament_index_python.packages import get_package_share_directory
+from builtin_interfaces.msg import Duration
 from geometry_msgs.msg import PoseStamped
-from nav2_msgs.action import NavigateToPose
+from lifecycle_msgs.srv import GetState
+from nav2_msgs.action import ComputePathToPose, NavigateToPose, SmoothPath
 from nav_msgs.msg import Path
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
-from std_msgs.msg import Bool, String
+from std_msgs.msg import Bool, String, UInt8, UInt32
 
-from .controller_selection import controller_for_route
 from .field_goals import FieldGoal, load_field_goals
 from .nav_protocol import (
     GOAL_NONE,
+    GOAL_NURSE,
+    GOAL_BED1,
+    GOAL_BED3,
+    GOAL_HOME,
     NAV_ERROR,
     NAV_FOLLOWING,
     NAV_IDLE,
     NAV_REACHED,
     NAV_WAIT_PATH,
     SCAN_CONTEXT_ORDER,
+    START_WAIT_TASK_STATES,
+    TASK_WAIT_START,
+    TASK_WAIT_BED1_START,
+    TASK_WAIT_BED3_START,
+    TASK_NAV_NURSE,
+    TASK_NAV_BED1,
+    TASK_NAV_BED3,
+    TASK_NAV_HOME,
 )
-from .nurse_scan_core import (
-    field_yaw_toward,
-    load_nurse_scan_config,
-    next_nurse_viewpoint_index,
+from .nurse_scan_core import load_nurse_scan_config, next_nurse_viewpoint_index
+
+
+# Discovery of an action server does NOT imply an active lifecycle node.
+# These are the nodes needed to plan, follow and safely stop the first route.
+STARTUP_LIFECYCLE_NODES = (
+    "map_server", "planner_server", "smoother_server", "controller_server", "bt_navigator",
+    "velocity_smoother", "collision_monitor",
 )
+TASK_GOALS = {
+    TASK_WAIT_START: GOAL_NURSE, TASK_NAV_NURSE: GOAL_NURSE,
+    TASK_WAIT_BED1_START: GOAL_BED1, TASK_NAV_BED1: GOAL_BED1,
+    TASK_WAIT_BED3_START: GOAL_BED3, TASK_NAV_BED3: GOAL_BED3,
+    TASK_NAV_HOME: GOAL_HOME,
+}
+FOLLOW_PATH_CONTROLLER = "FollowPathDWB"
 
 
 class MedicalNavigator(Node):
@@ -56,6 +80,11 @@ class MedicalNavigator(Node):
             "config",
             "navigate_to_pose_nurse_fast.xml",
         )
+        default_nav_bt = os.path.join(
+            get_package_share_directory("obstacle_detector"),
+            "config",
+            "navigate_to_pose_1hz.xml",
+        )
         self.declare_parameter("map_config", default_map)
         self.declare_parameter("map_frame", "map")
         self.declare_parameter("yaw_sign", -1.0)
@@ -63,6 +92,12 @@ class MedicalNavigator(Node):
         self.declare_parameter("startup_rejection_retry_limit", 20)
         self.declare_parameter("goal_handoff_timeout_s", 1.0)
         self.declare_parameter("nurse_bt_xml", default_nurse_bt)
+        self.declare_parameter("nav_bt_xml", default_nav_bt)
+        self.declare_parameter("preview_interval_s", 1.0)
+        self.declare_parameter("preview_timeout_s", 5.0)
+        self.declare_parameter("preview_smoother_id", "constrained_smoother")
+        self.declare_parameter("preview_smoothing_duration_s", 0.45)
+        self.declare_parameter("lifecycle_state_timeout_s", 3.0)
 
         get = lambda name: self.get_parameter(name).value
         self.map_frame = str(get("map_frame"))
@@ -75,9 +110,22 @@ class MedicalNavigator(Node):
             0.2, float(get("goal_handoff_timeout_s"))
         )
         self.nurse_bt_xml = str(get("nurse_bt_xml"))
+        self.nav_bt_xml = str(get("nav_bt_xml"))
+        self.preview_interval_s = max(0.5, float(get("preview_interval_s")))
+        self.preview_timeout_s = max(1.0, float(get("preview_timeout_s")))
+        self.preview_smoother_id = str(get("preview_smoother_id"))
+        self.preview_smoothing_duration_s = max(
+            0.01, float(get("preview_smoothing_duration_s"))
+        )
+        self.lifecycle_state_timeout_s = max(
+            1.0, float(get("lifecycle_state_timeout_s")))
         if not os.path.isfile(self.nurse_bt_xml):
             raise FileNotFoundError(
                 f"nurse-station behavior tree is missing: {self.nurse_bt_xml}"
+            )
+        if not os.path.isfile(self.nav_bt_xml):
+            raise FileNotFoundError(
+                f"delivery behavior tree is missing: {self.nav_bt_xml}"
             )
 
         map_config = str(get("map_config"))
@@ -110,15 +158,34 @@ class MedicalNavigator(Node):
         self.nurse_next_goal = None
         self.nurse_qr_seen = False
         self.plan_ready = False
-        self.active_controller_id = None
-        self.requested_controller_id = None
-        self.controller_source_goal = None
-        self.controller_destination_goal = None
+        self.active_controller_id = FOLLOW_PATH_CONTROLLER
         self.stm32_ready = False
         self.deferred_goal_request = None
+        self.task_state = None
+        self.preview_token = 0
+        self.preview_inflight = False
+        self.preview_started_s = 0.0
+        self.preview_next_s = 0.0
+        self.preview_handle = None
+        self.lifecycle_states = {}
+        self.lifecycle_query = None
+        self.lifecycle_index = 0
+        self.lifecycle_poll_not_before_s = None
+        self.mission_epoch = None
+        self.sent_goal = None
+        self.goal_send_stamp_ns = 0
+        self.candidate_plan = None
         self.lock = threading.Lock()
 
         self.nav_client = ActionClient(self, NavigateToPose, "navigate_to_pose")
+        self.preview_client = ActionClient(
+            self, ComputePathToPose, "compute_path_to_pose")
+        self.preview_smoother_client = ActionClient(
+            self, SmoothPath, "smooth_path")
+        self.lifecycle_clients = {
+            name: self.create_client(GetState, f"/{name}/get_state")
+            for name in STARTUP_LIFECYCLE_NODES
+        }
 
         latched = QoSProfile(
             depth=1,
@@ -127,9 +194,6 @@ class MedicalNavigator(Node):
         )
         self.status_pub = self.create_publisher(String, "/medical_nav/navigator_status", 10)
         self.plan_pub = self.create_publisher(Path, "/medical_nav/plan", latched)
-        self.controller_selector_pub = self.create_publisher(
-            String, "/controller_selector", latched
-        )
         self.create_subscription(String, "/medical_nav/goal_request", self._goal_request, 10)
         self.create_subscription(String, "/medical_nav/scan_result", self._scan_result, 10)
         self.create_subscription(
@@ -137,24 +201,385 @@ class MedicalNavigator(Node):
         )
         self.create_subscription(Path, "/plan", self._nav2_plan, 10)
         self.create_subscription(
+            UInt8, "/medical_nav/task_state", self._task_state_changed, 10)
+        self.create_subscription(
             Bool,
             "/medical_nav/stm32_ready",
             self._stm32_ready_changed,
             10,
         )
+        self.create_subscription(
+            UInt32,
+            "/medical_nav/mission_epoch",
+            self._mission_epoch_changed,
+            latched,
+        )
 
         self.create_timer(0.5, self._pending_goal_tick)
         self.create_timer(0.5, self._publish_status)
-        # ControllerSelector may be created when a behavior tree starts.
-        # Repeat the selection while a goal is active so it cannot miss the
-        # one-shot message sent immediately before the NavigateToPose goal.
-        self.create_timer(0.2, self._publish_controller_selection)
+        self.create_timer(0.25, self._poll_nav2_lifecycle)
         self.get_logger().info(
             f"Navigator ready | goals={sorted(self.goals_by_name)} "
             f"| nav2={'up' if self.nav_client.server_is_ready() else 'starting'}"
         )
 
     # ------------------------------------------------------------------
+
+    def _poll_nav2_lifecycle(self) -> None:
+        """Query lifecycle state only after Nav2 action discovery settles."""
+        now = time.monotonic()
+        with self.lock:
+            actions_ready = all(self._startup_actions_locked().values())
+            if not actions_ready:
+                self.lifecycle_poll_not_before_s = None
+                return
+            if self.lifecycle_poll_not_before_s is None:
+                self.lifecycle_poll_not_before_s = now + 2.0
+                return
+            if now < self.lifecycle_poll_not_before_s:
+                return
+            pending = self.lifecycle_query
+            if pending is not None:
+                if now - pending[2] < self.lifecycle_state_timeout_s:
+                    return
+                self.lifecycle_query = None
+                self.lifecycle_states[pending[0]] = (0, now)
+
+        for _ in STARTUP_LIFECYCLE_NODES:
+            name = STARTUP_LIFECYCLE_NODES[self.lifecycle_index]
+            self.lifecycle_index = (
+                self.lifecycle_index + 1
+            ) % len(STARTUP_LIFECYCLE_NODES)
+            client = self.lifecycle_clients[name]
+            if not client.service_is_ready():
+                with self.lock:
+                    self.lifecycle_states[name] = (0, now)
+                continue
+            try:
+                future = client.call_async(GetState.Request())
+                with self.lock:
+                    self.lifecycle_query = (name, future, now)
+                future.add_done_callback(
+                    lambda completed, node=name: self._lifecycle_state(node, completed))
+                return
+            except Exception as exc:
+                self.get_logger().warn(f"Cannot query {name} lifecycle: {exc}")
+                with self.lock:
+                    self.lifecycle_states[name] = (0, now)
+                return
+
+    def _lifecycle_state(self, name, future) -> None:
+        try:
+            state = int(future.result().current_state.id)
+        except Exception:
+            state = 0
+        with self.lock:
+            pending = self.lifecycle_query
+            if pending is None or pending[0] != name or pending[1] is not future:
+                return
+            self.lifecycle_query = None
+            self.lifecycle_states[name] = (state, time.monotonic())
+
+    def _inactive_startup_nodes_locked(self):
+        now = time.monotonic()
+        return [name for name in STARTUP_LIFECYCLE_NODES
+                if name not in self.lifecycle_states
+                or self.lifecycle_states[name][0] != 3  # PRIMARY_STATE_ACTIVE
+                or now - self.lifecycle_states[name][1] > self.lifecycle_state_timeout_s]
+
+    def _startup_actions_locked(self):
+        return {
+            "navigate_to_pose": self.nav_client.server_is_ready(),
+            "compute_path_to_pose": self.preview_client.server_is_ready(),
+            "smooth_path": self.preview_smoother_client.server_is_ready(),
+        }
+
+    def _startup_ready_locked(self):
+        return (
+            not self._inactive_startup_nodes_locked()
+            and all(self._startup_actions_locked().values())
+        )
+
+    def _invalidate_preview_locked(self):
+        self.preview_token += 1
+        handle = self.preview_handle
+        self.preview_handle = None
+        self.preview_inflight = False
+        self.preview_next_s = 0.0
+        return handle
+
+    def _cancel_preview(self, handle) -> None:
+        if handle is not None:
+            try:
+                handle.cancel_goal_async()
+            except Exception as exc:
+                self.get_logger().warn(f"Cannot cancel prestart planning: {exc}")
+
+    def _task_state_changed(self, message: UInt8) -> None:
+        state = int(message.data)
+        with self.lock:
+            previous = self.task_state
+            self.task_state = state
+            if state == previous:
+                return
+            handle = self._invalidate_preview_locked()
+            # A press changes only the STM32 task state, not its goal request.
+            # Begin the queued route ourselves; do not wait for a second request.
+            goal = self.pending_goal if self.busy and not self.waiting_for_cancel else None
+            generation = self.goal_generation
+            if goal is not None:
+                self.plan_ready = False
+                self.nav_status = NAV_WAIT_PATH
+                self.last_result = "task_state_changed"
+        self._cancel_preview(handle)
+        self._publish_status()
+        if goal is not None:
+            self._send_goal(goal, generation)
+
+    def _target_pose(self, goal):
+        target = PoseStamped()
+        target.header.frame_id = self.map_frame
+        target.header.stamp = self.get_clock().now().to_msg()
+        target.pose.position.x = float(goal.y_mm) / 1000.0
+        target.pose.position.y = -float(goal.x_mm) / 1000.0
+        yaw = self.yaw_sign * math.radians(float(goal.yaw_deg))
+        target.pose.orientation.z = math.sin(yaw * 0.5)
+        target.pose.orientation.w = math.cos(yaw * 0.5)
+        return target
+
+    def _path_matches_goal(self, path, goal) -> bool:
+        if goal is None or path.header.frame_id != self.map_frame or not path.poses:
+            return False
+        endpoint = path.poses[-1].pose.position
+        return math.hypot(endpoint.x - goal.y_mm / 1000.0,
+                          endpoint.y + goal.x_mm / 1000.0) <= 0.20
+
+    def _preview_goal(self, goal, generation: int) -> None:
+        """Plan only while the physical start button still locks the chassis.
+
+        NavigateToPose before C ran FollowPath/recovery and the nurse's 6 s
+        timer against a robot which was forbidden to move. ComputePathToPose
+        has no controller or motion recovery and can safely retry during boot.
+        """
+        now = time.monotonic()
+        cancel_handle = None
+        with self.lock:
+            if (generation != self.goal_generation or not self.stm32_ready
+                    or self.task_state not in START_WAIT_TASK_STATES
+                    or self.waiting_for_cancel):
+                return
+            inactive = self._inactive_startup_nodes_locked()
+            if (inactive or not self.preview_client.server_is_ready()
+                    or not self.preview_smoother_client.server_is_ready()
+                    or not self.nav_client.server_is_ready()):
+                self.plan_ready = False
+                self.nav_status = NAV_WAIT_PATH
+                self.last_result = "waiting_for_nav2_active:" + ",".join(inactive or ["actions"])
+                cancel_handle = self._invalidate_preview_locked()
+                waiting = True
+            else:
+                waiting = False
+                if self.preview_inflight:
+                    if now - self.preview_started_s < self.preview_timeout_s:
+                        return
+                    cancel_handle = self._invalidate_preview_locked()
+                    self.plan_ready = False
+                    self.nav_status = NAV_WAIT_PATH
+                    self.last_result = "prestart_plan_timeout_retry"
+                    self.preview_next_s = now + self.preview_interval_s
+                if now < self.preview_next_s:
+                    return_after_cancel = True
+                else:
+                    return_after_cancel = False
+                    self.preview_token += 1
+                    token = self.preview_token
+                    self.preview_inflight = True
+                    self.preview_started_s = now
+        self._cancel_preview(cancel_handle)
+        if waiting or return_after_cancel:
+            self._publish_status()
+            return
+        request = ComputePathToPose.Goal()
+        request.goal = self._target_pose(goal)
+        request.planner_id = "GridBased"
+        request.use_start = False
+        try:
+            future = self.preview_client.send_goal_async(request)
+            future.add_done_callback(
+                lambda completed: self._preview_accepted(completed, generation, token, goal))
+        except Exception as exc:
+            self._preview_failed(generation, token, f"send_exception:{exc}")
+
+    def _preview_current_locked(self, generation, token):
+        return (generation == self.goal_generation and token == self.preview_token
+                and self.stm32_ready and self.busy
+                and self.task_state in START_WAIT_TASK_STATES)
+
+    def _preview_failed(self, generation, token, reason):
+        with self.lock:
+            if not self._preview_current_locked(generation, token):
+                return
+            self.preview_inflight = False
+            self.preview_handle = None
+            self.preview_next_s = time.monotonic() + self.preview_interval_s
+            self.plan_ready = False
+            self.nav_status = NAV_WAIT_PATH
+            self.last_result = f"prestart_plan_retry:{reason}"
+        self.get_logger().warn(f"Prestart planning will retry: {reason}",
+                               throttle_duration_sec=5.0)
+        self._publish_plan(Path())
+        self._publish_status()
+
+    def _preview_ready(self, generation, token, path, result):
+        with self.lock:
+            if not self._preview_current_locked(generation, token):
+                return False
+            self.preview_inflight = False
+            self.preview_handle = None
+            self.preview_next_s = time.monotonic() + self.preview_interval_s
+            self.plan_ready = not self._inactive_startup_nodes_locked()
+            self.nav_status = NAV_FOLLOWING if self.plan_ready else NAV_WAIT_PATH
+            self.last_result = result if self.plan_ready else "waiting_for_nav2_active"
+        self._publish_plan(path)
+        self._publish_status()
+        return True
+
+    def _preview_smoothing_failed(self, generation, token, raw_path, reason):
+        if not self._preview_ready(
+            generation,
+            token,
+            raw_path,
+            f"prestart_raw_path_ready:{reason}",
+        ):
+            return
+        self.get_logger().warn(
+            f"Prestart smoothing failed; using validated raw path: {reason}",
+            throttle_duration_sec=5.0,
+        )
+
+    def _preview_accepted(self, future, generation, token, goal):
+        try:
+            handle = future.result()
+        except Exception as exc:
+            self._preview_failed(generation, token, f"accept_exception:{exc}")
+            return
+        with self.lock:
+            current = self._preview_current_locked(generation, token)
+            if current and handle is not None and handle.accepted:
+                self.preview_handle = handle
+        if not current:
+            if handle is not None and handle.accepted:
+                self._cancel_preview(handle)
+            return
+        if handle is None or not handle.accepted:
+            self._preview_failed(generation, token, "rejected")
+            return
+        try:
+            handle.get_result_async().add_done_callback(
+                lambda completed: self._preview_finished(completed, generation, token, goal))
+        except Exception as exc:
+            self._cancel_preview(handle)
+            self._preview_failed(generation, token, f"result_request_exception:{exc}")
+
+    def _preview_finished(self, future, generation, token, goal):
+        try:
+            result = future.result()
+            path = result.result.path
+            valid = int(result.status) == 4 and self._path_matches_goal(path, goal)
+        except Exception as exc:
+            self._preview_failed(generation, token, f"result_exception:{exc}")
+            return
+        if not valid:
+            self._preview_failed(generation, token, "failed_or_empty_path")
+            return
+        request = SmoothPath.Goal()
+        request.path = path
+        request.smoother_id = self.preview_smoother_id
+        duration_ns = int(self.preview_smoothing_duration_s * 1_000_000_000)
+        request.max_smoothing_duration = Duration(
+            sec=duration_ns // 1_000_000_000,
+            nanosec=duration_ns % 1_000_000_000,
+        )
+        request.check_for_collisions = True
+        with self.lock:
+            if not self._preview_current_locked(generation, token):
+                return
+            self.preview_handle = None
+            self.last_result = "prestart_smoothing"
+        try:
+            smooth_future = self.preview_smoother_client.send_goal_async(request)
+            smooth_future.add_done_callback(
+                lambda completed: self._preview_smooth_accepted(
+                    completed, generation, token, goal, path
+                )
+            )
+        except Exception as exc:
+            self._preview_smoothing_failed(
+                generation, token, path, f"smooth_send_exception:{exc}"
+            )
+
+    def _preview_smooth_accepted(
+        self, future, generation, token, goal, raw_path
+    ):
+        try:
+            handle = future.result()
+        except Exception as exc:
+            self._preview_smoothing_failed(
+                generation,
+                token,
+                raw_path,
+                f"smooth_accept_exception:{exc}",
+            )
+            return
+        with self.lock:
+            current = self._preview_current_locked(generation, token)
+            if current and handle is not None and handle.accepted:
+                self.preview_handle = handle
+        if not current:
+            if handle is not None and handle.accepted:
+                self._cancel_preview(handle)
+            return
+        if handle is None or not handle.accepted:
+            self._preview_smoothing_failed(
+                generation, token, raw_path, "smooth_rejected"
+            )
+            return
+        try:
+            handle.get_result_async().add_done_callback(
+                lambda completed: self._preview_smoothed(
+                    completed, generation, token, goal, raw_path
+                )
+            )
+        except Exception as exc:
+            self._cancel_preview(handle)
+            self._preview_smoothing_failed(
+                generation,
+                token,
+                raw_path,
+                f"smooth_result_request_exception:{exc}",
+            )
+
+    def _preview_smoothed(self, future, generation, token, goal, raw_path):
+        try:
+            result = future.result()
+            path = result.result.path
+            valid = int(result.status) == 4 and self._path_matches_goal(path, goal)
+        except Exception as exc:
+            self._preview_smoothing_failed(
+                generation,
+                token,
+                raw_path,
+                f"smooth_result_exception:{exc}",
+            )
+            return
+        if not valid:
+            self._preview_smoothing_failed(
+                generation, token, raw_path, "smooth_failed_or_empty_path"
+            )
+            return
+        self._preview_ready(
+            generation, token, path, "prestart_smoothed_path_ready"
+        )
 
     def _reset_nurse_scan_locked(self, active: bool) -> None:
         self.nurse_scan_mode = "approach" if active else "inactive"
@@ -167,12 +592,10 @@ class MedicalNavigator(Node):
         self.nurse_qr_seen = False
 
     def _nurse_goal_at(self, name: str, x_mm: float, y_mm: float) -> FieldGoal:
-        yaw_deg = field_yaw_toward(
-            x_mm,
-            y_mm,
-            self.nurse_scan_config.qr_x_mm,
-            self.nurse_scan_config.qr_y_mm,
-        )
+        # Scan viewpoints are translation-only for this test.  Do not derive a
+        # different goal heading from the QR position or let fallback points
+        # introduce an implicit in-place rotation.
+        yaw_deg = 0.0
         return FieldGoal(
             goal_id=self.nurse_goal_id,
             name=name,
@@ -223,6 +646,7 @@ class MedicalNavigator(Node):
         with self.lock:
             if not (
                 self.busy
+                and self.task_state not in START_WAIT_TASK_STATES
                 and self.active_goal_id == self.nurse_goal_id
                 and self.nurse_scan_mode != "inactive"
             ):
@@ -384,56 +808,74 @@ class MedicalNavigator(Node):
 
     def _stm32_ready_changed(self, msg: Bool) -> None:
         ready = bool(msg.data)
-        cancel_handle = None
         deferred_request = None
         with self.lock:
             if ready == self.stm32_ready:
                 return
             self.stm32_ready = ready
             if not ready:
-                cancel_handle = self.active_goal_handle or self.cancel_goal_handle
-                self.goal_generation += 1
-                self.busy = False
-                self.pending_goal = None
-                self.active_goal_handle = None
-                self.cancel_goal_handle = None
-                self.waiting_for_cancel = False
-                self.cancel_started_s = 0.0
-                self.cancel_attempt = 0
-                self.active_goal_id = GOAL_NONE
-                self.active_request_id = 0
-                self.requested_controller_id = None
-                self.controller_source_goal = None
-                self.controller_destination_goal = None
-                self.plan_ready = False
-                self.nav_status = NAV_IDLE
-                self.last_result = "stm32_rebooting"
-                self.deferred_goal_request = None
-                self._reset_nurse_scan_locked(False)
+                self.last_result = "stm32_telemetry_paused"
             else:
                 deferred_request = self.deferred_goal_request
                 self.deferred_goal_request = None
-                self.last_result = "stm32_ready"
+                self.last_result = "stm32_telemetry_resumed"
 
-        if cancel_handle is not None:
-            try:
-                cancel_handle.cancel_goal_async()
-            except Exception as exc:
-                self.get_logger().warn(
-                    f"Cannot cancel navigation during STM32 reset: {exc}"
-                )
-        self._publish_plan(Path())
         self._publish_status()
         if ready:
             self.get_logger().info(
-                "STM32 recovery complete; accepting navigation requests"
+                "STM32 telemetry resumed; preserved navigation handoff state"
             )
             if deferred_request is not None:
                 self.dispatch(*deferred_request)
         else:
             self.get_logger().warn(
-                "STM32 reset detected; canceled navigation and cleared handoff state"
+                "STM32 telemetry paused; motion is blocked but the active mission is preserved"
             )
+
+    def _mission_epoch_changed(self, msg: UInt32) -> None:
+        epoch = int(msg.data)
+        cancel_handle = None
+        preview_handle = None
+        with self.lock:
+            previous_epoch = self.mission_epoch
+            self.mission_epoch = epoch
+            if previous_epoch is None or epoch == previous_epoch:
+                return
+            preview_handle = self._invalidate_preview_locked()
+            cancel_handle = self.active_goal_handle or self.cancel_goal_handle
+            self.goal_generation += 1
+            self.busy = False
+            self.pending_goal = None
+            self.active_goal_handle = None
+            self.cancel_goal_handle = None
+            self.waiting_for_cancel = False
+            self.cancel_started_s = 0.0
+            self.cancel_attempt = 0
+            self.active_goal_id = GOAL_NONE
+            self.active_request_id = 0
+            self.plan_ready = False
+            self.sent_goal = None
+            self.candidate_plan = None
+            self.goal_send_stamp_ns = 0
+            self.nav_status = NAV_IDLE
+            self.last_result = "mission_epoch_changed"
+            self.deferred_goal_request = None
+            self._reset_nurse_scan_locked(False)
+
+        self._cancel_preview(preview_handle)
+        if cancel_handle is not None:
+            try:
+                cancel_handle.cancel_goal_async()
+            except Exception as exc:
+                self.get_logger().warn(
+                    f"Cannot cancel navigation after STM32 mission reset: {exc}"
+                )
+        self._publish_plan(Path())
+        self._publish_status()
+        self.get_logger().warn(
+            f"STM32 mission epoch changed {previous_epoch}->{epoch}; "
+            "canceled navigation and cleared handoff state"
+        )
 
     def _goal_request(self, msg: String) -> None:
         try:
@@ -471,9 +913,6 @@ class MedicalNavigator(Node):
                 self.last_result = "unknown_goal"
                 self.busy = False
                 self.pending_goal = None
-                self.requested_controller_id = None
-                self.controller_source_goal = None
-                self.controller_destination_goal = None
                 self.cancel_goal_handle = None
                 self.waiting_for_cancel = False
                 self.cancel_started_s = 0.0
@@ -483,6 +922,7 @@ class MedicalNavigator(Node):
         continuing_same_goal = False
         repeated_terminal_request = False
         previous_handle = None
+        preview_handle = None
         generation = 0
         with self.lock:
             if (
@@ -500,13 +940,7 @@ class MedicalNavigator(Node):
                 self.last_request_s = time.monotonic()
                 continuing_same_goal = True
             else:
-                source_goal = self.goals.get(self.active_goal_id)
-                source_goal_name = (
-                    source_goal.name if source_goal is not None else None
-                )
-                controller_id = controller_for_route(
-                    source_goal_name, goal.name
-                )
+                preview_handle = self._invalidate_preview_locked()
                 previous_handle = self.active_goal_handle or self.cancel_goal_handle
                 self.active_goal_handle = None
                 self.cancel_goal_handle = previous_handle
@@ -519,10 +953,11 @@ class MedicalNavigator(Node):
                 self.rejection_retry_count = 0
                 self.busy = True
                 self.pending_goal = goal
-                self.requested_controller_id = controller_id
-                self.controller_source_goal = source_goal_name
-                self.controller_destination_goal = goal.name
+                self.active_controller_id = FOLLOW_PATH_CONTROLLER
                 self.plan_ready = False
+                self.sent_goal = None
+                self.candidate_plan = None
+                self.goal_send_stamp_ns = 0
                 self.last_request_s = time.monotonic()
                 self.nav_status = NAV_WAIT_PATH
                 self.waiting_for_cancel = previous_handle is not None
@@ -538,6 +973,7 @@ class MedicalNavigator(Node):
         if continuing_same_goal or repeated_terminal_request:
             self._publish_status()
             return True
+        self._cancel_preview(preview_handle)
         self._publish_plan(Path())
         self._publish_status()
         if previous_handle is not None:
@@ -642,6 +1078,21 @@ class MedicalNavigator(Node):
                 or not self.stm32_ready
             ):
                 return
+            waiting_for_button = self.task_state in START_WAIT_TASK_STATES
+            task_known = self.task_state is not None
+            if task_known and TASK_GOALS.get(self.task_state) != goal.goal_id:
+                self.plan_ready = False
+                self.nav_status = NAV_WAIT_PATH
+                self.last_result = "waiting_for_matching_task_goal"
+                return
+        if waiting_for_button:
+            self._preview_goal(goal, generation)
+            return
+        if not task_known:
+            with self.lock:
+                self.last_result = "waiting_for_task_state"
+            return
+        with self.lock:
             self.plan_ready = False
         if not self.nav_client.server_is_ready():
             with self.lock:
@@ -660,38 +1111,43 @@ class MedicalNavigator(Node):
             if generation != self.goal_generation:
                 return
             self.pending_goal = None
-            controller_id = self.requested_controller_id
-            if controller_id is None:
-                controller_id = controller_for_route(
-                    self.controller_source_goal, goal.name
-                )
-            self.active_controller_id = controller_id
+            controller_id = FOLLOW_PATH_CONTROLLER
+            self.active_controller_id = FOLLOW_PATH_CONTROLLER
+            self.sent_goal = goal
+            self.candidate_plan = None
 
-        target = PoseStamped()
-        target.header.frame_id = self.map_frame
-        target.header.stamp = self.get_clock().now().to_msg()
-        # Field frame -> ROS map frame: x forward = field +Y, y left = field -X.
-        target.pose.position.x = float(goal.y_mm) / 1000.0
-        target.pose.position.y = -float(goal.x_mm) / 1000.0
-        yaw = self.yaw_sign * math.radians(float(goal.yaw_deg))
-        target.pose.orientation.z = math.sin(yaw * 0.5)
-        target.pose.orientation.w = math.cos(yaw * 0.5)
+        target = self._target_pose(goal)
+        with self.lock:
+            self.goal_send_stamp_ns = (
+                target.header.stamp.sec * 1_000_000_000 + target.header.stamp.nanosec)
 
         request = NavigateToPose.Goal()
         request.pose = target
         if goal.goal_id == self.nurse_goal_id:
             request.behavior_tree = self.nurse_bt_xml
-        self._publish_controller_selection()
+        else:
+            # Explicitly use the same installed tree as obstacle.launch.py.
+            # Do not silently depend on another bt_navigator default XML.
+            request.behavior_tree = self.nav_bt_xml
         self.get_logger().info(
             f"Dispatching {goal.name} -> map({target.pose.position.x:.2f}, "
             f"{target.pose.position.y:.2f}) request={self.active_request_id} "
-            f"route={self.controller_source_goal or 'unknown'}->{goal.name} "
-            f"controller={controller_id}"
+            f"controller={controller_id} bt={request.behavior_tree}"
         )
-        future = self.nav_client.send_goal_async(
-            request,
-            feedback_callback=lambda feedback: self._feedback(feedback, generation),
-        )
+        try:
+            future = self.nav_client.send_goal_async(
+                request,
+                feedback_callback=lambda feedback: self._feedback(feedback, generation),
+            )
+        except Exception as exc:
+            with self.lock:
+                if generation != self.goal_generation:
+                    return
+                self.pending_goal = goal
+                self.nav_status = NAV_WAIT_PATH
+                self.last_result = "nav2_send_exception"
+            self.get_logger().error(f"Cannot submit goal; queued retry: {exc}")
+            return
         future.add_done_callback(
             lambda completed: self._goal_accepted(completed, generation, goal)
         )
@@ -705,6 +1161,7 @@ class MedicalNavigator(Node):
             if not self.stm32_ready:
                 return
             generation = self.goal_generation
+            waiting_for_button = self.task_state in START_WAIT_TASK_STATES
             if self.waiting_for_cancel:
                 elapsed = time.monotonic() - self.cancel_started_s
                 if elapsed < self.goal_handoff_timeout_s:
@@ -712,6 +1169,7 @@ class MedicalNavigator(Node):
                 retry_cancel = self.cancel_goal_handle
             elif (
                 self.busy
+                and not waiting_for_button
                 and self.active_goal_id == self.nurse_goal_id
                 and self.nurse_scan_mode
                 in {
@@ -727,6 +1185,7 @@ class MedicalNavigator(Node):
                 retry_nurse_cancel = self.active_goal_handle
             elif (
                 self.busy
+                and not waiting_for_button
                 and self.active_goal_id == self.nurse_goal_id
                 and self.nurse_scan_mode == "dwell"
                 and time.monotonic() >= self.nurse_dwell_deadline_s
@@ -734,6 +1193,7 @@ class MedicalNavigator(Node):
                 advance_nurse = True
             elif (
                 self.busy
+                and not waiting_for_button
                 and self.active_goal_id == self.nurse_goal_id
                 and self.nurse_scan_mode == "moving_to_viewpoint"
                 and self.nurse_action_started_s > 0.0
@@ -762,7 +1222,7 @@ class MedicalNavigator(Node):
         if advance_nurse:
             self._send_next_nurse_viewpoint(generation)
             return
-        if goal is not None and self.nav_client.server_is_ready():
+        if goal is not None:
             self._send_goal(goal, generation)
 
     def _feedback(self, feedback, generation: int) -> None:
@@ -791,7 +1251,11 @@ class MedicalNavigator(Node):
             self._publish_status()
 
     def _goal_accepted(self, future, generation: int, requested_goal) -> None:
-        handle = future.result()
+        try:
+            handle = future.result()
+        except Exception as exc:
+            self.get_logger().warn(f"Nav2 goal response failed: {exc}")
+            handle = None
         with self.lock:
             current_generation = generation == self.goal_generation
         if not current_generation:
@@ -838,6 +1302,10 @@ class MedicalNavigator(Node):
                 handle.cancel_goal_async()
                 return
             self.active_goal_handle = handle
+            # /plan may reach us before the independent action-accept reply.
+            # Retain only a timestamp/endpoint-matched candidate for this send.
+            if self.candidate_plan is not None:
+                self.plan_ready = True
             if (
                 self.active_goal_id == self.nurse_goal_id and self.nurse_qr_seen
             ):
@@ -950,18 +1418,25 @@ class MedicalNavigator(Node):
         self._publish_status()
 
     def _nav2_plan(self, msg: Path) -> None:
-        self.plan_pub.publish(msg)
         publish_status = False
         with self.lock:
+            stamp_ns = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
             if (
                 self.busy
-                and self.active_goal_handle is not None
+                and self.task_state not in START_WAIT_TASK_STATES
                 and not self.waiting_for_cancel
                 and len(msg.poses) > 0
-                and not self.plan_ready
+                and self.goal_send_stamp_ns > 0
+                and stamp_ns >= self.goal_send_stamp_ns
+                and self._path_matches_goal(msg, self.sent_goal)
             ):
-                self.plan_ready = True
-                publish_status = True
+                self.candidate_plan = msg
+                if self.active_goal_handle is not None and not self.plan_ready:
+                    self.plan_ready = True
+                    publish_status = True
+            else:
+                return
+        self.plan_pub.publish(msg)
         if publish_status:
             self._publish_status()
 
@@ -970,16 +1445,9 @@ class MedicalNavigator(Node):
 
     # ------------------------------------------------------------------
 
-    def _publish_controller_selection(self) -> None:
-        with self.lock:
-            controller_id = self.active_controller_id if self.busy else None
-        if controller_id is None:
-            return
-        message = String()
-        message.data = controller_id
-        self.controller_selector_pub.publish(message)
-
     def _publish_status(self) -> None:
+        inactive_nodes = self._inactive_startup_nodes_locked()
+        startup_actions = self._startup_actions_locked()
         message = String()
         message.data = json.dumps(
             {
@@ -995,14 +1463,22 @@ class MedicalNavigator(Node):
                 "nurse_scan_mode": self.nurse_scan_mode,
                 "nurse_viewpoint_index": self.nurse_viewpoint_index,
                 "nav2_ready": self.nav_client.server_is_ready(),
+                "startup_ready": not inactive_nodes and all(startup_actions.values()),
+                "startup_actions": startup_actions,
                 "stm32_ready": self.stm32_ready,
+                "mission_epoch": self.mission_epoch,
                 "deferred_goal_request": self.deferred_goal_request,
                 "plan_ready": self.plan_ready,
+                "task_state": self.task_state,
+                "prestart_planning": self.task_state in START_WAIT_TASK_STATES,
+                "preview_inflight": self.preview_inflight,
+                "inactive_startup_nodes": inactive_nodes,
                 "controller_id": self.active_controller_id,
-                "controller_route": {
-                    "from": self.controller_source_goal,
-                    "to": self.controller_destination_goal,
-                },
+                "behavior_tree": (
+                    self.nurse_bt_xml
+                    if self.active_goal_id == self.nurse_goal_id
+                    else self.nav_bt_xml
+                ),
             },
             ensure_ascii=False,
         )

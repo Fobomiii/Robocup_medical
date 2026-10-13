@@ -19,6 +19,7 @@ static volatile float    s_yaw;
 static volatile float    s_wz;
 static volatile uint16_t s_ver;
 static volatile uint32_t s_last_yaw_ms;
+static volatile uint32_t s_last_wz_ms;
 static volatile uint32_t s_last_restart_ms;
 
 volatile float   hwt_zangle = 0.f;  /* Keil Debug: HWT101 航向角 (°) */
@@ -52,6 +53,7 @@ static void parse_frame(const uint8_t *f)
   {
     /* ?????: Wx Wy Wz T ???? Wz ?? offset 6 */
     s_wz = (float)rd_i16(&f[6]) / 32768.f * 2000.f;
+    s_last_wz_ms = HAL_GetTick();
     hwt_online = 1U;
   }
   else if (f[1] == 0x53U)
@@ -133,6 +135,7 @@ void HWT101_Init(void)
   s_wz = 0.f;
   s_ver = 0;
   s_last_yaw_ms = 0U;
+  s_last_wz_ms = 0U;
   s_last_restart_ms = 0U;
   hwt_zangle = 0.f;
   pos_z = 0.f;
@@ -164,6 +167,7 @@ void HWT101_OnUartError(void)
 {
   hwt_online = 0U;
   s_last_yaw_ms = 0U;
+  s_last_wz_ms = 0U;
   (void)hwt_restart_rx();
 }
 
@@ -196,8 +200,33 @@ float HWT101_GetYaw(void)
   return s_yaw;
 }
 
+uint8_t HWT101_GetYawStamped(float *yaw, uint32_t *sample_ms)
+{
+  uint32_t primask;
+
+  if (yaw == NULL || sample_ms == NULL || HWT101_IsOnline() == 0U)
+  {
+    return 0U;
+  }
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  *yaw = s_yaw;
+  *sample_ms = s_last_yaw_ms;
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+  return 1U;
+}
+
 float HWT101_GetWz(void)
 {
+  if (s_last_wz_ms == 0U ||
+      (HAL_GetTick() - s_last_wz_ms) >= HWT_YAW_MAX_AGE_MS)
+  {
+    return 0.0f;
+  }
   return s_wz;
 }
 

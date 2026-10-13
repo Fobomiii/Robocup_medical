@@ -8,6 +8,7 @@
 #include <functional>
 #include <limits>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <stdexcept>
 #include <utility>
@@ -16,6 +17,7 @@
 #include "nav2_costmap_2d/cost_values.hpp"
 #include "nav2_util/node_utils.hpp"
 #include "pluginlib/class_list_macros.hpp"
+#include "medical_clearance_planner/corner_geometry.hpp"
 
 namespace medical_clearance_planner
 {
@@ -332,14 +334,9 @@ double moveTime(
   const double x_speed = body_x >= 0.0 ? params.forward_speed : params.reverse_speed;
   const double x_time = std::abs(body_x) / std::max(0.01, x_speed);
   const double y_time = std::abs(body_y) / std::max(0.01, params.lateral_speed);
-  const double planar_time =
-    std::hypot(body_x, body_y) / std::max(0.01, params.max_planar_speed);
-  // Physical wheel travel for four ordinary omni wheels mounted as a
-  // 45-degree X-drive.  Translation projects onto a wheel with 1/sqrt(2).
-  const double wheel_time =
-    ((std::abs(body_x) + std::abs(body_y)) / kSqrtTwo) /
-    std::max(0.01, params.max_wheel_speed);
-  return std::max({x_time, y_time, planar_time, wheel_time});
+  // The cross layout assigns body X and Y to separate wheel pairs.
+  // Both components may run concurrently at their own limits.
+  return std::max(x_time, y_time);
 }
 
 double poseYaw(const geometry_msgs::msg::Quaternion & orientation)
@@ -679,6 +676,206 @@ bool worldSegmentCost(
     multiplier, cost, maximum);
 }
 
+bool worldPolylineCost(
+  const GridSnapshot & grid,
+  const std::vector<Point2D> & points,
+  const std::vector<double> & multiplier,
+  double & cost, double & maximum)
+{
+  cost = 0.0;
+  maximum = 0.0;
+  if (points.empty()) {
+    return false;
+  }
+  int first_x = 0;
+  int first_y = 0;
+  if (!grid.worldToMap(points.front().x, points.front().y, first_x, first_y)) {
+    return false;
+  }
+  const double first_cost = multiplier[grid.index(first_x, first_y)];
+  if (!std::isfinite(first_cost)) {
+    return false;
+  }
+  maximum = first_cost;
+  for (std::size_t index = 1; index < points.size(); ++index) {
+    double segment_cost = 0.0;
+    double segment_maximum = 0.0;
+    if (!worldSegmentCost(
+        grid,
+        points[index - 1].x, points[index - 1].y,
+        points[index].x, points[index].y,
+        multiplier, segment_cost, segment_maximum))
+    {
+      return false;
+    }
+    cost += segment_cost;
+    maximum = std::max(maximum, segment_maximum);
+  }
+  return true;
+}
+
+struct CornerRoundingResult
+{
+  std::vector<std::pair<double, double>> points;
+  std::size_t rounded_corners{0};
+  double minimum_radius{kInfinity};
+};
+
+struct RoundingSegment
+{
+  Point2D start;
+  Point2D end;
+  double unit_x{0.0};
+  double unit_y{0.0};
+  double length{0.0};
+};
+
+struct AcceptedFillet
+{
+  std::size_t left_segment{0};
+  std::size_t right_segment{0};
+  std::vector<Point2D> samples;
+};
+
+CornerRoundingResult roundPolylineCorners(
+  const GridSnapshot & grid,
+  const std::vector<std::pair<double, double>> & controls,
+  const std::vector<double> & risk,
+  const ClearancePlanner::Parameters & params)
+{
+  CornerRoundingResult result;
+  if (!params.corner_rounding_enabled || controls.size() < 3) {
+    result.points = controls;
+    return result;
+  }
+
+  std::vector<RoundingSegment> segments;
+  segments.reserve(controls.size() - 1U);
+  for (std::size_t index = 1; index < controls.size(); ++index) {
+    const Point2D start{controls[index - 1].first, controls[index - 1].second};
+    const Point2D end{controls[index].first, controls[index].second};
+    const double dx = end.x - start.x;
+    const double dy = end.y - start.y;
+    const double length = std::hypot(dx, dy);
+    segments.push_back({
+      start, end,
+      length > 1.0e-9 ? dx / length : 0.0,
+      length > 1.0e-9 ? dy / length : 0.0,
+      length});
+  }
+
+  std::vector<AcceptedFillet> accepted;
+  const double minimum_turn = params.corner_rounding_min_turn_angle_deg * kPi / 180.0;
+  const double maximum_turn = params.corner_rounding_max_turn_angle_deg * kPi / 180.0;
+  const double radius_step = std::max(0.05, grid.resolution);
+  const double sample_spacing = std::max(0.01, 0.5 * grid.resolution);
+
+  std::size_t left = 0;
+  while (left + 1 < segments.size()) {
+    if (segments[left].length < params.corner_rounding_min_straight_length) {
+      ++left;
+      continue;
+    }
+    std::size_t right = left + 1;
+    double transition_length = 0.0;
+    while (right < segments.size() &&
+      segments[right].length < params.corner_rounding_min_straight_length)
+    {
+      transition_length += segments[right].length;
+      if (transition_length > params.corner_rounding_transition_max_length) {
+        break;
+      }
+      ++right;
+    }
+    if (right >= segments.size() ||
+      transition_length > params.corner_rounding_transition_max_length)
+    {
+      ++left;
+      continue;
+    }
+
+    const Point2D previous = segments[left].start;
+    const Point2D next = segments[right].end;
+    double requested_radius = params.corner_rounding_radius;
+    while (requested_radius + 1.0e-9 >= params.corner_rounding_min_radius) {
+      const auto fillet = makeTransitionFillet(
+        previous, segments[left].end, segments[right].start, next,
+        params.corner_rounding_transition_max_length,
+        requested_radius, params.corner_rounding_min_radius,
+        params.corner_rounding_max_tangent_fraction,
+        minimum_turn, maximum_turn);
+      if (!fillet.has_value()) {
+        break;
+      }
+      const std::vector<Point2D> candidate = sampleCircularFillet(
+        *fillet, sample_spacing);
+      std::vector<Point2D> baseline;
+      baseline.reserve(right - left + 2U);
+      baseline.push_back(fillet->entry);
+      for (std::size_t vertex = left + 1U; vertex <= right; ++vertex) {
+        baseline.push_back({controls[vertex].first, controls[vertex].second});
+      }
+      baseline.push_back(fillet->exit);
+      double candidate_cost = 0.0;
+      double candidate_maximum = 0.0;
+      double baseline_cost = 0.0;
+      double baseline_maximum = 0.0;
+      const bool candidate_valid = worldPolylineCost(
+        grid, candidate, risk, candidate_cost, candidate_maximum);
+      const bool baseline_valid = worldPolylineCost(
+        grid, baseline, risk, baseline_cost, baseline_maximum);
+      const double tolerance = params.corner_rounding_cost_tolerance;
+      bool overlaps_previous = false;
+      if (!accepted.empty() && accepted.back().right_segment == left) {
+        const Point2D & previous_exit = accepted.back().samples.back();
+        const double forward_gap =
+          (fillet->entry.x - previous_exit.x) * segments[left].unit_x +
+          (fillet->entry.y - previous_exit.y) * segments[left].unit_y;
+        overlaps_previous = forward_gap < -1.0e-6;
+      }
+      if (!overlaps_previous && candidate_valid && baseline_valid &&
+        candidate_cost <= baseline_cost * tolerance + 0.05 &&
+        candidate_maximum <= baseline_maximum * tolerance + 0.05)
+      {
+        accepted.push_back({left, right, candidate});
+        ++result.rounded_corners;
+        result.minimum_radius = std::min(result.minimum_radius, fillet->radius);
+        break;
+      }
+      requested_radius = fillet->radius - radius_step;
+    }
+    left = right;
+  }
+
+  const auto append_unique = [&result](const Point2D & point) {
+      if (result.points.empty() || distanceBetween(
+          result.points.back().first, result.points.back().second,
+          point.x, point.y) > 1.0e-6)
+      {
+        result.points.emplace_back(point.x, point.y);
+      }
+    };
+  append_unique({controls.front().first, controls.front().second});
+  std::size_t vertex = 1;
+  for (const AcceptedFillet & fillet : accepted) {
+    const std::size_t first_replaced_vertex = fillet.left_segment + 1U;
+    while (vertex < first_replaced_vertex) {
+      append_unique({controls[vertex].first, controls[vertex].second});
+      ++vertex;
+    }
+    for (const Point2D & point : fillet.samples) {
+      append_unique(point);
+    }
+    vertex = fillet.right_segment + 1U;
+  }
+  while (vertex + 1U < controls.size()) {
+    append_unique({controls[vertex].first, controls[vertex].second});
+    ++vertex;
+  }
+  append_unique({controls.back().first, controls.back().second});
+  return result;
+}
+
 double worldMoveTime(
   double world_x, double world_y, double travel_yaw,
   const ClearancePlanner::Parameters & params)
@@ -690,12 +887,7 @@ double worldMoveTime(
   const double x_speed = body_x >= 0.0 ? params.forward_speed : params.reverse_speed;
   const double x_time = std::abs(body_x) / std::max(0.01, x_speed);
   const double y_time = std::abs(body_y) / std::max(0.01, params.lateral_speed);
-  const double planar_time =
-    std::hypot(body_x, body_y) / std::max(0.01, params.max_planar_speed);
-  const double wheel_time =
-    ((std::abs(body_x) + std::abs(body_y)) / kSqrtTwo) /
-    std::max(0.01, params.max_wheel_speed);
-  return std::max({x_time, y_time, planar_time, wheel_time});
+  return std::max(x_time, y_time);
 }
 
 std::vector<std::pair<double, double>> addBlindZoneDoglegs(
@@ -734,7 +926,7 @@ std::vector<std::pair<double, double>> addBlindZoneDoglegs(
 
     // A single midpoint dogleg creates parallax without rotating the chassis.
     // The fixed 0-degree task heading is preserved on every output pose below.
-    // Offset enough that both halves depart from the nearest X-shaped blind ray;
+    // Offset enough that both halves depart from the nearest cardinal blind ray;
     // cap it to the configured, field-safe lateral exploration distance.
     const double required_departure = std::min(
       35.0 * kPi / 180.0, target_angle + angle_error);
@@ -992,8 +1184,6 @@ void ClearancePlanner::configure(
   declare("forward_speed", 3.00);
   declare("reverse_speed", 3.00);
   declare("lateral_speed", 3.00);
-  declare("max_planar_speed", 3.00);
-  declare("max_wheel_speed", 3.00);
   declare("max_time_ratio", 1.10);
   declare("min_time_slack", 0.25);
   declare("costmap_weight", 3.0);
@@ -1007,12 +1197,21 @@ void ClearancePlanner::configure(
   declare("start_exemption_radius", 0.45);
   declare("simplification_cost_tolerance", 1.03);
   declare("simplification_time_tolerance", 1.01);
+  declare("corner_rounding_enabled", true);
+  declare("corner_rounding_radius", 0.75);
+  declare("corner_rounding_min_radius", 0.55);
+  declare("corner_rounding_max_tangent_fraction", 0.45);
+  declare("corner_rounding_min_straight_length", 0.50);
+  declare("corner_rounding_transition_max_length", 0.60);
+  declare("corner_rounding_min_turn_angle_deg", 20.0);
+  declare("corner_rounding_max_turn_angle_deg", 120.0);
+  declare("corner_rounding_cost_tolerance", 1.10);
   declare("route_switch_risk_improvement", 0.55);
   declare("route_switch_time_improvement", 0.50);
   declare("route_switch_max_slowdown", 0.00);
   declare("route_reuse_max_distance", 0.50);
-  declare("blind_zone_enabled", true);
-  declare("blind_zone_angles_deg", std::vector<double>{45.0, 135.0, -135.0, -45.0});
+  declare("blind_zone_enabled", false);
+  declare("blind_zone_angles_deg", std::vector<double>{0.0, 90.0, 180.0, -90.0});
   declare("blind_zone_half_width_deg", 7.0);
   declare("blind_zone_margin_deg", 3.0);
   declare("blind_zone_min_segment_length", 1.0);
@@ -1063,8 +1262,6 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   read("forward_speed", params.forward_speed);
   read("reverse_speed", params.reverse_speed);
   read("lateral_speed", params.lateral_speed);
-  read("max_planar_speed", params.max_planar_speed);
-  read("max_wheel_speed", params.max_wheel_speed);
   read("max_time_ratio", params.max_time_ratio);
   read("min_time_slack", params.min_time_slack);
   read("costmap_weight", params.costmap_weight);
@@ -1078,6 +1275,15 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   read("start_exemption_radius", params.start_exemption_radius);
   read("simplification_cost_tolerance", params.simplification_cost_tolerance);
   read("simplification_time_tolerance", params.simplification_time_tolerance);
+  read("corner_rounding_enabled", params.corner_rounding_enabled);
+  read("corner_rounding_radius", params.corner_rounding_radius);
+  read("corner_rounding_min_radius", params.corner_rounding_min_radius);
+  read("corner_rounding_max_tangent_fraction", params.corner_rounding_max_tangent_fraction);
+  read("corner_rounding_min_straight_length", params.corner_rounding_min_straight_length);
+  read("corner_rounding_transition_max_length", params.corner_rounding_transition_max_length);
+  read("corner_rounding_min_turn_angle_deg", params.corner_rounding_min_turn_angle_deg);
+  read("corner_rounding_max_turn_angle_deg", params.corner_rounding_max_turn_angle_deg);
+  read("corner_rounding_cost_tolerance", params.corner_rounding_cost_tolerance);
   read("route_switch_risk_improvement", params.route_switch_risk_improvement);
   read("route_switch_time_improvement", params.route_switch_time_improvement);
   read("route_switch_max_slowdown", params.route_switch_max_slowdown);
@@ -1096,8 +1302,6 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
   params.forward_speed = std::max(0.05, params.forward_speed);
   params.reverse_speed = std::max(0.05, params.reverse_speed);
   params.lateral_speed = std::max(0.05, params.lateral_speed);
-  params.max_planar_speed = std::max(0.05, params.max_planar_speed);
-  params.max_wheel_speed = std::max(0.05, params.max_wheel_speed);
   params.max_time_ratio = std::max(1.0, params.max_time_ratio);
   params.min_time_slack = std::max(0.0, params.min_time_slack);
   params.costmap_weight = std::max(0.0, params.costmap_weight);
@@ -1113,6 +1317,22 @@ ClearancePlanner::Parameters ClearancePlanner::readParameters() const
     1.0, params.simplification_cost_tolerance);
   params.simplification_time_tolerance = std::max(
     1.0, params.simplification_time_tolerance);
+  params.corner_rounding_radius = std::max(0.0, params.corner_rounding_radius);
+  params.corner_rounding_min_radius = std::clamp(
+    params.corner_rounding_min_radius, 0.0, params.corner_rounding_radius);
+  params.corner_rounding_max_tangent_fraction = std::clamp(
+    params.corner_rounding_max_tangent_fraction, 0.05, 0.49);
+  params.corner_rounding_min_straight_length = std::max(
+    0.0, params.corner_rounding_min_straight_length);
+  params.corner_rounding_transition_max_length = std::max(
+    0.0, params.corner_rounding_transition_max_length);
+  params.corner_rounding_min_turn_angle_deg = std::clamp(
+    params.corner_rounding_min_turn_angle_deg, 1.0, 170.0);
+  params.corner_rounding_max_turn_angle_deg = std::clamp(
+    params.corner_rounding_max_turn_angle_deg,
+    params.corner_rounding_min_turn_angle_deg, 170.0);
+  params.corner_rounding_cost_tolerance = std::max(
+    1.0, params.corner_rounding_cost_tolerance);
   params.route_switch_risk_improvement = std::max(
     0.0, params.route_switch_risk_improvement);
   params.route_switch_time_improvement = std::max(
@@ -1249,8 +1469,10 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
   controls = addBlindZoneDoglegs(
     grid, controls, risk, travel_yaw, params, blind_doglegs);
 
+  const CornerRoundingResult rounded = roundPolylineCorners(
+    grid, controls, risk, params);
   std::vector<std::pair<double, double>> points = densifyPath(
-    controls, grid.resolution);
+    rounded.points, grid.resolution);
   const RouteMetrics new_metrics = routeMetrics(
     grid, points, risk, travel_yaw, params);
   if (has_previous_route_ &&
@@ -1302,16 +1524,20 @@ nav_msgs::msg::Path ClearancePlanner::createPlan(
     pose.pose.position.x = points[i].first;
     pose.pose.position.y = points[i].second;
     // Omni translation is independent of task yaw. Copy it onto every pose so
-    // an MPPI-pruned path cannot expose a segment tangent as the goal heading.
+    // a controller-pruned path cannot expose a segment tangent as the goal
+    // heading. The chassis keeps the calibrated task heading while translating.
     pose.pose.orientation = goal.pose.orientation;
     path.poses.push_back(std::move(pose));
   }
 
   RCLCPP_DEBUG(
     logger_,
-    "%s planned %zu poses via %zu controls (%zu blind-zone doglegs): "
-    "fastest=%.2f s budget=%.2f s expanded=%zu",
+    "%s planned %zu poses via %zu controls (%zu blind-zone doglegs, "
+    "%zu circular fillets, minimum radius %.2f m): fastest=%.2f s "
+    "budget=%.2f s expanded=%zu",
     name_.c_str(), path.poses.size(), controls.size(), blind_doglegs,
+    rounded.rounded_corners,
+    std::isfinite(rounded.minimum_radius) ? rounded.minimum_radius : 0.0,
     fastest_time, time_budget, expanded);
   return path;
 }

@@ -35,6 +35,9 @@ float    HWT101_GetYaw(void);
 float    HWT101_GetWz(void);
 uint16_t HWT101_GetVersion(void);
 
+/** Read one coherent yaw sample together with its STM32 receive timestamp. */
+uint8_t HWT101_GetYawStamped(float *yaw, uint32_t *sample_ms);
+
 /** Z ��ǶȻ��㣨�Ƚ�����д CALIYAW�� */
 void HWT101_CaliYaw(void);
 

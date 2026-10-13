@@ -10,7 +10,6 @@ from .nav_protocol import (
     SCAN_CONTEXT_ORDER,
     SCAN_FORMAT_CODE128,
     SCAN_FORMAT_QR,
-    START_WAIT_TASK_STATES,
     TASK_WAIT_START,
 )
 
@@ -46,15 +45,10 @@ def expected_scan(task_state: int) -> Optional[Tuple[int, int]]:
 
 
 def tele_camera_assists(task_state: int, format: int) -> bool:
-    """Use the long-focus camera only for the pre-start nurse QR scan."""
+    """Use the long-focus camera for every active QR or CODE128 scan."""
 
-    return task_state == TASK_WAIT_START and format == SCAN_FORMAT_QR
-
-
-def tele_camera_should_capture(task_state: int) -> bool:
-    """Keep the long-focus camera live until the start button is accepted."""
-
-    return task_state in START_WAIT_TASK_STATES
+    expected = expected_scan(task_state)
+    return expected is not None and expected[1] == format
 
 
 def value_is_allowed(format: int, value: str) -> bool:

@@ -29,9 +29,11 @@ setup(
             "lidar_odometry_guard = obstacle_detector.lidar_odometry_guard:main",
             "corner_speed_limiter = obstacle_detector.corner_speed_limiter:main",
             "home_approach_limiter = obstacle_detector.home_approach_limiter:main",
+            "braking_safety_shadow = obstacle_detector.braking_safety_shadow:main",
             "code_scanner = obstacle_detector.code_scanner:main",
             "health_ble_bridge = obstacle_detector.health_ble_bridge:main",
             "scan_dashboard = obstacle_detector.scan_dashboard:main",
+            "startup_probe = obstacle_detector.startup_probe:main",
         ],
     },
 )

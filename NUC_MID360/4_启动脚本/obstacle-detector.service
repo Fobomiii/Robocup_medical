@@ -1,24 +1,29 @@
 [Unit]
 Description=Medical Navigation Bridge
-After=network.target mid360.service
-Wants=mid360.service
+After=network-online.target mid360.service
+Wants=network-online.target mid360.service
+StartLimitIntervalSec=180
+StartLimitBurst=3
 
 [Service]
-Type=simple
+Type=notify
 User=fzurobot
-SupplementaryGroups=dialout
+SupplementaryGroups=dialout video audio
 Environment=HOME=/home/fzurobot
 Environment=MEDICAL_NAV_DRY_RUN=false
 Environment=ROS_DOMAIN_ID=77
 Environment=ROS_LOCALHOST_ONLY=1
 EnvironmentFile=-/home/fzurobot/.config/medical-navigation.env
-ExecStartPre=/bin/sleep 5
+ExecStartPre=/bin/sleep 3
 ExecStart=/bin/bash /home/fzurobot/start_obstacle.sh /dev/ttyUSB0
+NotifyAccess=all
+TimeoutStartSec=150
+KillMode=control-group
 KillSignal=SIGINT
-TimeoutStopSec=20
+TimeoutStopSec=12
 SendSIGKILL=yes
 Restart=on-failure
-RestartSec=5
+RestartSec=3
 StandardOutput=journal
 StandardError=journal
 

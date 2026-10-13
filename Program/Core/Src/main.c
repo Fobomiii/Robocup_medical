@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "DJIMotorCtrlSTM32.h"
+#include "ChassisCtrl.h"
 #include "OPS.h"
 #include "Servo.h"
 #include "HWT101CT.h"
@@ -1075,6 +1076,9 @@ void StartCanHostTask(void *argument)
   float pos_x = 0.0f;
   float pos_y = 0.0f;
   float ops_yaw_unused = 0.0f;
+  float hwt_yaw = 0.0f;
+  uint32_t ops_sample_ms = 0U;
+  uint32_t hwt_yaw_sample_ms = 0U;
   int16_t forward_mm_s;
   int16_t left_mm_s;
   int16_t yaw_ccw_cdeg_s;
@@ -1089,12 +1093,14 @@ void StartCanHostTask(void *argument)
   NUC_Nav_ClearVelocity();
   for (;;)
   {
-    uint8_t ops_ok = OPS_GetPose(&pos_x, &pos_y, &ops_yaw_unused);
-    uint8_t hwt_ok = HWT101_IsOnline();
+    uint8_t ops_ok = OPS_GetPoseStamped(
+        &pos_x, &pos_y, &ops_yaw_unused, &ops_sample_ms);
+    uint8_t hwt_ok = HWT101_GetYawStamped(
+        &hwt_yaw, &hwt_yaw_sample_ms);
     uint8_t task_state;
     NUC_NavStatus nav_status;
     /*pos_z convention: positive clockwise in the existing field frame. */
-    float yaw_deg = -HWT101_GetYaw();
+    float yaw_deg = -hwt_yaw;
 
     MedicalTask_Update();
     task_state = MedicalTask_GetState();
@@ -1116,13 +1122,15 @@ void StartCanHostTask(void *argument)
     {
       NUC_Nav_Service((int32_t)pos_x, (int32_t)pos_y,
                       (int16_t)(yaw_deg * 100.0f),
+                      ops_sample_ms, hwt_yaw_sample_ms,
                       task_state, nav_status, 0U, 0U);
     }
 
     /* Do not allow navigation or local correction to continue with stale
-     * pose/yaw or a missing wheel feedback frame.  This is an immediate stop;
-     * normal command changes still use the chassis-side velocity ramp. */
+     * pose/yaw or a missing wheel feedback frame. Commands reach the wheel
+     * speed targets directly, including this forced zero command. */
     if ((ops_ok == 0U) || (hwt_ok == 0U) ||
+        (NUC_Nav_EmergencyStopActive() != 0U) ||
         (wheel_online_mask != 0x0FU))
     {
       dock_override = 0U;
@@ -1132,10 +1140,12 @@ void StartCanHostTask(void *argument)
     {
       dock_override = MedicalTask_DockingControl(
           1U, pos_x, pos_y, yaw_deg,
-          measured_forward_mm_s, measured_left_mm_s);
+          measured_forward_mm_s, measured_left_mm_s,
+          measured_yaw_ccw_cdeg_s);
     }
 
     if ((ops_ok == 0U) || (hwt_ok == 0U) ||
+        (NUC_Nav_EmergencyStopActive() != 0U) ||
         (wheel_online_mask != 0x0FU))
     {
       /* Safety stop already issued above. */
@@ -1149,6 +1159,16 @@ void StartCanHostTask(void *argument)
              NUC_Nav_GetVelocityCommand(&forward_mm_s, &left_mm_s,
                                         &yaw_ccw_cdeg_s))
     {
+      if ((task_state == MEDICAL_TASK_NAV_NURSE ||
+           task_state == MEDICAL_TASK_NAV_BED1 ||
+           task_state == MEDICAL_TASK_NAV_BED3 ||
+           task_state == MEDICAL_TASK_NAV_HOME) &&
+          (forward_mm_s != 0 || left_mm_s != 0 || yaw_ccw_cdeg_s != 0))
+      {
+        yaw_ccw_cdeg_s = (int16_t)ChassisCtrl_NavYawUpdate(
+            HWT101_GetYaw(),
+            HWT101_GetWz());
+      }
       DJI_Chassis_SetVelocityCommand((float)forward_mm_s, (float)left_mm_s,
                                      (float)yaw_ccw_cdeg_s);
     }

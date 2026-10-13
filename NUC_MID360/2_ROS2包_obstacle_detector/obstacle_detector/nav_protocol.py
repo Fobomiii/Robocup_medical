@@ -26,6 +26,7 @@ MSG_SCAN_ACK = 0x14
 MSG_WHEEL_ODOM = 0x15
 MSG_TTS_REQUEST = 0x16
 MSG_WHEEL_DIAGNOSTICS = 0x17
+MSG_ARM_DEBUG_STATUS = 0x18
 MSG_PATH_BEGIN = 0x20
 MSG_WAYPOINT = 0x21
 MSG_PATH_COMMIT = 0x22
@@ -34,6 +35,13 @@ MSG_HEARTBEAT = 0x30
 MSG_VEL_CMD = 0x40
 MSG_SCAN_RESULT = 0x41
 MSG_TTS_STATUS = 0x42
+MSG_EMERGENCY_STOP = 0x43
+MSG_EMERGENCY_CLEAR = 0x44
+MSG_ARM_DEBUG_COMMAND = 0x45
+
+ARM_DEBUG_ACCEPTED = 1
+ARM_DEBUG_WRONG_STATE = 2
+ARM_DEBUG_INVALID_COMMAND = 3
 
 SCAN_CONTEXT_ORDER = 1
 SCAN_CONTEXT_BED1 = 2
@@ -124,6 +132,9 @@ class PoseTelemetry:
     nav_status: int
     path_id: int
     waypoint_index: int
+    ops_sample_ms: int = 0
+    hwt_yaw_sample_ms: int = 0
+    tx_stamp_ms: int = 0
 
 
 @dataclass(frozen=True)
@@ -136,7 +147,7 @@ class GoalRequest:
 class Stp23lTelemetry:
     """Three sensor-face distances in millimetres.
 
-    Installation: A=right, B=front and C=left. ``valid_mask`` uses bits
+    Installation: A=left, B=front and C=right. ``valid_mask`` uses bits
     0, 1 and 2 respectively; a zero distance must never be treated as a wall.
     """
 
@@ -196,6 +207,13 @@ class TtsStatus:
     status: int
 
 
+@dataclass(frozen=True)
+class ArmDebugStatus:
+    request_id: int
+    deployed: bool
+    status: int
+
+
 def crc16_ccitt(data: bytes) -> int:
     crc = 0xFFFF
     for value in data:
@@ -223,6 +241,16 @@ def encode_velocity(mps_x: float, mps_y: float, rps_yaw: float, stamp_cs: int) -
         clamp_i16(round(rps_yaw * 18000.0 / math.pi)),  # rad/s -> centi-deg/s
         int(stamp_cs) & 0xFFFF,
     )
+
+
+def encode_emergency_stop(stamp_cs: int) -> bytes:
+    """Stamped stop follows a zero velocity frame on the same serial link."""
+    return struct.pack(">H", int(stamp_cs) & 0xFFFF)
+
+
+def encode_emergency_clear(stamp_cs: int) -> bytes:
+    """Clear a latched stop after Collision Monitor releases the command."""
+    return struct.pack(">H", int(stamp_cs) & 0xFFFF)
 
 
 def encode_frame(msg_type: int, seq: int, payload: bytes = b"") -> bytes:
@@ -275,9 +303,13 @@ class FrameParser:
 
 
 def decode_pose(payload: bytes) -> PoseTelemetry:
-    if len(payload) != 15:
-        raise ValueError(f"POSE payload length is {len(payload)}, expected 15")
-    return PoseTelemetry(*struct.unpack(">iihBBHB", payload))
+    if len(payload) == 15:
+        return PoseTelemetry(*struct.unpack(">iihBBHB", payload))
+    if len(payload) == 27:
+        return PoseTelemetry(*struct.unpack(">iihBBHBIII", payload))
+    raise ValueError(
+        f"POSE payload length is {len(payload)}, expected 15 or 27"
+    )
 
 
 def decode_wheel_odom(payload: bytes) -> WheelOdomTelemetry:
@@ -387,6 +419,27 @@ def decode_tts_status(payload: bytes) -> TtsStatus:
     if status.status not in {TTS_STATUS_COMPLETED, TTS_STATUS_ERROR}:
         raise ValueError(f"invalid TTS status: {status.status}")
     return status
+
+
+def encode_arm_debug_command(request_id: int, deployed: bool) -> bytes:
+    return struct.pack(">HB", request_id & 0xFFFF, 1 if deployed else 0)
+
+
+def decode_arm_debug_status(payload: bytes) -> ArmDebugStatus:
+    if len(payload) != 4:
+        raise ValueError(
+            f"ARM_DEBUG_STATUS payload length is {len(payload)}, expected 4"
+        )
+    request_id, deployed, status = struct.unpack(">HBB", payload)
+    if deployed not in {0, 1}:
+        raise ValueError(f"invalid arm deployed state: {deployed}")
+    if status not in {
+        ARM_DEBUG_ACCEPTED,
+        ARM_DEBUG_WRONG_STATE,
+        ARM_DEBUG_INVALID_COMMAND,
+    }:
+        raise ValueError(f"invalid arm debug status: {status}")
+    return ArmDebugStatus(request_id, bool(deployed), status)
 
 
 def encode_path_begin(path_id: int, request_id: int, goal_id: int, count: int) -> bytes:

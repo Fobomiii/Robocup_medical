@@ -181,7 +181,7 @@ class DjiCanBus {
 public:
   DjiCanBus() : h_(NULL), ready_(false), tx_error_count_(0U) {}
 
-  void attach(FDCAN_HandleTypeDef* h)
+  void attach(FDCAN_HandleTypeDef* h, float speed_max_out)
   {
     if (h_ != NULL) {
       return;
@@ -192,11 +192,11 @@ public:
     PidParam speed_default;
     // First controlled speed-loop increase: improve wheel-speed tracking
     // during lateral braking without jumping directly to an aggressive gain.
-    speed_default.kp = 6.5f;
+    speed_default.kp = 8.0f;
     speed_default.ki = 1.f;
     speed_default.kd = 0.01f;
     speed_default.dead_zone = 1.f;
-    speed_default.max_out = 10000.f;
+    speed_default.max_out = speed_max_out;
     for (int i = 0; i < 8; ++i) {
       motors_[i].speed_pid.setParam(speed_default);
     }
@@ -340,33 +340,17 @@ extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t 
 static const float kGear3508 = 19.f;
 static volatile float s_chassis_speed_loc_k = 0.f;
 static const float kPi = 3.14159265358979323846f;
-static const float kInvSqrt2 = 0.70710678118654752440f;
-static const float kSqrt2 = 1.41421356237309504880f;
 static const float kWheelDiameterMm = 152.0f;
 static const float kTurnRadiusMm = 250.0f;
-static const float kMaxPlanarSpeedMmS = 3000.0f;
+static const float kMaxAxisSpeedMmS = 3000.0f;
 static const float kMaxWheelSurfaceSpeedMmS = 3000.0f;
-static const int16_t kCurrentSaturationThreshold = 9900;
-/* Body-command ramp in wheel-RPM-equivalent units.  350 RPM/s is about
- * 2.8 m/s^2 at the 152 mm wheel.  Immediate safety stops bypass this ramp. */
-static const float kBodyAccelRpmPerS = 350.0f;
-static const float kYawAccelRpmPerS = 600.0f;
-
-static float slew_command(float target, float current, float max_delta)
-{
-  float delta = target - current;
-  if (delta > max_delta) {
-    return current + max_delta;
-  }
-  if (delta < -max_delta) {
-    return current - max_delta;
-  }
-  return target;
-}
+/* The chassis speed-loop output is allowed up to +/-13000.  Keep the
+ * diagnostic threshold below that limit so only genuine near-limit commands
+ * are reported as saturated. */
+static const int16_t kCurrentSaturationThreshold = 12900;
 
 CHASSIS::CHASSIS(FDCAN_HandleTypeDef* hfdcan)
-  : can_(hfdcan), frq_(1000), started_(false),
-    last_vx_(0.f), last_vy_(0.f), last_w_(0.f)
+  : can_(hfdcan), frq_(1000), started_(false)
 {
 }
 
@@ -379,10 +363,7 @@ void CHASSIS::begin(uint16_t frq_hz)
     frq_hz = 1000;
   }
   frq_ = frq_hz;
-  last_vx_ = 0.f;
-  last_vy_ = 0.f;
-  last_w_ = 0.f;
-  g_chassis_bus.attach(can_);
+  g_chassis_bus.attach(can_, 13000.f);
   for (uint8_t id = 1; id <= 4; ++id) {
     MotorFb& m = g_chassis_bus.motor(id);
     m.enable = 1;
@@ -411,29 +392,24 @@ void CHASSIS::Update(float Vx, float Vy, float W, bool immediate_stop)
   }
   last_us = now;
 
+  /* Apply each command directly; Nav2 owns navigation acceleration limits.
+   * Local docking PID outputs also bypass any chassis-side velocity ramp. */
   if (immediate_stop) {
     Vx = 0.f;
     Vy = 0.f;
     W = 0.f;
-    last_vx_ = 0.f;
-    last_vy_ = 0.f;
-    last_w_ = 0.f;
-  } else {
-    Vx = slew_command(Vx, last_vx_, kBodyAccelRpmPerS * dt);
-    Vy = slew_command(Vy, last_vy_, kBodyAccelRpmPerS * dt);
-    W = slew_command(W, last_w_, kYawAccelRpmPerS * dt);
-    last_vx_ = Vx;
-    last_vy_ = Vy;
-    last_w_ = W;
   }
 
-  out_rpm[0] = (Vx+Vy) * kInvSqrt2 + W;
-  out_rpm[1] = (-Vx+Vy) * kInvSqrt2 + W;
-  out_rpm[2] = (-Vx-Vy) * kInvSqrt2 + W;
-  out_rpm[3] = (Vx-Vy) * kInvSqrt2 + W;
+  /* Physical cross layout by CAN ID: 4=front, 1=left, 2=rear, 3=right. */
+  out_rpm[0] = Vy + W;
+  out_rpm[1] = -Vx + W;
+  out_rpm[2] = -Vy + W;
+  out_rpm[3] = Vx + W;
 
   /* Scale all four wheels together so saturation preserves the requested
-   * X-drive direction instead of clipping individual wheels independently. */
+   * translation/yaw ratio instead of clipping wheels independently. Pure
+   * translation is already limited independently on the two cross-drive
+   * axes, so diagonal motion is not normalized. */
   max_abs_rpm = 0.f;
   for (int i = 0; i < 4; ++i) {
     float abs_rpm = fabsf(out_rpm[i]);
@@ -548,7 +524,8 @@ void M2006Motor::begin(uint16_t frq_hz)
     frq_hz = 1000;
   }
   frq_ = frq_hz;
-  g_arm_bus.attach(can_);
+  /* Arm motors retain the original +/-10000 speed-loop current limit. */
+  g_arm_bus.attach(can_, 10000.f);
 
   PidParam pos_default;
   pos_default.kp = 0.1f;
@@ -761,14 +738,15 @@ extern "C" void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
                                                 float yaw_ccw_cdeg_s)
 {
   const float mm_s_to_wheel_rpm = 60.0f / (kPi * kWheelDiameterMm);
-  const float planar_speed =
-      sqrtf(forward_mm_s * forward_mm_s + left_mm_s * left_mm_s);
-
-  if (planar_speed > kMaxPlanarSpeedMmS)
-  {
-    const float planar_scale = kMaxPlanarSpeedMmS / planar_speed;
-    forward_mm_s *= planar_scale;
-    left_mm_s *= planar_scale;
+  if (forward_mm_s > kMaxAxisSpeedMmS) {
+    forward_mm_s = kMaxAxisSpeedMmS;
+  } else if (forward_mm_s < -kMaxAxisSpeedMmS) {
+    forward_mm_s = -kMaxAxisSpeedMmS;
+  }
+  if (left_mm_s > kMaxAxisSpeedMmS) {
+    left_mm_s = kMaxAxisSpeedMmS;
+  } else if (left_mm_s < -kMaxAxisSpeedMmS) {
+    left_mm_s = -kMaxAxisSpeedMmS;
   }
 
   /* CHASSIS uses +Vx right, +Vy forward and +W clockwise. */
@@ -825,10 +803,8 @@ extern "C" uint8_t DJI_Chassis_GetMeasuredVelocity(float *forward_mm_s,
     wheel_rpm[index] = (float)rotor_rpm[index] / kGear3508;
   }
 
-  right_rpm = (wheel_rpm[0] - wheel_rpm[1] -
-               wheel_rpm[2] + wheel_rpm[3]) * 0.25f * kSqrt2;
-  forward_rpm = (wheel_rpm[0] + wheel_rpm[1] -
-                 wheel_rpm[2] - wheel_rpm[3]) * 0.25f * kSqrt2;
+  right_rpm = (wheel_rpm[3] - wheel_rpm[1]) * 0.5f;
+  forward_rpm = (wheel_rpm[0] - wheel_rpm[2]) * 0.5f;
   clockwise_turn_rpm = (wheel_rpm[0] + wheel_rpm[1] +
                         wheel_rpm[2] + wheel_rpm[3]) * 0.25f;
 

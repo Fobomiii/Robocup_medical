@@ -11,14 +11,53 @@ from .nav_protocol import (
     TASK_NAV_BED3,
     TASK_NAV_HOME,
     TASK_WAIT_START,
+    START_WAIT_TASK_STATES,
 )
 
 
 NAVIGATION_TASK_STATES = frozenset((1, 3, 6, 9))
+# Nurse scan is translation-only for the current validation run.  Its DWB
+# route may contain a non-zero angular sample, but the bridge must not pass
+# that sample to the chassis.  Heading hold remains available for bed/home
+# travel where keeping the calibrated chassis heading is still required.
 DEFAULT_HEADING_HOLD_TASK_STATES = frozenset(
     (TASK_NAV_BED1, TASK_NAV_BED3, TASK_NAV_HOME)
 )
-XDRIVE_TRANSLATION_SCALE = 1.0 / math.sqrt(2.0)
+class CollisionStopGate:
+    """Identify a monitor stop without mistaking normal zero input for one."""
+
+    def __init__(self, input_timeout_s: float = 0.3, hold_s: float = 0.5):
+        self.input_timeout_s = max(0.0, float(input_timeout_s))
+        self.hold_s = max(0.0, float(hold_s))
+        self.input_cmd = (0.0, 0.0, 0.0)
+        self.input_time_s = None
+        self.stop_time_s = None
+
+    @staticmethod
+    def is_zero(command):
+        return all(abs(float(value)) < 1.0e-4 for value in command)
+
+    def update_input(self, command, now_s):
+        self.input_cmd = tuple(float(value) for value in command)
+        self.input_time_s = float(now_s)
+
+    def is_collision_stop(self, safe_command, now_s):
+        now_s = float(now_s)
+        if not self.is_zero(safe_command):
+            self.stop_time_s = None
+            return False
+        fresh_input = (
+            self.input_time_s is not None
+            and 0.0 <= now_s - self.input_time_s <= self.input_timeout_s
+        )
+        if fresh_input and not self.is_zero(self.input_cmd):
+            self.stop_time_s = now_s
+        if fresh_input and self.is_zero(self.input_cmd):
+            self.stop_time_s = None
+        return (
+            self.stop_time_s is not None
+            and now_s - self.stop_time_s <= self.hold_s
+        )
 
 
 class Stm32ReadinessGate:
@@ -114,9 +153,9 @@ class HeadingHoldController:
 
     The controller follows the same target-minus-measurement and shortest-angle
     convention as STM32 ``ChassisCtrl_MoveTarget``.  Its output is ROS ``wz``:
-    positive is counter-clockwise.  Task states outside ``task_states`` retain
-    MPPI's angular command, which keeps nurse-station scan viewpoints free to
-    rotate.
+    positive is counter-clockwise. Task states outside ``task_states`` retain
+    the navigation angular command. Nurse scan rotation is disabled by the
+    bridge before this controller is called.
     """
 
     def __init__(
@@ -251,7 +290,7 @@ class HeadingHoldController:
     def update(
         self,
         task_state: int,
-        mppi_wz_rad_s: float,
+        nav_wz_rad_s: float,
         current_yaw_rad,
         pose_fresh: bool,
         now_s: float,
@@ -259,10 +298,10 @@ class HeadingHoldController:
         forward_velocity_m_s: float = 0.0,
         yaw_rate_rad_s=None,
     ):
-        """Return ``(wz, mode, error)`` without touching MPPI ``vx``/``vy``."""
+        """Return ``(wz, mode, error)`` without changing navigation X/Y."""
 
         task_state = int(task_state)
-        mppi_wz_rad_s = float(mppi_wz_rad_s)
+        nav_wz_rad_s = float(nav_wz_rad_s)
         now_s = float(now_s)
         if task_state != self.task_state:
             self.reset()
@@ -274,7 +313,7 @@ class HeadingHoldController:
             or task_state not in self.task_states
         ):
             self.reset()
-            return mppi_wz_rad_s, "mppi", None
+            return nav_wz_rad_s, "navigation", None
 
         if (
             not pose_fresh
@@ -378,37 +417,44 @@ class HeadingHoldController:
         return output, mode, error_rad
 
 
-def omni_wheel_speeds(vx: float, vy: float, wz: float, yaw_radius_m: float):
-    """Return physical wheel-surface speeds for a 45-degree X-drive.
+def crossdrive_wheel_speeds(
+    vx: float, vy: float, wz: float, yaw_radius_m: float
+):
+    """Return wheel-surface speeds for the physical cross layout.
 
-    ``vx`` and ``vy`` are ROS body velocities.  The four ordinary omni wheels
-    are mounted at 45 degrees, so the translational projection onto each
-    wheel's drive direction carries a 1/sqrt(2) factor.  ``yaw_radius_m`` is
-    the effective perpendicular lever arm of a wheel for rotation.
+    ``vx`` and ``vy`` are ROS body forward and left velocities.  CAN IDs
+    1/3 are the left/right pair that drives ``vx``; IDs 2/4 are the rear/front
+    pair that drives ``vy``.  The two translation axes are independent, so a
+    diagonal command is not normalized by its planar magnitude.
     """
 
     vx = float(vx)
     vy = float(vy)
     yaw_speed = float(yaw_radius_m) * float(wz)
     return (
-        (vx - vy) * XDRIVE_TRANSLATION_SCALE - yaw_speed,
-        (vx + vy) * XDRIVE_TRANSLATION_SCALE - yaw_speed,
-        (-vx + vy) * XDRIVE_TRANSLATION_SCALE - yaw_speed,
-        (-vx - vy) * XDRIVE_TRANSLATION_SCALE - yaw_speed,
+        vx - yaw_speed,
+        vy - yaw_speed,
+        -vx - yaw_speed,
+        -vy - yaw_speed,
     )
 
 
-def limit_planar_velocity(vx: float, vy: float, max_planar_speed_m_s: float):
-    """Apply a circular body-speed cap while preserving travel direction."""
+def limit_axis_velocity(vx: float, vy: float, max_axis_speed_m_s: float):
+    """Clamp body X/Y independently without planar-vector normalization."""
 
     vx = float(vx)
     vy = float(vy)
-    limit = max(0.0, float(max_planar_speed_m_s))
-    speed = math.hypot(vx, vy)
-    if limit <= 0.0 or speed <= limit or speed <= 1.0e-9:
+    limit = max(0.0, float(max_axis_speed_m_s))
+    if limit <= 0.0:
         return vx, vy, 1.0
-    scale = limit / speed
-    return vx * scale, vy * scale, scale
+    limited_vx = max(-limit, min(limit, vx))
+    limited_vy = max(-limit, min(limit, vy))
+    scales = [1.0]
+    if abs(vx) > 1.0e-9:
+        scales.append(abs(limited_vx / vx))
+    if abs(vy) > 1.0e-9:
+        scales.append(abs(limited_vy / vy))
+    return limited_vx, limited_vy, min(scales)
 
 
 def limit_yaw_rate_by_motion(
@@ -440,27 +486,25 @@ def limit_yaw_rate_by_motion(
     return max(-limit, min(limit, wz)), mode
 
 
-def limit_xdrive_command(
+def limit_crossdrive_command(
     vx: float,
     vy: float,
     wz: float,
-    max_planar_speed_m_s: float,
-    max_wheel_speed_m_s: float,
+    max_axis_speed_m_s: float,
     yaw_radius_m: float,
     heading_correction_max_wz_rad_s: float,
     active_rotation_max_wz_rad_s: float,
     active_rotation_linear_threshold_m_s: float,
 ):
-    """Project a body command into the physical X-drive feasible set.
+    """Project a command into the cross-drive feasible set.
 
-    The planar direction is preserved.  Yaw is limited according to the
-    current motion mode, then given wheel-speed priority so a heading error is
-    corrected instead of being carried down the bed corridor.  Translation is
-    reduced only when the requested yaw leaves insufficient wheel headroom.
+    X and Y are capped independently. Yaw is limited according to the current
+    motion mode and receives wheel-speed headroom without scaling one
+    translation axis merely because the other axis reached its limit.
     """
 
-    vx, vy, planar_scale = limit_planar_velocity(
-        vx, vy, max_planar_speed_m_s
+    vx, vy, axis_scale = limit_axis_velocity(
+        vx, vy, max_axis_speed_m_s
     )
     wz, yaw_mode = limit_yaw_rate_by_motion(
         vx,
@@ -471,17 +515,18 @@ def limit_xdrive_command(
         active_rotation_linear_threshold_m_s,
     )
 
-    wheel_limit = max(0.0, float(max_wheel_speed_m_s))
+    wheel_limit = max(0.0, float(max_axis_speed_m_s))
     radius = max(0.0, float(yaw_radius_m))
     if wheel_limit <= 0.0:
         requested_peak = max(
-            abs(speed) for speed in omni_wheel_speeds(vx, vy, wz, radius)
+            abs(speed)
+            for speed in crossdrive_wheel_speeds(vx, vy, wz, radius)
         )
         return (
             vx,
             vy,
             wz,
-            planar_scale,
+            axis_scale,
             1.0,
             requested_peak,
             yaw_mode,
@@ -493,48 +538,26 @@ def limit_xdrive_command(
         yaw_load = wheel_limit
 
     requested_peak = max(
-        abs(speed) for speed in omni_wheel_speeds(vx, vy, wz, radius)
-    )
-    translation_peak = max(
-        abs(speed) for speed in omni_wheel_speeds(vx, vy, 0.0, radius)
+        abs(speed) for speed in crossdrive_wheel_speeds(vx, vy, wz, radius)
     )
     translation_headroom = max(0.0, wheel_limit - yaw_load)
-    wheel_scale = 1.0
-    if translation_peak > translation_headroom and translation_peak > 1.0e-9:
-        wheel_scale = translation_headroom / translation_peak
-        vx *= wheel_scale
-        vy *= wheel_scale
+    limited_vx = max(-translation_headroom, min(translation_headroom, vx))
+    limited_vy = max(-translation_headroom, min(translation_headroom, vy))
+    headroom_scales = [1.0]
+    if abs(vx) > 1.0e-9:
+        headroom_scales.append(abs(limited_vx / vx))
+    if abs(vy) > 1.0e-9:
+        headroom_scales.append(abs(limited_vy / vy))
+    headroom_scale = min(headroom_scales)
 
     return (
-        vx,
-        vy,
+        limited_vx,
+        limited_vy,
         wz,
-        planar_scale,
-        wheel_scale,
+        axis_scale,
+        headroom_scale,
         requested_peak,
         yaw_mode,
-    )
-
-
-def normalize_omni_command(
-    vx: float,
-    vy: float,
-    wz: float,
-    max_wheel_speed_m_s: float,
-    yaw_radius_m: float,
-):
-    requested_wheels = omni_wheel_speeds(vx, vy, wz, yaw_radius_m)
-    requested_peak = max(abs(speed) for speed in requested_wheels)
-    wheel_limit = max(0.0, float(max_wheel_speed_m_s))
-    if wheel_limit <= 0.0 or requested_peak <= wheel_limit:
-        return float(vx), float(vy), float(wz), 1.0, requested_peak
-    scale = wheel_limit / requested_peak
-    return (
-        float(vx) * scale,
-        float(vy) * scale,
-        float(wz) * scale,
-        scale,
-        requested_peak,
     )
 
 
@@ -542,10 +565,10 @@ class GateReleaseLimiter:
     """Continuously limit wheel-space acceleration after safety processing.
 
     The class name and ``rearm_drop_m_s`` argument are retained for launch and
-    diagnostic compatibility.  The limiter is now permanently armed whenever
-    ``max_wheel_accel_m_s2`` is positive: stops and reductions pass
-    immediately, while every increase in the peak wheel-surface speed is
-    ramped with one common scale so the requested chassis direction is kept.
+    diagnostic compatibility.  The limiter is permanently armed whenever
+    ``max_wheel_accel_m_s2`` is positive: each axis reduction passes
+    immediately, while increases are bounded by wheel-space delta (including
+    equal-peak reversals).  A reversed axis drops its old direction first.
     Independent heading hold may set ``priority_yaw``: translation keeps this
     current-protection ramp, while the bounded yaw correction passes directly
     instead of arriving only after the 20 kg chassis has accumulated error.
@@ -573,7 +596,7 @@ class GateReleaseLimiter:
 
     def _wheel_speeds(self, command):
         vx, vy, wz = command
-        return omni_wheel_speeds(vx, vy, wz, self.yaw_radius_m)
+        return crossdrive_wheel_speeds(vx, vy, wz, self.yaw_radius_m)
 
     def update(
         self,
@@ -589,9 +612,6 @@ class GateReleaseLimiter:
         ramp_desired = (
             (desired[0], desired[1], 0.0) if priority_yaw else desired
         )
-        desired_wheels = self._wheel_speeds(ramp_desired)
-        desired_peak = max(abs(speed) for speed in desired_wheels)
-
         if self.max_wheel_accel_m_s2 <= 0.0:
             self.output = desired
             self.last_update_s = now_s
@@ -605,26 +625,27 @@ class GateReleaseLimiter:
             if priority_yaw
             else self.output
         )
-        current_wheels = self._wheel_speeds(ramp_current)
-        current_peak = max(abs(speed) for speed in current_wheels)
-
-        # Stops and safety-commanded reductions must never wait for a ramp.
-        if desired_peak <= current_peak:
-            self.output = desired
-            self.last_update_s = now_s
-            self.limiting = False
-            return self.output
+        # Apply tightened per-axis bounds before ramping any remaining increase.
+        # In particular, never interpolate a forbidden old direction back in.
+        base = tuple(
+            0.0 if current * target < 0.0 else
+            target if abs(target) < abs(current) else current
+            for current, target in zip(ramp_current, ramp_desired)
+        )
+        desired_wheels = self._wheel_speeds(ramp_desired)
+        base_wheels = self._wheel_speeds(base)
 
         if self.last_update_s is None:
             self.last_update_s = now_s
-            self.limiting = True
+            self.output = (base[0], base[1], desired[2] if priority_yaw else base[2])
+            self.limiting = base != ramp_desired
             return self.output
 
         dt = max(0.0, now_s - self.last_update_s)
         self.last_update_s = now_s
         wheel_delta = tuple(
             desired_speed - current_speed
-            for desired_speed, current_speed in zip(desired_wheels, current_wheels)
+            for desired_speed, current_speed in zip(desired_wheels, base_wheels)
         )
         peak_delta = max(abs(delta) for delta in wheel_delta)
         if peak_delta == 0.0:
@@ -636,7 +657,7 @@ class GateReleaseLimiter:
         alpha = min(1.0, allowed_delta / peak_delta)
         ramped_output = tuple(
             current + alpha * (target - current)
-            for current, target in zip(ramp_current, ramp_desired)
+            for current, target in zip(base, ramp_desired)
         )
         self.output = (
             ramped_output[0],
@@ -654,19 +675,56 @@ def medical_mission_restarted(
     nav_status: int,
     pose_gap_s: float,
     pose_timeout_s: float,
+    mcu_time_restarted: bool = False,
 ) -> bool:
-    """Recognize an STM32 reboot even when task state remains WAIT_START."""
+    """Recognize a mission reset without treating a telemetry gap as reboot."""
+
+    del pose_gap_s, pose_timeout_s
 
     if task_state != TASK_WAIT_START:
         return False
     if previous_task_state != TASK_WAIT_START:
         return True
-    if pose_gap_s > pose_timeout_s:
-        return True
-    return previous_nav_status == NAV_FOLLOWING and nav_status in (
-        NAV_IDLE,
-        NAV_WAIT_PATH,
-    )
+    return bool(mcu_time_restarted)
+
+
+def mcu_timestamp_restarted(previous_ms, current_ms) -> bool:
+    """Return true for a real backward MCU clock jump, while allowing wrap."""
+
+    if previous_ms in (None, 0) or current_ms == 0:
+        return False
+    delta = (int(current_ms) - int(previous_ms)) & 0xFFFFFFFF
+    return delta >= 0x80000000
+
+
+def start_gate_status(task_state, pose_nav_status, pose_fresh, stm32_ready,
+                      stm32_gate_state, serial_connected, goal_gate,
+                      navigator_result=""):
+    """Report a fresh, request-matched gate, not a stale STM32 lamp value."""
+    waiting = task_state in START_WAIT_TASK_STATES
+    matched = (goal_gate["requested_goal_id"] != GOAL_NONE
+               and goal_gate["requested_goal_id"] == goal_gate["navigator_goal_id"]
+               and goal_gate["requested_request_id"] == goal_gate["navigator_request_id"])
+    if not serial_connected:
+        reason = "serial_disconnected"
+    elif not pose_fresh:
+        reason = "waiting_pose"
+    elif not stm32_ready:
+        reason = "stm32:" + str(stm32_gate_state)
+    elif not waiting:
+        reason = "not_waiting_for_start"
+    elif goal_gate["requested_goal_id"] == GOAL_NONE:
+        reason = "waiting_goal_request"
+    elif not matched or not goal_gate["navigator_fresh"]:
+        reason = "waiting_navigator"
+    elif not goal_gate["plan_ready"] or goal_gate["navigator_state"] != NAV_FOLLOWING:
+        reason = "navigator:" + (navigator_result or "waiting_path")
+    elif pose_nav_status != NAV_FOLLOWING:
+        reason = "waiting_stm32_nav_ack"
+    else:
+        reason = "ready"
+    return {"waiting_for_button": waiting, "path_ready": reason == "ready",
+            "can_start": reason == "ready", "reason": reason}
 
 
 class SettledStopDetector:

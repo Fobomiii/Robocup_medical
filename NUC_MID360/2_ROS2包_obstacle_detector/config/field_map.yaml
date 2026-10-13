@@ -1,5 +1,6 @@
 # Calibrated field model. All coordinates are millimetres in the
-# existing OPS frame: +X right, +Y forward, yaw positive clockwise.
+# physical-front field frame produced by the fixed STM32 OPS transform:
+# +X right, +Y forward, yaw positive clockwise.
 frame_id: field
 field:
   x_min_mm: -3500
@@ -35,8 +36,8 @@ goals:
   bed3:  {id: 4, label: "Bed 3 goal", x_mm: 2200, y_mm: 5400, yaw_deg: 0}
 
 # The nurse-station QR is acquired from a center scan followed by continuous
-# left/right alternating viewpoints. The front face is y=2150 mm; every
-# viewpoint computes its yaw toward that QR at runtime.
+# left/right alternating viewpoints. The front face is y=2150 mm; scan
+# viewpoints keep the surveyed zero-degree chassis heading during this test.
 nurse_scan:
   zone: {min_x_mm: -650, max_x_mm: 650, min_y_mm: 1350, max_y_mm: 1850}
   qr_target: {x_mm: 0, y_mm: 2150}
@@ -47,14 +48,15 @@ nurse_scan:
     - {name: nurse_scan_left, x_mm: -450, y_mm: 1600}
     - {name: nurse_scan_right, x_mm: 450, y_mm: 1600}
 
-# A=right, B=front, C=left. The sensors sit 153 mm from the vehicle centre.
+# A=left, B=front, C=right. All sensors sit 144.3 mm from the vehicle centre.
 # The 300 mm parking circle is tangent to the bed's inner side, but the side
 # sensor has an unobstructed line of sight to the outer field boundary. The
-# expected sensor-face ranges are side=1300-153=1147 mm and
-# front=500-153=347 mm.
+# nominal geometric ranges below are used only for guarded OPS calibration.
+# Formal STM32 docking uses the surveyed medicine-box targets 1145/1165 mm
+# on A/C and 355 mm on B.
 stp23l_calibration:
   enabled: true
-  sensor_radius_mm: 153
+  sensor_radius_mm: 144.3
   samples_required: 7
   max_offset_spread_mm: 40
   distance_tolerance_mm: 200
@@ -63,14 +65,14 @@ stp23l_calibration:
   beds:
     bed1:
       task_states: [12]
-      side_sensor: C
+      side_sensor: A
       side_reference_x_mm: -3500
       front_reference_y_mm: 5900
       expected_center_side_distance_mm: 1300
       expected_center_front_distance_mm: 500
     bed3:
       task_states: [13]
-      side_sensor: A
+      side_sensor: C
       side_reference_x_mm: 3500
       front_reference_y_mm: 5900
       expected_center_side_distance_mm: 1300
@@ -102,35 +104,35 @@ routes:
   - from: bed1
     to: bed3
     waypoints:
-      - {x_mm: -2200, y_mm: 5400, yaw_deg: -180, speed_mm_s: 80}
-      - {x_mm: -2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 120}
-      - {x_mm: -2100, y_mm: 3800, yaw_deg: 90, speed_mm_s: 80}
-      - {x_mm: 2100, y_mm: 3800, yaw_deg: 90, speed_mm_s: 150}
+      - {x_mm: -2200, y_mm: 5400, yaw_deg: 0, speed_mm_s: 80}
+      - {x_mm: -2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 120}
+      - {x_mm: -2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 80}
+      - {x_mm: 2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 150}
       - {x_mm: 2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 80}
       - {x_mm: 2200, y_mm: 5400, yaw_deg: 0, speed_mm_s: 100}
 
   - from: bed3
     to: bed1
     waypoints:
-      - {x_mm: 2200, y_mm: 5400, yaw_deg: -180, speed_mm_s: 80}
-      - {x_mm: 2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 120}
-      - {x_mm: 2100, y_mm: 3800, yaw_deg: -90, speed_mm_s: 80}
-      - {x_mm: -2100, y_mm: 3800, yaw_deg: -90, speed_mm_s: 150}
+      - {x_mm: 2200, y_mm: 5400, yaw_deg: 0, speed_mm_s: 80}
+      - {x_mm: 2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 120}
+      - {x_mm: 2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 80}
+      - {x_mm: -2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 150}
       - {x_mm: -2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 80}
       - {x_mm: -2200, y_mm: 5400, yaw_deg: 0, speed_mm_s: 100}
 
   - from: bed3
     to: home
     waypoints:
-      - {x_mm: 2200, y_mm: 5400, yaw_deg: -180, speed_mm_s: 80}
-      - {x_mm: 2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 150}
-      - {x_mm: 1500, y_mm: 1000, yaw_deg: -180, speed_mm_s: 150}
+      - {x_mm: 2200, y_mm: 5400, yaw_deg: 0, speed_mm_s: 80}
+      - {x_mm: 2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 150}
+      - {x_mm: 1500, y_mm: 1000, yaw_deg: 0, speed_mm_s: 150}
       - {x_mm: 0, y_mm: 0, yaw_deg: 0, speed_mm_s: 100}
 
   - from: bed1
     to: home
     waypoints:
-      - {x_mm: -2200, y_mm: 5400, yaw_deg: -180, speed_mm_s: 80}
-      - {x_mm: -2100, y_mm: 3800, yaw_deg: -180, speed_mm_s: 150}
-      - {x_mm: -1500, y_mm: 1000, yaw_deg: -180, speed_mm_s: 150}
+      - {x_mm: -2200, y_mm: 5400, yaw_deg: 0, speed_mm_s: 80}
+      - {x_mm: -2100, y_mm: 3800, yaw_deg: 0, speed_mm_s: 150}
+      - {x_mm: -1500, y_mm: 1000, yaw_deg: 0, speed_mm_s: 150}
       - {x_mm: 0, y_mm: 0, yaw_deg: 0, speed_mm_s: 100}

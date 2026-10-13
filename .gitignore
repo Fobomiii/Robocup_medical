@@ -26,6 +26,10 @@ Program/MDK-ARM/Program/
 __pycache__/
 *.pyc
 
+# Local PlatformIO verification artifacts
+.pio-core/
+.tmp_esp32_compile/
+
 # Local agent permissions may contain machine-specific credentials.
 .claude/settings.local.json
 

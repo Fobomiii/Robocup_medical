@@ -18,13 +18,14 @@ from std_msgs.msg import String, UInt8
 from .field_goals import load_field_goals
 from .home_approach_core import (
     limit_bed_body_velocity,
-    limit_home_velocity,
-    scale_planar_velocity,
+    limit_field_body_velocity,
+    limit_home_body_velocity,
+    clamp_axis_velocity,
 )
 
 
 class HomeApproachLimiter(Node):
-    """Apply the global planar cap plus home/bed braking envelopes."""
+    """Apply independent axis caps plus home/bed braking envelopes."""
 
     def __init__(self) -> None:
         super().__init__("home_approach_limiter")
@@ -51,6 +52,20 @@ class HomeApproachLimiter(Node):
                 "status_topic", "/medical_nav/bed_approach_status"
             ).value
         )
+        self.home_status_topic = str(
+            self.declare_parameter(
+                "home_status_topic", "/medical_nav/home_approach_status"
+            ).value
+        )
+        self.field_status_topic = str(
+            self.declare_parameter(
+                "field_status_topic", "/medical_nav/field_boundary_status"
+            ).value
+        )
+        # The node remains in the command chain so the collision monitor keeps
+        # its stable input topic.  When disabled, this node is a transparent
+        # relay and does not apply field, bed, or Home speed envelopes.
+        self.enabled = bool(self.declare_parameter("enabled", True).value)
         self.field_config = str(self.declare_parameter("field_config", "").value)
         self.home_task_state = int(self.declare_parameter("home_task_state", 9).value)
         self.bed1_task_state = int(self.declare_parameter("bed1_task_state", 3).value)
@@ -58,17 +73,41 @@ class HomeApproachLimiter(Node):
         self.max_speed_m_s = float(
             self.declare_parameter("max_speed_m_s", 3.0).value
         )
-        self.soft_decel_m_s2 = float(
-            self.declare_parameter("soft_decel_m_s2", 4.9875).value
+        self.field_x_min_m = float(
+            self.declare_parameter("field_x_min_m", -0.5).value
         )
-        self.terminal_speed_m_s = float(
-            self.declare_parameter("terminal_speed_m_s", 0.10).value
+        self.field_x_max_m = float(
+            self.declare_parameter("field_x_max_m", 6.5).value
         )
-        self.terminal_distance_m = float(
-            self.declare_parameter("terminal_distance_m", 0.10).value
+        self.field_y_min_m = float(
+            self.declare_parameter("field_y_min_m", -3.5).value
         )
-        self.decel_start_distance_m = float(
-            self.declare_parameter("decel_start_distance_m", 1.00).value
+        self.field_y_max_m = float(
+            self.declare_parameter("field_y_max_m", 3.5).value
+        )
+        self.field_footprint_radius_m = float(
+            self.declare_parameter("field_footprint_radius_m", 0.24).value
+        )
+        self.field_localization_margin_m = float(
+            self.declare_parameter("field_localization_margin_m", 0.05).value
+        )
+        self.field_braking_decel_m_s2 = float(
+            self.declare_parameter("field_braking_decel_m_s2", 2.0).value
+        )
+        self.field_reaction_time_s = float(
+            self.declare_parameter("field_reaction_time_s", 0.22).value
+        )
+        self.field_braking_margin_m = float(
+            self.declare_parameter("field_braking_margin_m", 0.03).value
+        )
+        self.home_braking_decel_m_s2 = float(
+            self.declare_parameter("home_braking_decel_m_s2", 2.0).value
+        )
+        self.home_reaction_time_s = float(
+            self.declare_parameter("home_reaction_time_s", 0.22).value
+        )
+        self.home_braking_margin_m = float(
+            self.declare_parameter("home_braking_margin_m", 0.03).value
         )
         self.bed_max_speed_m_s = float(
             self.declare_parameter("bed_max_speed_m_s", 3.0).value
@@ -113,10 +152,6 @@ class HomeApproachLimiter(Node):
             self.home_task_state: (
                 *ros_goal("home"),
                 self.max_speed_m_s,
-                self.soft_decel_m_s2,
-                self.terminal_speed_m_s,
-                self.terminal_distance_m,
-                self.decel_start_distance_m,
             ),
         }
         self.bed_profiles = {
@@ -137,6 +172,12 @@ class HomeApproachLimiter(Node):
         self.latest_cmd: Optional[Twist] = None
         self.cmd_pub = self.create_publisher(Twist, self.output_topic, 10)
         self.status_pub = self.create_publisher(String, self.status_topic, 10)
+        self.home_status_pub = self.create_publisher(
+            String, self.home_status_topic, 10
+        )
+        self.field_status_pub = self.create_publisher(
+            String, self.field_status_topic, 10
+        )
         self.create_subscription(Twist, self.input_topic, self._cmd_callback, 10)
         self.create_subscription(PoseStamped, self.pose_topic, self._pose_callback, 10)
         self.create_subscription(UInt8, self.task_state_topic, self._task_callback, 10)
@@ -145,9 +186,16 @@ class HomeApproachLimiter(Node):
         )
 
         self.get_logger().info(
-            f"Approach limiter ready | home={self.home_task_state}:"
-            f"start={self.decel_start_distance_m:.2f} m "
-            f"({self.soft_decel_m_s2:.2f} m/s^2 equivalent) beds="
+            "Approach limiter ready | field=axis-aware "
+            f"x=[{self.field_x_min_m:.2f},{self.field_x_max_m:.2f}] "
+            f"y=[{self.field_y_min_m:.2f},{self.field_y_max_m:.2f}] "
+            f"footprint={self.field_footprint_radius_m:.2f} m "
+            f"margin={self.field_localization_margin_m:.2f} m "
+            f"decel={self.field_braking_decel_m_s2:.2f} m/s^2 "
+            f"delay={self.field_reaction_time_s:.2f} s | "
+            f"home={self.home_task_state}:axis-aware "
+            f"decel={self.home_braking_decel_m_s2:.2f} m/s^2 "
+            f"delay={self.home_reaction_time_s:.2f} s beds="
             f"{self.bed1_task_state},{self.bed3_task_state}:axis-aware "
             f"forward={self.bed_forward_decel_m_s2:.2f} m/s^2 "
             f"side={self.bed_side_decel_m_s2:.2f} m/s^2 "
@@ -183,6 +231,8 @@ class HomeApproachLimiter(Node):
             self.task_state in self.approach_profiles
             or self.task_state in self.bed_profiles
         )
+        if not self.enabled:
+            return
         if previous_limited and not current_limited:
             # Do not carry a pre-transition command into docking or task handoff.
             self._publish_zero()
@@ -224,20 +274,28 @@ class HomeApproachLimiter(Node):
 
     def _cmd_callback(self, message: Twist) -> None:
         self.latest_cmd = message
-        if (
-            self.task_state not in self.approach_profiles
-            and self.task_state not in self.bed_profiles
-        ):
-            limited_x, limited_y = scale_planar_velocity(
-                message.linear.x, message.linear.y, self.max_speed_m_s
-            )
-            self.cmd_pub.publish(
-                self._with_planar_velocity(message, limited_x, limited_y)
-            )
-            return
         self._publish_limited(message)
 
     def _publish_limited(self, message: Twist) -> None:
+        if not self.enabled:
+            # Keep the topic contract for collision_monitor while removing all
+            # approach/field speed shaping from this node.
+            self.cmd_pub.publish(message)
+            disabled_status = String()
+            disabled_status.data = json.dumps(
+                {
+                    "task_state": self.task_state,
+                    "enabled": False,
+                    "input_body_vx_m_s": message.linear.x,
+                    "input_body_vy_m_s": message.linear.y,
+                    "output_body_vx_m_s": message.linear.x,
+                    "output_body_vy_m_s": message.linear.y,
+                    "reason": "approach_limits_disabled",
+                },
+                separators=(",", ":"),
+            )
+            self.field_status_pub.publish(disabled_status)
+            return
         pose_fresh = (
             self.pose_x_m is not None
             and self.pose_y_m is not None
@@ -245,22 +303,70 @@ class HomeApproachLimiter(Node):
         )
         if not pose_fresh:
             limited_x, limited_y = 0.0, 0.0
+            field_status = {
+                "task_state": self.task_state,
+                "pose_fresh": False,
+                "wheel_fresh": False,
+                "input_body_vx_m_s": message.linear.x,
+                "input_body_vy_m_s": message.linear.y,
+                "output_body_vx_m_s": 0.0,
+                "output_body_vy_m_s": 0.0,
+                "reason": "pose_stale",
+            }
         else:
+            capped_x, capped_y = clamp_axis_velocity(
+                message.linear.x, message.linear.y, self.max_speed_m_s
+            )
+            wheel_fresh = (
+                self.measured_world_vx_m_s is not None
+                and self.measured_world_vy_m_s is not None
+                and time.monotonic() - self.last_wheel_odom_s
+                <= self.wheel_odom_timeout_s
+            )
+            measured_vx = self.measured_world_vx_m_s if wheel_fresh else None
+            measured_vy = self.measured_world_vy_m_s if wheel_fresh else None
+            field_x, field_y, field_decision = limit_field_body_velocity(
+                capped_x,
+                capped_y,
+                measured_vx,
+                measured_vy,
+                self.pose_yaw_rad,
+                self.pose_x_m,
+                self.pose_y_m,
+                field_x_min_m=self.field_x_min_m,
+                field_x_max_m=self.field_x_max_m,
+                field_y_min_m=self.field_y_min_m,
+                field_y_max_m=self.field_y_max_m,
+                footprint_radius_m=self.field_footprint_radius_m,
+                localization_margin_m=self.field_localization_margin_m,
+                braking_decel_m_s2=self.field_braking_decel_m_s2,
+                reaction_time_s=self.field_reaction_time_s,
+                braking_margin_m=self.field_braking_margin_m,
+                max_speed_m_s=self.max_speed_m_s,
+            )
+            field_status = {
+                "task_state": self.task_state,
+                "pose_fresh": True,
+                "wheel_fresh": wheel_fresh,
+                "pose_x_m": self.pose_x_m,
+                "pose_y_m": self.pose_y_m,
+                "pose_yaw_rad": self.pose_yaw_rad,
+                "input_body_vx_m_s": message.linear.x,
+                "input_body_vy_m_s": message.linear.y,
+                "output_body_vx_m_s": field_x,
+                "output_body_vy_m_s": field_y,
+                "measured_world_vx_m_s": measured_vx,
+                "measured_world_vy_m_s": measured_vy,
+                **field_decision,
+            }
+            limited_x, limited_y = field_x, field_y
             if self.task_state in self.bed_profiles:
                 target_x_m, target_y_m, side_toward_sign = self.bed_profiles[
                     self.task_state
                 ]
-                wheel_fresh = (
-                    self.measured_world_vx_m_s is not None
-                    and self.measured_world_vy_m_s is not None
-                    and time.monotonic() - self.last_wheel_odom_s
-                    <= self.wheel_odom_timeout_s
-                )
-                measured_vx = self.measured_world_vx_m_s if wheel_fresh else None
-                measured_vy = self.measured_world_vy_m_s if wheel_fresh else None
                 limited_x, limited_y, decision = limit_bed_body_velocity(
-                    message.linear.x,
-                    message.linear.y,
+                    field_x,
+                    field_y,
                     measured_vx,
                     measured_vy,
                     self.pose_yaw_rad,
@@ -286,8 +392,8 @@ class HomeApproachLimiter(Node):
                         "target_x_m": target_x_m,
                         "target_y_m": target_y_m,
                         "side_toward_sign": side_toward_sign,
-                        "input_body_vx_m_s": message.linear.x,
-                        "input_body_vy_m_s": message.linear.y,
+                        "input_body_vx_m_s": field_x,
+                        "input_body_vy_m_s": field_y,
                         "output_body_vx_m_s": limited_x,
                         "output_body_vy_m_s": limited_y,
                         "measured_world_vx_m_s": measured_vx,
@@ -297,29 +403,49 @@ class HomeApproachLimiter(Node):
                     separators=(",", ":"),
                 )
                 self.status_pub.publish(status)
-            else:
+            elif self.task_state in self.approach_profiles:
                 (
                     target_x_m,
                     target_y_m,
                     max_speed_m_s,
-                    soft_decel_m_s2,
-                    terminal_speed_m_s,
-                    terminal_distance_m,
-                    decel_start_distance_m,
                 ) = self.approach_profiles[self.task_state]
-                limited_x, limited_y, _ = limit_home_velocity(
-                    message.linear.x,
-                    message.linear.y,
+                limited_x, limited_y, decision = limit_home_body_velocity(
+                    field_x,
+                    field_y,
+                    measured_vx,
+                    measured_vy,
+                    self.pose_yaw_rad,
                     self.pose_x_m,
                     self.pose_y_m,
-                    home_x_m=target_x_m,
-                    home_y_m=target_y_m,
+                    target_x_m=target_x_m,
+                    target_y_m=target_y_m,
                     max_speed_m_s=max_speed_m_s,
-                    soft_decel_m_s2=soft_decel_m_s2,
-                    terminal_speed_m_s=terminal_speed_m_s,
-                    terminal_distance_m=terminal_distance_m,
-                    decel_start_distance_m=decel_start_distance_m,
+                    braking_decel_m_s2=self.home_braking_decel_m_s2,
+                    reaction_time_s=self.home_reaction_time_s,
+                    safety_margin_m=self.home_braking_margin_m,
                 )
+                status = String()
+                status.data = json.dumps(
+                    {
+                        "task_state": self.task_state,
+                        "wheel_fresh": wheel_fresh,
+                        "pose_x_m": self.pose_x_m,
+                        "pose_y_m": self.pose_y_m,
+                        "pose_yaw_rad": self.pose_yaw_rad,
+                        "input_body_vx_m_s": field_x,
+                        "input_body_vy_m_s": field_y,
+                        "output_body_vx_m_s": limited_x,
+                        "output_body_vy_m_s": limited_y,
+                        "measured_world_vx_m_s": measured_vx,
+                        "measured_world_vy_m_s": measured_vy,
+                        **decision,
+                    },
+                    separators=(",", ":"),
+                )
+                self.home_status_pub.publish(status)
+        field_message = String()
+        field_message.data = json.dumps(field_status, separators=(",", ":"))
+        self.field_status_pub.publish(field_message)
         self.cmd_pub.publish(
             self._with_planar_velocity(message, limited_x, limited_y)
         )

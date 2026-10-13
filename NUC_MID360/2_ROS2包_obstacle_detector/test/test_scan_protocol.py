@@ -3,7 +3,10 @@
 import unittest
 
 from obstacle_detector.nav_protocol import (
+    ARM_DEBUG_ACCEPTED,
+    ArmDebugStatus,
     FrameParser,
+    MSG_ARM_DEBUG_COMMAND,
     MSG_SCAN_ACK,
     MSG_SCAN_RESULT,
     SCAN_ACK_ACCEPTED,
@@ -15,8 +18,10 @@ from obstacle_detector.nav_protocol import (
     ScanAck,
     ScanResult,
     decode_scan_ack,
+    decode_arm_debug_status,
     decode_scan_result,
     encode_frame,
+    encode_arm_debug_command,
     encode_scan_ack,
     encode_scan_result,
 )
@@ -26,11 +31,25 @@ from obstacle_detector.scanner_core import (
     scan_matches_task,
     scan_position_is_allowed,
     tele_camera_assists,
-    tele_camera_should_capture,
 )
 
 
 class ScanProtocolTest(unittest.TestCase):
+    def test_arm_debug_command_and_status(self):
+        frame = FrameParser().feed(
+            encode_frame(
+                MSG_ARM_DEBUG_COMMAND,
+                9,
+                encode_arm_debug_command(513, True),
+            )
+        )[0]
+        self.assertEqual(frame.msg_type, MSG_ARM_DEBUG_COMMAND)
+        self.assertEqual(frame.payload, b"\x02\x01\x01")
+        self.assertEqual(
+            decode_arm_debug_status(b"\x02\x01\x01\x01"),
+            ArmDebugStatus(513, True, ARM_DEBUG_ACCEPTED),
+        )
+
     def test_scan_result_frame_round_trip(self):
         payload = encode_scan_result(
             513, SCAN_CONTEXT_BED1, SCAN_FORMAT_CODE128, "6946522463487"
@@ -64,7 +83,9 @@ class ScanProtocolTest(unittest.TestCase):
             decode_scan_ack(b"\x00\x01\x09")
 
     def test_state_format_and_whitelist_are_all_required(self):
-        self.assertEqual(expected_scan(14), (SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR))
+        self.assertEqual(
+            expected_scan(14), (SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR)
+        )
         self.assertIsNone(expected_scan(15))
         self.assertTrue(scan_matches_task(1, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
         self.assertTrue(scan_matches_task(14, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
@@ -104,17 +125,16 @@ class ScanProtocolTest(unittest.TestCase):
         self.assertFalse(consensus.observe(SCAN_FORMAT_CODE128, "6946522463487", 1.0))
         self.assertFalse(consensus.observe(SCAN_FORMAT_CODE128, "6946522463487", 2.0))
 
-    def test_tele_camera_only_assists_pre_start_qr(self):
+    def test_tele_camera_assists_every_active_scan(self):
         self.assertTrue(tele_camera_assists(14, SCAN_FORMAT_QR))
-        self.assertFalse(tele_camera_assists(1, SCAN_FORMAT_QR))
+        self.assertTrue(tele_camera_assists(1, SCAN_FORMAT_QR))
+        self.assertTrue(tele_camera_assists(2, SCAN_FORMAT_QR))
+        self.assertTrue(tele_camera_assists(3, SCAN_FORMAT_CODE128))
+        self.assertTrue(tele_camera_assists(4, SCAN_FORMAT_CODE128))
+        self.assertTrue(tele_camera_assists(6, SCAN_FORMAT_CODE128))
+        self.assertTrue(tele_camera_assists(7, SCAN_FORMAT_CODE128))
         self.assertFalse(tele_camera_assists(14, SCAN_FORMAT_CODE128))
-        self.assertFalse(tele_camera_assists(3, SCAN_FORMAT_CODE128))
-
-    def test_tele_camera_stays_live_until_start_button_is_accepted(self):
-        for task_state in (14, 15, 16):
-            self.assertTrue(tele_camera_should_capture(task_state))
-        for task_state in (0, 1, 3, 6, 9, 10, 11):
-            self.assertFalse(tele_camera_should_capture(task_state))
+        self.assertFalse(tele_camera_assists(9, SCAN_FORMAT_CODE128))
 
     def test_bed_scan_requires_proximity_to_its_current_target(self):
         targets = {
@@ -134,6 +154,18 @@ class ScanProtocolTest(unittest.TestCase):
         self.assertTrue(
             scan_position_is_allowed(
                 SCAN_CONTEXT_ORDER, None, None, targets, 1200.0
+            )
+        )
+
+    def test_order_scan_is_allowed_at_prestart_origin(self):
+        self.assertTrue(
+            scan_position_is_allowed(
+                SCAN_CONTEXT_ORDER, 0.0, 0.0, {}, 1200.0
+            )
+        )
+        self.assertTrue(
+            scan_position_is_allowed(
+                SCAN_CONTEXT_ORDER, 0.0, 1700.0, {}, 1200.0
             )
         )
 

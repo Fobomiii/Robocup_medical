@@ -11,6 +11,7 @@ from obstacle_detector.scan_dashboard_core import (
     START_SUCCESS,
     START_WAITING,
     describe_start_status,
+    describe_start_reason,
     parse_bridge_status,
     parse_scan_result,
     parse_scan_status,
@@ -68,6 +69,41 @@ class ScanDashboardCoreTest(unittest.TestCase):
         self.assertTrue(status["can_start"])
         self.assertFalse(status["motion_authorized"])
 
+    def test_parses_prestart_arm_debug_status(self):
+        status = parse_bridge_status(
+            '{"serial": true, "pose": true, '
+            '"stm32": {"task_state": 14, "nav_status": 2}, '
+            '"arm_debug": {"allowed": true, "deployed": true, '
+            '"pending": false, "requested_deployed": true, '
+            '"result": "accepted"}}'
+        )
+        self.assertEqual(
+            status["arm_debug"],
+            {
+                "allowed": True,
+                "deployed": True,
+                "pending": False,
+                "requested_deployed": True,
+                "result": "accepted",
+            },
+        )
+
+    def test_parses_prestart_tts_debug_status(self):
+        status = parse_bridge_status(
+            '{"stm32": {"task_state": 14, "nav_status": 2}, '
+            '"tts": {"debug_allowed": false, "debug_playing": true, '
+            '"debug_bed": 3, "debug_result": "playing"}}'
+        )
+        self.assertEqual(
+            status["tts_debug"],
+            {
+                "allowed": False,
+                "playing": True,
+                "bed": 3,
+                "result": "playing",
+            },
+        )
+
     def test_start_status_covers_wait_ready_run_and_success(self):
         def status(task_state, can_start=False):
             return parse_bridge_status(
@@ -82,10 +118,22 @@ class ScanDashboardCoreTest(unittest.TestCase):
         self.assertEqual(waiting[1], "等待")
         self.assertEqual(waiting[2], "#e53935")
 
-        ready = describe_start_status(status(15, can_start=True))
+        ready = describe_start_status(status(14, can_start=True))
         self.assertEqual(ready[0], START_READY)
         self.assertEqual(ready[1], "发车")
         self.assertEqual(ready[2], "#138a36")
+
+        qr_confirmed_ready = describe_start_status(status(15, can_start=True))
+        self.assertEqual(qr_confirmed_ready[0], START_READY)
+        self.assertEqual(qr_confirmed_ready[1], "可发车")
+        self.assertEqual(qr_confirmed_ready[2], "#138a36")
+
+        tele_ready = describe_start_status(
+            status(14, can_start=True), tele_scan_state="success"
+        )
+        self.assertEqual(tele_ready[0], START_READY)
+        self.assertEqual(tele_ready[1], "可发车")
+        self.assertEqual(tele_ready[2], "#138a36")
 
         for driving in (1, 3, 6, 12, 13):
             running = describe_start_status(status(driving, can_start=True))
@@ -110,6 +158,20 @@ class ScanDashboardCoreTest(unittest.TestCase):
         self.assertEqual(describe_start_status(None)[0], START_WAITING)
         unknown = parse_bridge_status('{"stm32": {"task_state": 99}}')
         self.assertEqual(describe_start_status(unknown)[0], START_WAITING)
+
+    def test_cold_start_reason_names_inactive_node(self):
+        status = parse_bridge_status(
+            '{"stm32": {"task_state": 14}, "start_gate": '
+            '{"reason": "navigator:waiting_for_nav2_active:bt_navigator"}}')
+        self.assertIn("bt_navigator", describe_start_reason(status))
+        self.assertIn("激活", describe_start_reason(status))
+
+    def test_wait_reason_distinguishes_serial_telemetry_and_plan_retry(self):
+        for reason, expected in (("serial_disconnected", "串口"),
+                                 ("stm32:waiting_telemetry", "轮速"),
+                                 ("navigator:prestart_plan_retry:rejected", "重试")):
+            self.assertIn(expected, describe_start_reason({"reason": reason}))
+        self.assertEqual(describe_start_reason({"reason": "ready"}), "")
 
 
 if __name__ == "__main__":

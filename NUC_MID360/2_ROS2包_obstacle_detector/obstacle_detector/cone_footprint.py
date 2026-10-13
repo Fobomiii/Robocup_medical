@@ -13,7 +13,6 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.time import Time
 from sensor_msgs.msg import PointCloud2
-from sensor_msgs_py import point_cloud2 as pc2
 from std_msgs.msg import Header, String
 from tf2_ros import Buffer, TransformException, TransformListener
 
@@ -22,7 +21,12 @@ from obstacle_detector.cone_footprint_core import (
     footprint_disk,
     future_timestamp_gap_s,
 )
-from obstacle_detector.lidar_transform import quaternion_matrix, transform_points, xyz_from_cloud
+from obstacle_detector.lidar_transform import (
+    cloud_points_from_message,
+    create_cloud_with_metadata,
+    quaternion_matrix,
+    transform_points,
+)
 from obstacle_detector.qos_profiles import low_latency_sensor_qos
 
 
@@ -393,7 +397,8 @@ class ConeFootprintCompensator(Node):
         return extras
 
     def _cloud_callback(self, message: PointCloud2) -> None:
-        xyz = xyz_from_cloud(message)
+        cloud_data = cloud_points_from_message(message)
+        xyz = cloud_data.xyz
         source_frame = message.header.frame_id.lstrip("/") or "base_link"
         expanded, centers, raw_cluster_count = expand_cone_footprints(
             xyz, **self.parameters, return_diagnostics=True
@@ -418,7 +423,29 @@ class ConeFootprintCompensator(Node):
         header = Header()
         header.stamp = message.header.stamp
         header.frame_id = message.header.frame_id
-        self.publisher.publish(pc2.create_cloud_xyz32(header, expanded))
+        synthetic_count = len(expanded) - len(xyz)
+        expanded_tag = None
+        if cloud_data.tag is not None:
+            expanded_tag = np.concatenate(
+                (cloud_data.tag, np.zeros(synthetic_count, dtype=np.uint8))
+            )
+        expanded_time_ns = None
+        if cloud_data.point_time_ns is not None:
+            reference_ns = (
+                int(message.header.stamp.sec) * 1_000_000_000
+                + int(message.header.stamp.nanosec)
+            )
+            expanded_time_ns = np.concatenate(
+                (
+                    cloud_data.point_time_ns,
+                    np.full(synthetic_count, reference_ns, dtype=np.int64),
+                )
+            )
+        self.publisher.publish(
+            create_cloud_with_metadata(
+                header, expanded, expanded_tag, expanded_time_ns
+            )
+        )
         self.cloud_count += 1
         self.raw_cluster_count = raw_cluster_count
         self.detected_count = len(centers)

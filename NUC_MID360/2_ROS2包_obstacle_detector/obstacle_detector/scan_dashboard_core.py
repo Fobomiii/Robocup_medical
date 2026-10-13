@@ -12,6 +12,8 @@ from .nav_protocol import (
     TASK_COMPLETE,
     TASK_NAV_ERROR,
     TASK_NAV_HOME,
+    TASK_WAIT_BED1_START,
+    TASK_WAIT_BED3_START,
 )
 
 
@@ -84,6 +86,11 @@ def parse_bridge_status(payload: str) -> Optional[dict]:
         data = json.loads(payload)
         stm32 = data.get("stm32") or {}
         gate = data.get("start_gate") or {}
+        arm_debug = data.get("arm_debug") or {}
+        tts = data.get("tts") or {}
+        debug_bed = tts.get("debug_bed")
+        if debug_bed not in (1, 3):
+            debug_bed = None
         task_state = int(stm32.get("task_state", -1))
         nav_status = int(stm32.get("nav_status", 0))
         return {
@@ -96,12 +103,30 @@ def parse_bridge_status(payload: str) -> Optional[dict]:
             "path_ready": bool(gate.get("path_ready")),
             "can_start": bool(gate.get("can_start")),
             "motion_authorized": bool(data.get("motion_authorized")),
+            "reason": str(gate.get("reason", "")),
+            "arm_debug": {
+                "allowed": bool(arm_debug.get("allowed")),
+                "deployed": bool(arm_debug.get("deployed")),
+                "pending": bool(arm_debug.get("pending")),
+                "requested_deployed": bool(
+                    arm_debug.get("requested_deployed")
+                ),
+                "result": str(arm_debug.get("result", "idle")),
+            },
+            "tts_debug": {
+                "allowed": bool(tts.get("debug_allowed")),
+                "playing": bool(tts.get("debug_playing")),
+                "bed": debug_bed,
+                "result": str(tts.get("debug_result", "idle")),
+            },
         }
     except (AttributeError, KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None
 
 
-def describe_start_status(status: Optional[dict]) -> Tuple[str, str, str]:
+def describe_start_status(
+    status: Optional[dict], tele_scan_state: str = "standby"
+) -> Tuple[str, str, str]:
     """Map the STM32 task state onto the one status word on the dashboard.
 
     Returns ``(state, text, colour)``.  The wait states are split by the
@@ -127,4 +152,43 @@ def describe_start_status(status: Optional[dict]) -> Tuple[str, str, str]:
             state = START_RUNNING
         else:
             state = START_WAITING
-    return state, START_STATUS_TEXT[state], START_STATUS_COLOR[state]
+    text = START_STATUS_TEXT[state]
+    qr_confirmed = (
+        status is not None
+        and int(status["task_state"])
+        in (TASK_WAIT_BED1_START, TASK_WAIT_BED3_START)
+    )
+    if state == START_READY and (
+        tele_scan_state == "success" or qr_confirmed
+    ):
+        text = "可发车"
+    return state, text, START_STATUS_COLOR[state]
+
+
+def describe_start_reason(status: Optional[dict]) -> str:
+    """Keep the cause visible when cold startup cannot open the button gate."""
+    if status is None:
+        return "等待导航桥接状态"
+    reason = status.get("reason", "")
+    messages = {
+        "serial_disconnected": "STM32 串口未连接",
+        "waiting_pose": "等待 STM32 位姿遥测",
+        "waiting_goal_request": "等待 STM32 目标请求",
+        "waiting_navigator": "等待导航器响应当前目标",
+        "waiting_stm32_nav_ack": "等待 STM32 确认路径就绪",
+        "stm32:waiting_telemetry": "等待 STM32 位姿/轮速遥测",
+        "stm32:rebooting": "STM32 遥测中断",
+        "stm32:waiting_reset_state": "等待 STM32 进入发车等待状态",
+        "stm32:waiting_stationary": "等待底盘静止",
+        "stm32:recovering": "STM32 静止遥测确认中",
+    }
+    if reason in ("ready", "not_waiting_for_start"):
+        return ""
+    if reason.startswith("navigator:waiting_for_nav2_active"):
+        nodes = reason.partition("waiting_for_nav2_active")[2].lstrip(":")
+        return "等待导航节点激活" + ("：" + nodes if nodes else "")
+    if reason.startswith("navigator:prestart_plan"):
+        return "预规划暂未成功，正在重试"
+    if reason.startswith("navigator:"):
+        return "等待路径：" + reason.partition(":")[2]
+    return messages.get(reason, "等待首条路径就绪")

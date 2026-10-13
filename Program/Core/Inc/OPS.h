@@ -46,16 +46,21 @@ uint8_t OPS_IsOnline(void);
 uint8_t OPS_FrameReady(void);
 void OPS_ClearFrameReady(void);
 
+/** Position in the physical chassis/field frame after the fixed OPS 45 deg transform. */
 float OPS_GetX(void);
 float OPS_GetY(void);
 float OPS_GetYaw(void);
 float OPS_GetWz(void);
 
 /**
- * 一次性读取同一帧中的 X/Y/OPS 航向。
+ * 一次性读取同一帧中的变换后场地 X/Y 与 OPS 航向。
  * 返回 1 表示 OPS 在线且输出有效，返回 0 表示尚未收到有效帧或已超时。
  */
 uint8_t OPS_GetPose(float *pos_x, float *pos_y, float *yaw);
+
+/** Read one coherent OPS pose together with its STM32 receive timestamp. */
+uint8_t OPS_GetPoseStamped(float *pos_x, float *pos_y, float *yaw,
+                           uint32_t *sample_ms);
 
 void OPS_Cali(void);
 void OPS_UpdateX(float pos_x);

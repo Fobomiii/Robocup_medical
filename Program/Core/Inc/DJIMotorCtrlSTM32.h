@@ -2,7 +2,8 @@
  * @file DJIMotorCtrlSTM32.h
  * @brief DJI C620/C610 motor control for STM32 (ESP-style cascade PID).
  *
- * CHASSIS: M3508+C620 on FDCAN1, CAN ID 1~4 = Front/Left/Rear/Right
+ * CHASSIS: M3508+C620 on FDCAN1, cross layout CAN ID
+ *   1=Left, 2=Rear, 3=Right, 4=Front.
  *   SetCommand / Update(Vx,Vy,W): +Y forward, +X right, +W clockwise.
  * M2006Motor: M2006+C610 on FDCAN2, P36, default CAN ID 1
  *   ctrlAngle(deg) / ctrlAngle(deg, time_s): time>0 uses trapezoid accel-cruise-decel.
@@ -35,9 +36,6 @@ private:
   FDCAN_HandleTypeDef* can_;
   uint16_t frq_;
   bool started_;
-  float last_vx_;
-  float last_vy_;
-  float last_w_;
 };
 
 class M2006Motor {
@@ -121,7 +119,7 @@ void DJI_Motor_ArmStart(void);
 
 void DJI_Chassis_SetCommand(float vx, float vy, float w);
 
-/** Bypass the normal velocity ramp and command an immediate chassis stop. */
+/** Force a zero wheel-speed target at the next chassis control step. */
 void DJI_Chassis_SetCommandImmediate(float vx, float vy, float w);
 
 /**

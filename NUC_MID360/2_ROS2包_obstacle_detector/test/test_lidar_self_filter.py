@@ -7,13 +7,19 @@ from sensor_msgs.msg import PointField
 from sensor_msgs_py import point_cloud2 as pc2
 from std_msgs.msg import Header
 
+from obstacle_detector.lidar_deskew import MotionSample, deskew_points
 from obstacle_detector.lidar_transform import (
     arm_filter_mask,
+    cloud_points_from_message,
+    create_cloud_with_metadata,
     forward_arm_extent,
     ground_filter_mask,
     ground_plane_removal_mask,
     height_ceiling_mask,
+    polygon_self_filter_mask,
+    polygon_inside_mask_xy,
     quaternion_matrix,
+    regular_polygon_vertices,
     self_filter_mask,
     top_plate_filter_mask,
     transform_points,
@@ -23,14 +29,45 @@ from obstacle_detector.lidar_transform import (
 
 
 class LidarSelfFilterTest(unittest.TestCase):
-    def test_urdf_mount_transform_matches_centered_upright_mid360(self):
-        rotation = quaternion_matrix(0.0, 0.0, 0.0, 1.0)
+    def test_rear_self_return_would_escape_if_deskewed_before_filtering(self):
+        rear_self_return = np.array([[-0.20, 0.0, 0.20]], dtype=np.float32)
+        samples = [
+            MotionSample(0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0),
+            MotionSample(
+                100_000_000, 0.30, 0.0, 0.0, 3.0, 0.0, 0.0
+            ),
+        ]
+
+        keep_before = self_filter_mask(
+            rear_self_return, 0.26, -0.05, 0.65
+        )
+        shifted = deskew_points(
+            rear_self_return,
+            np.array([0], dtype=np.int64),
+            samples,
+            100_000_000,
+            0,
+        )
+        keep_after = self_filter_mask(shifted, 0.26, -0.05, 0.65)
+
+        np.testing.assert_array_equal(keep_before, [False])
+        self.assertAlmostEqual(float(shifted[0, 0]), -0.50, places=5)
+        np.testing.assert_array_equal(keep_after, [True])
+
+    def test_urdf_mount_transform_matches_rotated_cross_frame(self):
+        half_yaw = np.pi / 8.0
+        rotation = quaternion_matrix(
+            0.0, 0.0, np.sin(half_yaw), np.cos(half_yaw)
+        )
         translation = np.array([0.0, 0.0, 0.33], dtype=np.float32)
-        sensor_points = np.array([[1.0, 2.0, 3.0]], dtype=np.float32)
+        sensor_points = np.array([[1.0, 0.0, 3.0]], dtype=np.float32)
 
         actual = transform_points(sensor_points, rotation, translation)
 
-        np.testing.assert_allclose(actual, [[1.0, 2.0, 3.33]], atol=1e-6)
+        expected = np.sqrt(0.5)
+        np.testing.assert_allclose(
+            actual, [[expected, expected, 3.33]], atol=1e-6
+        )
 
     def test_quaternion_is_normalized_before_use(self):
         rotation = quaternion_matrix(0.0, 2.0, 0.0, 0.0)
@@ -52,6 +89,56 @@ class LidarSelfFilterTest(unittest.TestCase):
         keep = self_filter_mask(points, radius=0.26, min_z=-0.05, max_z=0.45)
 
         np.testing.assert_array_equal(keep, [False, False, True, True, True])
+
+    def test_polygon_filter_matches_sixteen_sided_chassis_boundary(self):
+        radius = 0.245
+        apothem = radius * np.cos(np.pi / 16.0)
+        points = np.array(
+            [
+                [radius, 0.0, 0.20],
+                [radius + 0.001, 0.0, 0.20],
+                [apothem, apothem, 0.20],
+                [0.0, 0.0, 0.70],
+            ], dtype=np.float32
+        )
+        keep = polygon_self_filter_mask(
+            points, radius, 16, 0.0, min_z=-0.05, max_z=0.65
+        )
+        np.testing.assert_array_equal(keep, [False, True, True, True])
+
+    def test_polygon_vertices_use_configured_radius(self):
+        vertices = regular_polygon_vertices(0.245, 16, 0.0)
+        self.assertEqual(vertices.shape, (16, 2))
+        np.testing.assert_allclose(
+            np.linalg.norm(vertices, axis=1), np.full(16, 0.245), atol=1e-6
+        )
+
+    def test_stop_detection_band_counts_only_outer_polygon_points(self):
+        probes = np.array(
+            [[0.244, 0.0], [0.260, 0.0], [0.284, 0.0], [0.286, 0.0]],
+            dtype=np.float32,
+        )
+        inside = polygon_inside_mask_xy(probes, 0.285, 16, 0.0)
+        np.testing.assert_array_equal(inside, [True, True, True, False])
+
+    def test_self_filter_preserves_points_in_stop_detection_band(self):
+        points = np.array(
+            [
+                [0.260, 0.0, 0.20],
+                [0.275, 0.0, 0.20],
+                [0.284, 0.0, 0.20],
+                [0.286, 0.0, 0.20],
+            ],
+            dtype=np.float32,
+        )
+        keep = polygon_self_filter_mask(
+            points, 0.245, 16, 0.0, min_z=-0.05, max_z=0.65
+        )
+        output = points[keep]
+        in_stop = polygon_inside_mask_xy(output[:, :2], 0.285, 16, 0.0)
+
+        np.testing.assert_allclose(output[:, 0], [0.260, 0.275, 0.284, 0.286])
+        np.testing.assert_array_equal(in_stop, [True, True, True, False])
 
     def test_output_height_ceiling_keeps_boundary_and_removes_higher_points(self):
         points = np.array(
@@ -134,6 +221,20 @@ class LidarSelfFilterTest(unittest.TestCase):
 
         np.testing.assert_array_equal(keep, [True, True, True, True, False, False, False])
 
+    def test_arm_box_rotates_with_original_hardware_front(self):
+        axis = np.sqrt(0.5)
+        points = np.array(
+            [
+                [0.35 * axis, 0.35 * axis, 0.62],
+                [0.35 * axis, -0.35 * axis, 0.62],
+            ],
+            dtype=np.float32,
+        )
+
+        keep = arm_filter_mask(points, **self.ARM_BOX, yaw_deg=45.0)
+
+        np.testing.assert_array_equal(keep, [False, True])
+
     def test_launched_arm_box_matches_the_costmap_and_the_urdf(self):
         """Read the values that actually ship instead of re-stating them.
 
@@ -159,6 +260,8 @@ class LidarSelfFilterTest(unittest.TestCase):
                  ("center_x", "center_y", "side_length", "margin", "min_z", "max_z")}
         box = {name: launched(f"arm_{name}") for name in
                ("x_min", "x_max", "half_width", "min_z", "max_z")}
+        arm_yaw_deg = launched("arm_yaw_deg")
+        self.assertEqual(arm_yaw_deg, 0.0)
         self.assertLess(box["x_min"], box["x_max"])
         self.assertLess(box["min_z"], box["max_z"])
         self.assertGreater(box["half_width"], 0.0)
@@ -186,14 +289,26 @@ class LidarSelfFilterTest(unittest.TestCase):
 
         # The RViz visual is the same volume as the clamp.
         urdf = ET.parse(root / "config" / "robot.urdf").getroot()
+        livox_joint = urdf.find(".//joint[@name='livox_joint']/origin")
+        self.assertIsNotNone(livox_joint)
+        self.assertEqual(
+            [float(v) for v in livox_joint.get("rpy").split()],
+            [0.0, 0.0, 0.0],
+        )
         visual = urdf.find(".//link[@name='arm']/visual")
         size = [float(v) for v in visual.find("geometry/box").get("size").split()]
         origin = [float(v) for v in visual.find("origin").get("xyz").split()]
-        self.assertAlmostEqual(box["x_min"], origin[0] - size[0] / 2.0, places=9)
-        self.assertAlmostEqual(box["x_max"], origin[0] + size[0] / 2.0, places=9)
+        rpy = [float(v) for v in visual.find("origin").get("rpy").split()]
+        yaw = np.deg2rad(arm_yaw_deg)
+        along = origin[0] * np.cos(yaw) + origin[1] * np.sin(yaw)
+        lateral = -origin[0] * np.sin(yaw) + origin[1] * np.cos(yaw)
+        self.assertAlmostEqual(box["x_min"], along - size[0] / 2.0, places=6)
+        self.assertAlmostEqual(box["x_max"], along + size[0] / 2.0, places=6)
+        self.assertAlmostEqual(lateral, 0.0, places=6)
         self.assertAlmostEqual(box["half_width"], size[1] / 2.0, places=9)
         self.assertAlmostEqual(box["min_z"], origin[2] - size[2] / 2.0, places=9)
         self.assertAlmostEqual(box["max_z"], origin[2] + size[2] / 2.0, places=9)
+        self.assertAlmostEqual(rpy[2], yaw, places=9)
 
     def test_forward_arm_extent_reports_reach_inside_the_width_band(self):
         points = np.array(
@@ -291,6 +406,57 @@ class LidarSelfFilterTest(unittest.TestCase):
 
         _, tag = xyz_and_tag_from_cloud(cloud)
         np.testing.assert_array_equal(tag, [7])
+
+    def test_livox_timestamp_is_retained_as_absolute_point_time(self):
+        fields = [
+            PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
+            PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
+            PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
+            PointField(name="tag", offset=12, datatype=PointField.UINT8, count=1),
+            PointField(name="timestamp", offset=16, datatype=PointField.FLOAT64, count=1),
+        ]
+        header = Header()
+        header.stamp.sec = 100
+        cloud = pc2.create_cloud(
+            header, fields,
+            [(1.0, 2.0, 3.0, 7, 100.0), (2.0, 3.0, 4.0, 8, 100.1)],
+        )
+
+        data = cloud_points_from_message(cloud)
+
+        self.assertEqual(data.time_field, "timestamp")
+        np.testing.assert_array_equal(
+            data.point_time_ns, [100_000_000_000, 100_100_000_000]
+        )
+        output = create_cloud_with_metadata(
+            header, data.xyz, data.tag, data.point_time_ns
+        )
+        output_points = pc2.read_points(
+            output, field_names=("x", "y", "z", "tag", "timestamp")
+        )
+        np.testing.assert_array_equal(output_points["tag"], [7, 8])
+        np.testing.assert_allclose(output_points["timestamp"], [100.0, 100.1])
+
+    def test_livox_offset_time_uses_cloud_header_as_epoch(self):
+        fields = [
+            PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
+            PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
+            PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
+            PointField(name="offset_time", offset=12, datatype=PointField.UINT32, count=1),
+        ]
+        header = Header()
+        header.stamp.sec = 5
+        cloud = pc2.create_cloud(
+            header, fields,
+            [(1.0, 0.0, 0.2, 0), (1.0, 0.0, 0.2, 50_000_000)],
+        )
+
+        data = cloud_points_from_message(cloud)
+
+        self.assertEqual(data.time_field, "offset_time")
+        np.testing.assert_array_equal(
+            data.point_time_ns, [5_000_000_000, 5_050_000_000]
+        )
 
 
 if __name__ == "__main__":

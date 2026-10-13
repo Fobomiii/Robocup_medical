@@ -3,7 +3,7 @@
 <package format="3">
   <name>medical_clearance_planner</name>
   <version>0.1.0</version>
-  <description>Clearance- and obstacle-density-aware Nav2 global planner.</description>
+  <description>Medical-navigation Nav2 planner and parking costmap plugins.</description>
   <maintainer email="user@fzu.edu.cn">FZU Robocup Team</maintainer>
   <license>MIT</license>
 
@@ -17,10 +17,14 @@
   <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
+  <depend>tf2</depend>
   <depend>tf2_ros</depend>
+
+  <test_depend>ament_cmake_gtest</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
     <nav2_core plugin="${prefix}/clearance_planner_plugin.xml"/>
+    <nav2_costmap_2d plugin="${prefix}/costmap_plugins.xml"/>
   </export>
 </package>

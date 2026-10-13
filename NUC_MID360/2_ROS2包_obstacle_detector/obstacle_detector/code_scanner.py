@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""State-gated QR and CODE128 scanner with a pre-start telephoto assist."""
+"""State-gated QR and CODE128 scanner using concurrent wide/tele cameras."""
 
 import json
 import math
@@ -25,16 +25,15 @@ from .nav_protocol import (
     SCAN_CONTEXT_ORDER,
     SCAN_FORMAT_CODE128,
     SCAN_FORMAT_QR,
+    TASK_WAIT_START,
 )
 from .field_goals import load_field_goals
 from .scanner_core import (
     TASK_NAV_NURSE,
-    TASK_WAIT_START,
     ScanConsensus,
     expected_scan,
     scan_position_is_allowed,
     tele_camera_assists,
-    tele_camera_should_capture,
     value_is_allowed,
 )
 
@@ -83,8 +82,7 @@ class CodeScanner(Node):
         self.declare_parameter("fps", 30.0)
         self.declare_parameter("tele_width", 1920)
         self.declare_parameter("tele_height", 1080)
-        self.declare_parameter("tele_fps", 5.0)
-        self.declare_parameter("tele_scan_timeout_s", 15.0)
+        self.declare_parameter("tele_fps", 30.0)
         self.declare_parameter("decode_rate_hz", 15.0)
         self.declare_parameter("confirm_hits", 2)
         self.declare_parameter("confirm_window_s", 0.8)
@@ -129,7 +127,6 @@ class CodeScanner(Node):
         self.tele_width = int(get("tele_width"))
         self.tele_height = int(get("tele_height"))
         self.tele_fps = float(get("tele_fps"))
-        self.tele_scan_timeout_s = max(1.0, float(get("tele_scan_timeout_s")))
         self.decode_width = max(320, int(get("decode_width")))
         self.decode_height = max(200, int(get("decode_height")))
         self.full_resolution_fallback_period = max(
@@ -181,6 +178,10 @@ class CodeScanner(Node):
         self.latest_tele_frame = None
         self.frame_lock = threading.Lock()
         self.tele_frame_lock = threading.Lock()
+        # Serialize device initialization only. Both VideoCapture handles stay
+        # open concurrently after they have negotiated MJPG.
+        self.camera_open_lock = threading.Lock()
+        self.tele_state_lock = threading.RLock()
         self.stop_event = threading.Event()
         self.capture = None
         self.tele_capture = None
@@ -190,8 +191,6 @@ class CodeScanner(Node):
         self.tele_camera_profile = "unavailable"
         self.camera_resolution = [0, 0]
         self.tele_camera_resolution = [0, 0]
-        self.tele_scan_started_s = 0.0
-        self.tele_scan_timed_out = False
         self.tele_scan_succeeded = False
         self.mission_epoch = None
         self.last_value = ""
@@ -271,11 +270,7 @@ class CodeScanner(Node):
         fps = self.tele_fps if tele else self.fps
         if not tele:
             self._configure_v4l2()
-        profiles = (
-            (("YUYV", True), ("driver-default", False))
-            if tele
-            else (("MJPG", True), ("driver-default", False))
-        )
+        profiles = (("MJPG", True), ("driver-default", False))
         for profile_name, configure_format in profiles:
             self.get_logger().info(
                 f"Opening {'tele' if tele else 'primary'} camera {device} "
@@ -285,8 +280,7 @@ class CodeScanner(Node):
             if not capture.isOpened():
                 capture.release()
                 continue
-            if not tele:
-                capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
             if configure_format:
                 capture.set(
                     cv2.CAP_PROP_FOURCC,
@@ -341,57 +335,40 @@ class CodeScanner(Node):
 
     def _capture_loop(self, tele: bool = False) -> None:
         while not self.stop_event.is_set():
-            tele_required = self._tele_capture_required()
-            capture_required = tele_required if tele else not tele_required
-            if not capture_required:
-                capture = self.tele_capture if tele else self.capture
-                if capture is not None:
-                    capture.release()
-                    if tele:
-                        self.tele_capture = None
-                    else:
-                        self.capture = None
-                    self.get_logger().info(
-                        f"Released {'tele' if tele else 'primary'} camera for USB handoff"
-                    )
-                if tele:
-                    self.tele_camera_online = False
-                    self.tele_camera_profile = "standby"
-                    with self.tele_frame_lock:
-                        self.latest_tele_frame = None
-                else:
-                    self.camera_online = False
-                    self.camera_profile = "standby"
-                    with self.frame_lock:
-                        self.latest_frame = None
-                time.sleep(0.2)
-                continue
-            other_capture = self.capture if tele else self.tele_capture
-            if other_capture is not None:
-                time.sleep(0.05)
-                continue
             capture = self.tele_capture if tele else self.capture
             if capture is None:
-                capture = self._open_camera(tele)
-                if tele:
-                    self.tele_capture = capture
-                    self.tele_camera_online = capture is not None
-                else:
-                    self.capture = capture
-                    self.camera_online = capture is not None
-                if capture is None:
-                    time.sleep(0.5)
-                    continue
+                with self.camera_open_lock:
+                    capture = self.tele_capture if tele else self.capture
+                    if capture is None:
+                        capture = self._open_camera(tele)
+                        if tele:
+                            self.tele_capture = capture
+                            with self.tele_state_lock:
+                                self.tele_camera_online = capture is not None
+                        else:
+                            self.capture = capture
+                            self.camera_online = capture is not None
+            if capture is None:
+                time.sleep(0.5)
+                continue
             ok, frame = capture.read()
             if not ok:
-                if tele:
-                    self.tele_camera_online = False
-                    self.tele_capture.release()
-                    self.tele_capture = None
-                else:
-                    self.camera_online = False
-                    self.capture.release()
-                    self.capture = None
+                with self.camera_open_lock:
+                    if tele and self.tele_capture is capture:
+                        with self.tele_state_lock:
+                            self.tele_camera_online = False
+                        self.tele_capture.release()
+                        self.tele_capture = None
+                    elif not tele and self.capture is capture:
+                        self.camera_online = False
+                        self.capture.release()
+                        self.capture = None
+                lock = self.tele_frame_lock if tele else self.frame_lock
+                with lock:
+                    if tele:
+                        self.latest_tele_frame = None
+                    else:
+                        self.latest_frame = None
                 time.sleep(0.2)
                 continue
             lock = self.tele_frame_lock if tele else self.frame_lock
@@ -401,31 +378,17 @@ class CodeScanner(Node):
                 else:
                     self.latest_frame = frame
 
-    def _tele_capture_required(self) -> bool:
-        if not tele_camera_should_capture(self.task_state):
-            return False
-        if self.tele_scan_succeeded or self.tele_scan_timed_out:
-            return False
-        if self.tele_scan_started_s <= 0.0:
-            self.tele_scan_started_s = time.monotonic()
-        elapsed_s = time.monotonic() - self.tele_scan_started_s
-        if elapsed_s < self.tele_scan_timeout_s:
-            return True
-        self.tele_scan_timed_out = True
-        self.get_logger().warn(
-            f"Tele QR scan timed out after {self.tele_scan_timeout_s:.1f}s; "
-            "releasing tele camera and restoring primary camera"
-        )
-        return False
-
     def _tele_scan_state(self) -> str:
-        if self.tele_scan_succeeded:
-            return "success"
-        if self.tele_scan_timed_out:
-            return "failed"
-        if tele_camera_should_capture(self.task_state):
-            return "scanning"
-        return "standby"
+        with self.tele_state_lock:
+            if self.tele_scan_succeeded:
+                return "success"
+            if expected_scan(self.task_state) is not None:
+                return "scanning"
+            return "standby"
+
+    def _reset_tele_scan_state(self) -> None:
+        with self.tele_state_lock:
+            self.tele_scan_succeeded = False
 
     def _preview_tick(self) -> None:
         with self.frame_lock:
@@ -487,10 +450,7 @@ class CodeScanner(Node):
         if state != self.task_state:
             if state in (TASK_NAV_NURSE, TASK_WAIT_START):
                 self.scan_values = dict.fromkeys(self.scan_values, "")
-            if state == TASK_WAIT_START:
-                self.tele_scan_started_s = time.monotonic()
-                self.tele_scan_timed_out = False
-                self.tele_scan_succeeded = False
+            self._reset_tele_scan_state()
             self.task_state = state
             self.consensus.reset()
             self.spatial_gate_open = False
@@ -511,16 +471,14 @@ class CodeScanner(Node):
         if task_state != TASK_WAIT_START:
             return
         self.scan_values = dict.fromkeys(self.scan_values, "")
-        self.tele_scan_started_s = time.monotonic()
-        self.tele_scan_timed_out = False
-        self.tele_scan_succeeded = False
+        self._reset_tele_scan_state()
         self.consensus.reset()
         self.spatial_gate_open = False
         self.last_value = ""
         self.last_source = ""
         self.get_logger().info(
             f"STM32 mission epoch changed {previous_epoch}->{mission_epoch}; "
-            "restarting 15-second tele scan window"
+            "restarting tele camera open and QR scan windows"
         )
         self._publish_status()
 
@@ -708,12 +666,12 @@ class CodeScanner(Node):
             else:
                 tele_fast = tele_frame
             tele_gray = cv2.cvtColor(tele_fast, cv2.COLOR_BGR2GRAY)
-            value, source = self._decode_qr(tele_gray)
+            value, source = self._decode_fast(tele_gray, format)
             if value:
                 source = f"tele_{source}"
             elif self.frame_index % self.full_resolution_fallback_period == 0:
                 tele_full_gray = cv2.cvtColor(tele_frame, cv2.COLOR_BGR2GRAY)
-                value, source = self._decode_qr(tele_full_gray)
+                value, source = self._decode(tele_full_gray, format)
                 if value:
                     source = f"tele_{source}_fullres"
         self.last_decode_ms = (time.perf_counter() - started) * 1000.0
@@ -723,12 +681,9 @@ class CodeScanner(Node):
             self.last_value = value
             self.last_source = source
             self.scan_values[context] = value
-            if (
-                context == SCAN_CONTEXT_ORDER
-                and self.task_state == TASK_WAIT_START
-                and source.startswith("tele_")
-            ):
-                self.tele_scan_succeeded = True
+            if source.startswith("tele_"):
+                with self.tele_state_lock:
+                    self.tele_scan_succeeded = True
             message = String()
             message.data = json.dumps(
                 {"context": context, "format": format, "value": value, "source": source}
@@ -755,6 +710,9 @@ class CodeScanner(Node):
     def _publish_status(self) -> None:
         expected = expected_scan(self.task_state)
         context = expected[0] if expected else 0
+        with self.tele_state_lock:
+            tele_camera_online = self.tele_camera_online
+            tele_scan_state = self._tele_scan_state()
         message = String()
         message.data = json.dumps(
             {
@@ -762,17 +720,11 @@ class CodeScanner(Node):
                 "device": self.camera_device,
                 "camera_profile": self.camera_profile,
                 "camera_resolution": self.camera_resolution,
-                "tele_camera": self.tele_camera_online,
+                "tele_camera": tele_camera_online,
                 "tele_device": self.tele_camera_device,
                 "tele_camera_profile": self.tele_camera_profile,
                 "tele_camera_resolution": self.tele_camera_resolution,
-                "tele_scan_state": self._tele_scan_state(),
-                "tele_scan_timeout_s": self.tele_scan_timeout_s,
-                "tele_scan_elapsed_s": round(
-                    max(0.0, time.monotonic() - self.tele_scan_started_s), 1
-                )
-                if self.tele_scan_started_s > 0.0
-                else 0.0,
+                "tele_scan_state": tele_scan_state,
                 "mission_epoch": self.mission_epoch,
                 "tele_assist_active": bool(
                     expected and tele_camera_assists(self.task_state, expected[1])

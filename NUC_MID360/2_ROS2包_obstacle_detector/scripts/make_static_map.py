@@ -9,6 +9,7 @@ clockwise and scaled. Run this whenever the fixture survey changes:
 """
 
 import argparse
+import math
 import os
 import sys
 
@@ -29,6 +30,25 @@ def fill_rect(image, col0, col1, row0, row1, value, width, height):
     for row in range(max(0, row0), min(height, row1 + 1)):
         for col in range(max(0, col0), min(width, col1 + 1)):
             image[row][col] = value
+
+
+def grid_span(min_value: float, max_value: float, origin: float,
+              resolution: float, limit: int) -> tuple:
+    epsilon = 1.0e-9
+    start = math.floor((min_value - origin) / resolution + epsilon)
+    stop = math.ceil((max_value - origin) / resolution - epsilon)
+    return max(0, start), min(limit, stop)
+
+
+def fill_world_rect(image, x_min, x_max, y_min, y_max, value,
+                    origin_x, origin_y, resolution, width, height):
+    col0, col1 = grid_span(x_min, x_max, origin_x, resolution, width)
+    grid_y0, grid_y1 = grid_span(y_min, y_max, origin_y, resolution, height)
+    for grid_y in range(grid_y0, grid_y1):
+        row = height - 1 - grid_y
+        for col in range(col0, col1):
+            image[row][col] = value
+    return col0, col1, grid_y0, grid_y1
 
 
 def main() -> int:
@@ -111,18 +131,20 @@ def main() -> int:
         half_x = float(fixture["width_mm"]) * 0.5
         half_y = float(fixture["height_mm"]) * 0.5
         cx, cy = float(fixture["x_mm"]), float(fixture["y_mm"])
-        col_a, row_a = to_grid(
-            cx - half_x, cy - half_y,
-            origin_x, origin_y, resolution, height,
+        ros_x_min = (cy - half_y) / 1000.0
+        ros_x_max = (cy + half_y) / 1000.0
+        ros_y_min = -(cx + half_x) / 1000.0
+        ros_y_max = -(cx - half_x) / 1000.0
+        col0, col1, grid_y0, grid_y1 = fill_world_rect(
+            image, ros_x_min, ros_x_max, ros_y_min, ros_y_max, 0,
+            origin_x, origin_y, resolution, width, height,
         )
-        col_b, row_b = to_grid(
-            cx + half_x, cy + half_y,
-            origin_x, origin_y, resolution, height,
+        row0 = height - grid_y1
+        row1 = height - 1 - grid_y0
+        print(
+            f"fixture {fixture['name']}: "
+            f"cols {col0}..{col1 - 1} rows {row0}..{row1}"
         )
-        col0, col1 = sorted((col_a, col_b))
-        row0, row1 = sorted((row_a, row_b))
-        fill_rect(image, col0, col1, row0, row1, 0, width, height)
-        print(f"fixture {fixture['name']}: cols {col0}..{col1} rows {row0}..{row1}")
 
     for name, goal in config.get("goals", {}).items():
         col, row = to_grid(

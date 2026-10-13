@@ -8,44 +8,20 @@
 #define CHASSIS_CTRL_REACH_X_MM 5.0f
 #define CHASSIS_CTRL_REACH_Y_MM 5.0f
 #define CHASSIS_CTRL_REACH_YAW_DEG 0.5f
-#define CHASSIS_CTRL_XY_SLEW_RPM_PER_S 300.0f
-#define CHASSIS_CTRL_YAW_SLEW_RPM_PER_S 600.0f
-#define CHASSIS_CTRL_DEFAULT_DT_S 0.01f
-#define CHASSIS_CTRL_MAX_DT_S 0.05f
 #define CHASSIS_CTRL_PI 3.14159265358979323846f
+
+#define NAV_YAW_HOLD_TARGET_DEG 0.0f
+#define NAV_YAW_HOLD_KP 2.2f
+#define NAV_YAW_HOLD_KD 0.45f
+#define NAV_YAW_HOLD_DEADBAND_DEG 1.0f
+#define NAV_YAW_HOLD_MAX_RAD_S 0.40f
+#define NAV_YAW_HOLD_RATE_DEADBAND_RAD_S 0.02f
 
 static float s_target_x;
 static float s_target_y;
 static float s_target_yaw;
 static bool s_enabled;
 static bool s_reached;
-static float s_last_body_right_output;
-static float s_last_body_forward_output;
-static float s_last_yaw_output;
-static uint32_t s_last_update_ms;
-
-static float chassis_ctrl_slew(float target, float current, float max_delta)
-{
-  float delta = target - current;
-
-  if (delta > max_delta)
-  {
-    return current + max_delta;
-  }
-  if (delta < -max_delta)
-  {
-    return current - max_delta;
-  }
-  return target;
-}
-
-static void chassis_ctrl_reset_output(void)
-{
-  s_last_body_right_output = 0.0f;
-  s_last_body_forward_output = 0.0f;
-  s_last_yaw_output = 0.0f;
-  s_last_update_ms = 0U;
-}
 
 static float chassis_ctrl_yaw_error(float target, float measurement)
 {
@@ -60,6 +36,50 @@ static float chassis_ctrl_yaw_error(float target, float measurement)
     error += 360.0f;
   }
   return error;
+}
+
+static float chassis_ctrl_clamp(float value, float minimum, float maximum)
+{
+  if (value < minimum)
+  {
+    return minimum;
+  }
+  if (value > maximum)
+  {
+    return maximum;
+  }
+  return value;
+}
+
+float ChassisCtrl_NavYawUpdate(float hwt_yaw_deg,
+                               float hwt_yaw_rate_deg_s)
+{
+  float error_deg = chassis_ctrl_yaw_error(NAV_YAW_HOLD_TARGET_DEG,
+                                            hwt_yaw_deg);
+  float error_rad = error_deg * CHASSIS_CTRL_PI / 180.0f;
+  float yaw_rate_rad_s = hwt_yaw_rate_deg_s * CHASSIS_CTRL_PI / 180.0f;
+  float damping_rad_s = 0.0f;
+  float output_rad_s;
+
+  if (fabsf(yaw_rate_rad_s) > NAV_YAW_HOLD_RATE_DEADBAND_RAD_S)
+  {
+    damping_rad_s = -NAV_YAW_HOLD_KD * yaw_rate_rad_s;
+  }
+  if ((fabsf(error_deg) <= NAV_YAW_HOLD_DEADBAND_DEG) &&
+      (damping_rad_s == 0.0f))
+  {
+    return 0.0f;
+  }
+
+  output_rad_s = NAV_YAW_HOLD_KP *
+                     ((fabsf(error_deg) <= NAV_YAW_HOLD_DEADBAND_DEG)
+                          ? 0.0f
+                          : error_rad) +
+                 damping_rad_s;
+  output_rad_s = chassis_ctrl_clamp(output_rad_s,
+                                    -NAV_YAW_HOLD_MAX_RAD_S,
+                                    NAV_YAW_HOLD_MAX_RAD_S);
+  return output_rad_s * 18000.0f / CHASSIS_CTRL_PI;
 }
 
 void ChassisCtrl_MoveTarget(float x_target, float y_target, float yaw_target,
@@ -88,7 +108,6 @@ void ChassisCtrl_Enable(bool enable)
 
   s_enabled = enable;
   PID_Reset();
-  chassis_ctrl_reset_output();
   if (!enable)
   {
     DJI_Chassis_SetCommandImmediate(0.0f, 0.0f, 0.0f);
@@ -104,8 +123,6 @@ bool ChassisCtrl_Update(float pos_x, float pos_y, float yaw)
   float sine;
   float body_right_output;
   float body_forward_output;
-  float dt;
-  uint32_t now_ms;
 
   if (!s_enabled)
   {
@@ -120,7 +137,6 @@ bool ChassisCtrl_Update(float pos_x, float pos_y, float yaw)
   {
     DJI_Chassis_SetCommandImmediate(0.0f, 0.0f, 0.0f);
     PID_Reset();
-    chassis_ctrl_reset_output();
     s_enabled = false;
     s_reached = true;
     return true;
@@ -134,29 +150,7 @@ bool ChassisCtrl_Update(float pos_x, float pos_y, float yaw)
   body_right_output = field_x_output * cosine - field_y_output * sine;
   body_forward_output = field_x_output * sine + field_y_output * cosine;
 
-  now_ms = HAL_GetTick();
-  dt = (s_last_update_ms == 0U)
-           ? CHASSIS_CTRL_DEFAULT_DT_S
-           : 0.001f * (float)(now_ms - s_last_update_ms);
-  if ((dt <= 0.0f) || (dt > CHASSIS_CTRL_MAX_DT_S))
-  {
-    dt = CHASSIS_CTRL_DEFAULT_DT_S;
-  }
-  s_last_update_ms = now_ms;
-
-  body_right_output = chassis_ctrl_slew(
-      body_right_output, s_last_body_right_output,
-      CHASSIS_CTRL_XY_SLEW_RPM_PER_S * dt);
-  body_forward_output = chassis_ctrl_slew(
-      body_forward_output, s_last_body_forward_output,
-      CHASSIS_CTRL_XY_SLEW_RPM_PER_S * dt);
-  yaw_output = chassis_ctrl_slew(
-      yaw_output, s_last_yaw_output,
-      CHASSIS_CTRL_YAW_SLEW_RPM_PER_S * dt);
-  s_last_body_right_output = body_right_output;
-  s_last_body_forward_output = body_forward_output;
-  s_last_yaw_output = yaw_output;
-
+  /* Send the transformed docking PID outputs without a velocity ramp. */
   DJI_Chassis_SetCommand(body_right_output, body_forward_output, yaw_output);
   s_reached = false;
   return false;

@@ -1,0 +1,11 @@
+<library path="parking_exemption_layer">
+  <class
+    name="medical_clearance_planner::ParkingExemptionLayer"
+    type="medical_clearance_planner::ParkingExemptionLayer"
+    base_class_type="nav2_costmap_2d::Layer">
+    <description>
+      Removes inflation and inscribed costs from the designated bed and Home
+      parking regions while preserving lethal and unknown cells.
+    </description>
+  </class>
+</library>

@@ -2,8 +2,9 @@
 <!-- Minimal kinematic description for Nav2.
 
      base_link is the chassis rotation centre. The Mid360 centre is directly
-     above it at a height of 0.33 m. The unit is mounted upright with its
-     forward axis aligned with the physical front of the robot. The
+     above it at a measured height of 0.35 m. base_link +X is the physical front and
+     points toward motor 4 in the cross layout. The Mid360 and arm are aligned
+     with this physical centreline and require no additional yaw rotation. The
      driver keeps the original PointCloud2 timestamp and livox_frame; TF is
      the only place where this mounting transform is applied.
 -->
@@ -28,7 +29,7 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- Red block marks base_link +X, i.e. the physical front of the robot. -->
+  <!-- Red block marks physical front: base_link +X toward motor 4. -->
   <link name="front_marker">
     <visual>
       <geometry>
@@ -50,8 +51,8 @@
   <!-- Arm motion-sweep filter volume. It includes the measured payload plus
        margins for motion and lidar jitter while preserving returns below
        z=0.45 m. This visual is the volume lidar_self_filter removes, so it
-       and arm_x_min/arm_x_max/
-       arm_half_width/arm_min_z/arm_max_z in obstacle.launch.py must be
+       and arm_x_min/arm_x_max/arm_half_width/arm_yaw_deg/
+       arm_min_z/arm_max_z in obstacle.launch.py must be
        changed together: the two are deliberately the same box. -->
   <link name="arm">
     <visual>
@@ -76,6 +77,6 @@
   <joint name="livox_joint" type="fixed">
     <parent link="base_link"/>
     <child link="livox_frame"/>
-    <origin xyz="0 0 0.33" rpy="0 0 0"/>
+    <origin xyz="0 0 0.35" rpy="0 0 0"/>
   </joint>
 </robot>

@@ -406,28 +406,18 @@ class GridPlanner:
         waypoints: List[Waypoint] = []
         targets = coordinates[1:]
         for index, (x_mm, y_mm) in enumerate(targets):
-            prev_x, prev_y = coordinates[index]
-            travel_yaw = math.degrees(math.atan2(x_mm - prev_x, y_mm - prev_y))
-            if index == len(targets) - 1:
-                speed = self.corner_speed_mm_s
-                waypoints.append(Waypoint(x_mm, y_mm, travel_yaw, speed))
-                if abs(self._angle_diff(goal.yaw_deg, travel_yaw)) > 5.0:
-                    waypoints.append(Waypoint(x_mm, y_mm, goal.yaw_deg, 0.0))
-            else:
-                speed = self.corner_speed_mm_s if index == 0 else self.cruise_speed_mm_s
-                waypoints.append(Waypoint(x_mm, y_mm, travel_yaw, speed))
+            # The chassis is omnidirectional and keeps its calibrated heading;
+            # path tangent is not a chassis rotation command.  In particular,
+            # fallback/A* detours must not add hidden rotate-in-place waypoints.
+            speed = (
+                self.corner_speed_mm_s
+                if index == 0 or index == len(targets) - 1
+                else self.cruise_speed_mm_s
+            )
+            waypoints.append(Waypoint(x_mm, y_mm, goal.yaw_deg, speed))
         if len(waypoints) > self.max_waypoints:
             return None
         return waypoints
-
-    @staticmethod
-    def _angle_diff(a: float, b: float) -> float:
-        d = a - b
-        while d > 180.0:
-            d -= 360.0
-        while d < -180.0:
-            d += 360.0
-        return d
 
     def path_blocked(
         self,

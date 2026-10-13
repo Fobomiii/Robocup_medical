@@ -7,8 +7,8 @@ from typing import Callable, Dict
 
 
 DEFAULT_BED_AUDIO_FILES: Dict[int, str] = {
-    1: "/home/fzurobot/Downloads/1_.mp3",
-    3: "/home/fzurobot/Downloads/3_.mp3",
+    1: "/home/fzurobot/Downloads/1_wav.wav",
+    3: "/home/fzurobot/Downloads/3_wav.wav",
 }
 
 

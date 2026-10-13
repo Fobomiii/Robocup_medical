@@ -117,21 +117,6 @@ Visualization Manager:
         Depth: 1
       Visual Enabled: true
       Collision Enabled: false
-    - Class: rviz_default_plugins/MarkerArray
-      Name: X-Drive Lidar Blind Zones
-      Enabled: true
-      Topic:
-        Value: /medical_nav/blind_zones
-        Reliability Policy: Reliable
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Depth: 10
-      Namespaces:
-        lidar_blind_chassis: true
-        lidar_blind_label: true
-        lidar_blind_motion: true
-        lidar_blind_strip: true
-      Queue Size: 10
     - Class: rviz_default_plugins/TF
       Name: TF
       Enabled: true
@@ -153,17 +138,47 @@ Visualization Manager:
       Length: 0.6
       Radius: 0.025
     - Class: rviz_default_plugins/Path
-      Name: Nav2 Plan
+      Name: Raw Plan and Prestart Preview
       Enabled: true
+      Alpha: 0.25
+      Buffer Length: 1
       Topic:
         Value: /medical_nav/plan
         Reliability Policy: Reliable
         Durability Policy: Transient Local
         History Policy: Keep Last
         Depth: 10
-      Line Style: Lines
-      Line Width: 0.05
+      Line Style: Billboards
+      Line Width: 0.015
       Color: 255; 120; 0
+    - Class: rviz_default_plugins/Path
+      Name: Smoothed Candidate
+      Enabled: true
+      Alpha: 0.8
+      Buffer Length: 1
+      Topic:
+        Value: /plan_smoothed
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Depth: 1
+      Line Style: Billboards
+      Line Width: 0.08
+      Color: 50; 200; 255
+    - Class: rviz_default_plugins/Path
+      Name: Controller Followed Path
+      Enabled: true
+      Alpha: 1
+      Buffer Length: 1
+      Topic:
+        Value: /transformed_global_plan
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Depth: 1
+      Line Style: Billboards
+      Line Width: 0.11
+      Color: 60; 255; 110
     - Class: rviz_default_plugins/Pose
       Name: OPS9-HWT Pose
       Enabled: true
