@@ -1,0 +1,7 @@
+========== SYSTEM ==========
+2026年 10月 03日 星期六 06:10:19 CST
+Linux fzurobot 6.8.0-138-generic #138~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Aug  7 13:43:15 UTC  x86_64 x86_64 x86_64 GNU/Linux
+
+========== ROS TOPICS ==========
+/parameter_events
+/rosout

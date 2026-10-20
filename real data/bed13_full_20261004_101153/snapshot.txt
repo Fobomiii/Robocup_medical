@@ -1,0 +1,66 @@
+========== TIME ==========
+2026-10-04T10:14:09,307535231+08:00
+
+========== TOPICS ==========
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+
+========== NODES ==========
+
+========== SAFETY POINT CLOUD ==========
+Unknown topic '/livox/lidar_safety'
+WARNING: topic [/medical_nav/lidar_safety_filter_status] does not appear to be published yet
+Could not determine the type for the passed topic
+
+========== PLANNING POINT CLOUD ==========
+Unknown topic '/livox/lidar_nav'
+WARNING: topic [/medical_nav/lidar_filter_status] does not appear to be published yet
+Could not determine the type for the passed topic
+
+========== BRIDGE COMMAND ==========
+WARNING: topic [/medical_nav/bridge_cmd_debug] does not appear to be published yet
+Could not determine the type for the passed topic
+
+========== BED APPROACH ENVELOPE ==========
+WARNING: topic [/medical_nav/bed_approach_status] does not appear to be published yet
+Could not determine the type for the passed topic
+
+========== HOME APPROACH ENVELOPE ==========
+WARNING: topic [/medical_nav/home_approach_status] does not appear to be published yet
+Could not determine the type for the passed topic
+
+========== FIELD BOUNDARY ENVELOPE ==========
+WARNING: topic [/medical_nav/field_boundary_status] does not appear to be published yet
+Could not determine the type for the passed topic
+
+========== COLLISION MONITOR ==========
+Node not found
+
+========== STM32 BRIDGE ==========
+Node not found
+
+========== CONTROLLER ==========
+Node not found
+
+========== LIFECYCLE ==========
+
+--- /controller_server ---
+Node not found
+
+--- /planner_server ---
+Node not found
+
+--- /smoother_server ---
+Node not found
+
+--- /behavior_server ---
+Node not found
+
+--- /bt_navigator ---
+Node not found
+
+--- /velocity_smoother ---
+Node not found
+
+--- /collision_monitor ---
+Node not found

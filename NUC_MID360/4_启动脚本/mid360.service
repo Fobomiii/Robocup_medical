@@ -1,0 +1,25 @@
+[Unit]
+Description=Livox Mid360 LiDAR Driver
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=fzurobot
+Environment=HOME=/home/fzurobot
+Environment=ROS_DOMAIN_ID=77
+Environment=ROS_LOCALHOST_ONLY=1
+EnvironmentFile=-/home/fzurobot/.config/medical-navigation.env
+ExecStart=/bin/bash /home/fzurobot/start_mid360.sh
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutStopSec=12
+SendSIGKILL=yes
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,114 @@
+10月 10 07:50:12.250746 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589812.250384205] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:12.639260 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589812.638885368] [controller_server]: Optimizer reset
+10月 10 07:50:12.640843 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589812.640686997] [controller_server]: Optimizer reset
+10月 10 07:50:12.640996 fzurobot bash[14187]: [controller_server-16] [ERROR] [1791589812.640722047] [controller_server]: Optimizer fail to compute path
+10月 10 07:50:12.641054 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589812.640760004] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:12.656165 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589812.655565058] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 10 07:50:12.656866 fzurobot bash[14187]: [planner_server-18] [INFO] [1791589812.656104408] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10月 10 07:50:12.925990 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589812.925636416] [smoother_server]: Received a path to smooth.
+10月 10 07:50:12.945846 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589812.945473394] [controller_server]: Received a goal, begin computing control effort.
+10月 10 07:50:12.954903 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589812.954528040] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:13.755618 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589813.755329623] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:14.035929 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589814.035511715] [smoother_server]: Received a path to smooth.
+10月 10 07:50:14.045843 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589814.045611175] [controller_server]: Passing new path to controller.
+10月 10 07:50:14.095871 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589814.095611312] [controller_server]: Passing new path to controller.
+10月 10 07:50:14.498583 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589814.498247058] [controller_server]: Optimizer reset
+10月 10 07:50:14.500408 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589814.500052746] [controller_server]: Optimizer reset
+10月 10 07:50:14.500557 fzurobot bash[14187]: [controller_server-16] [ERROR] [1791589814.500101033] [controller_server]: Optimizer fail to compute path
+10月 10 07:50:14.500828 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589814.500134330] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:14.515627 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589814.515318655] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 10 07:50:14.515963 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589814.515779214] [controller_server]: Received a goal, begin computing control effort.
+10月 10 07:50:14.554873 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589814.554435732] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:15.155827 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589815.155466398] [smoother_server]: Received a path to smooth.
+10月 10 07:50:15.166190 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589815.165908643] [controller_server]: Passing new path to controller.
+10月 10 07:50:15.216366 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589815.215914843] [controller_server]: Passing new path to controller.
+10月 10 07:50:15.554883 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589815.554622172] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:15.757151 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589815.756686404] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:15.812465 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589815.811940279] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:16.123058 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589816.122455880] [controller_server]: Optimizer reset
+10月 10 07:50:16.126747 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589816.126379067] [controller_server]: Optimizer reset
+10月 10 07:50:16.127103 fzurobot bash[14187]: [controller_server-16] [ERROR] [1791589816.126440010] [controller_server]: Optimizer fail to compute path
+10月 10 07:50:16.127195 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589816.126491570] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:16.145555 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589816.145313396] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 10 07:50:16.145826 fzurobot bash[14187]: [planner_server-18] [INFO] [1791589816.145540306] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10月 10 07:50:16.216738 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589816.216277881] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:16.436486 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589816.435894096] [smoother_server]: Received a path to smooth.
+10月 10 07:50:16.455978 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589816.455604378] [controller_server]: Received a goal, begin computing control effort.
+10月 10 07:50:17.218014 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589817.217588218] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:17.401235 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589817.400827816] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:17.518565 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589817.518167141] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:17.535963 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589817.535595645] [smoother_server]: Received a path to smooth.
+10月 10 07:50:17.555777 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589817.555472854] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:17.556033 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589817.555732990] [controller_server]: Passing new path to controller.
+10月 10 07:50:17.817465 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589817.816996892] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:17.860566 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589817.860132403] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:18.021897 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589818.021342132] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:18.054371 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589818.053953030] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:18.118320 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589818.117878115] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:18.161787 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589818.161193176] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:18.262072 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589818.261611754] [controller_server]: Optimizer reset
+10月 10 07:50:18.266948 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589818.266319375] [controller_server]: Optimizer reset
+10月 10 07:50:18.267155 fzurobot bash[14187]: [controller_server-16] [ERROR] [1791589818.266438641] [controller_server]: Optimizer fail to compute path
+10月 10 07:50:18.267597 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589818.266536605] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:18.285788 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589818.285357732] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 10 07:50:18.286194 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589818.285974813] [controller_server]: Received a goal, begin computing control effort.
+10月 10 07:50:18.315631 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589818.315238463] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:18.365650 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589818.365189399] [controller_server]: Control loop missed its desired rate of 20.0000Hz
+10月 10 07:50:18.626365 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589818.625740132] [smoother_server]: Received a path to smooth.
+10月 10 07:50:18.636446 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589818.636128591] [controller_server]: Passing new path to controller.
+10月 10 07:50:18.686417 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589818.686125433] [controller_server]: Passing new path to controller.
+10月 10 07:50:19.554890 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589819.554446767] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:19.610127 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589819.609845069] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:19.735972 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589819.735598910] [smoother_server]: Received a path to smooth.
+10月 10 07:50:19.736400 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589819.736092567] [controller_server]: Passing new path to controller.
+10月 10 07:50:19.786468 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589819.786127494] [controller_server]: Passing new path to controller.
+10月 10 07:50:20.855921 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589820.855557929] [smoother_server]: Received a path to smooth.
+10月 10 07:50:20.876497 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589820.875928527] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:20.886442 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589820.886126024] [controller_server]: Passing new path to controller.
+10月 10 07:50:21.053906 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589821.053276348] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:21.159462 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589821.158998658] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:21.195186 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589821.194658704] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:21.258832 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589821.258520463] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:21.956116 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589821.955743534] [smoother_server]: Received a path to smooth.
+10月 10 07:50:21.975774 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589821.975491246] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:21.986427 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589821.986133210] [controller_server]: Passing new path to controller.
+10月 10 07:50:22.756505 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589822.756192092] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:23.045901 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589823.045476078] [smoother_server]: Received a path to smooth.
+10月 10 07:50:23.065900 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589823.065548443] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:23.086603 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589823.086130404] [controller_server]: Passing new path to controller.
+10月 10 07:50:23.257870 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589823.257349715] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:23.654949 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589823.654449604] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:23.771884 fzurobot bash[14187]: [collision_monitor-13] [WARN] [1791589823.771129974] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.307353 seconds. Ignoring the source.
+10月 10 07:50:23.771884 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589823.771207874] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:23.772687 fzurobot bash[14187]: [collision_monitor-13] [WARN] [1791589823.771299597] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.307529 seconds. Ignoring the source.
+10月 10 07:50:23.801969 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589823.801234999] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:24.146164 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589824.145789566] [smoother_server]: Received a path to smooth.
+10月 10 07:50:24.166212 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589824.165730206] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:24.186392 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589824.186092433] [controller_server]: Passing new path to controller.
+10月 10 07:50:24.459560 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589824.459004385] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:24.945553 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589824.944825255] [controller_server]: Optimizer reset
+10月 10 07:50:24.948817 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589824.948345381] [controller_server]: Optimizer reset
+10月 10 07:50:24.949293 fzurobot bash[14187]: [controller_server-16] [ERROR] [1791589824.948412539] [controller_server]: Optimizer fail to compute path
+10月 10 07:50:24.949293 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589824.948471109] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:24.965826 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589824.965425267] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 10 07:50:24.966308 fzurobot bash[14187]: [planner_server-18] [INFO] [1791589824.965867682] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10月 10 07:50:25.196084 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589825.195630846] [smoother_server]: Received a path to smooth.
+10月 10 07:50:25.216117 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589825.215662316] [controller_server]: Received a goal, begin computing control effort.
+10月 10 07:50:26.059357 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589826.058902193] [collision_monitor]: Robot to approach for 0.800000 seconds away from collision
+10月 10 07:50:26.316026 fzurobot bash[14187]: [smoother_server-17] [INFO] [1791589826.315605658] [smoother_server]: Received a path to smooth.
+10月 10 07:50:26.316393 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589826.315808377] [controller_server]: Passing new path to controller.
+10月 10 07:50:26.320748 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589826.320393988] [controller_server]: Optimizer reset
+10月 10 07:50:26.322485 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589826.322162104] [controller_server]: Optimizer reset
+10月 10 07:50:26.322568 fzurobot bash[14187]: [controller_server-16] [ERROR] [1791589826.322204642] [controller_server]: Optimizer fail to compute path
+10月 10 07:50:26.322568 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589826.322246242] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:26.335918 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589826.335497406] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 10 07:50:26.336277 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589826.336072808] [controller_server]: Received a goal, begin computing control effort.
+10月 10 07:50:26.356557 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589826.356190077] [controller_server]: Passing new path to controller.
+10月 10 07:50:26.757201 fzurobot bash[14187]: [collision_monitor-13] [INFO] [1791589826.756598611] [collision_monitor]: Robot to continue normal operation
+10月 10 07:50:27.143789 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589827.143250002] [controller_server]: Optimizer reset
+10月 10 07:50:27.147353 fzurobot bash[14187]: [controller_server-16] [INFO] [1791589827.146997815] [controller_server]: Optimizer reset
+10月 10 07:50:27.147725 fzurobot bash[14187]: [controller_server-16] [ERROR] [1791589827.147080537] [controller_server]: Optimizer fail to compute path
+10月 10 07:50:27.147991 fzurobot bash[14187]: [controller_server-16] [WARN] [1791589827.147152665] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 10 07:50:27.175413 fzurobot bash[14187]: [bt_navigator-20] [WARN] [1791589827.175056304] [bt_navigator]: [navigate_to_pose] [ActionServer] Aborting handle.
+10月 10 07:50:27.175945 fzurobot bash[14187]: [bt_navigator-20] [ERROR] [1791589827.175229766] [bt_navigator]: Goal failed
+10月 10 07:50:27.176930 fzurobot bash[14187]: [medical_navigator-15] [INFO] [1791589827.176464879] [medical_navigator]: Navigation failed_status_6 (state=4)

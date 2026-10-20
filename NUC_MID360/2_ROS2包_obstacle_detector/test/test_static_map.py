@@ -1,0 +1,164 @@
+"""Regression checks for the Nav2 static map raster."""
+
+import math
+import os
+import unittest
+
+import yaml
+
+
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config")
+
+
+class StaticMapTest(unittest.TestCase):
+    def test_map_contains_fixtures_and_keeps_goals_free(self):
+        with open(os.path.join(CONFIG_DIR, "static_map.yaml"), encoding="utf-8") as stream:
+            metadata = yaml.safe_load(stream)
+        with open(os.path.join(CONFIG_DIR, "field_map.yaml"), encoding="utf-8") as stream:
+            field = yaml.safe_load(stream)
+        with open(os.path.join(CONFIG_DIR, metadata["image"]), "rb") as stream:
+            magic, comment, dimensions, maximum, pixels = stream.read().split(b"\n", 4)
+
+        self.assertEqual(magic, b"P5")
+        self.assertTrue(comment.startswith(b"#"))
+        width, height = (int(value) for value in dimensions.split())
+        self.assertEqual(maximum, b"255")
+        self.assertEqual(len(pixels), width * height)
+        self.assertGreater(pixels.count(0), 0)
+
+        resolution = float(metadata["resolution"])
+        origin_x, origin_y = (float(value) for value in metadata["origin"][:2])
+        self.assertEqual(
+            float(field["field"]["x_max_mm"])
+            - float(field["field"]["x_min_mm"]),
+            7100.0,
+        )
+        self.assertEqual(origin_y, -3.55)
+
+        def pixel_at(world_x, world_y):
+            grid_x = math.floor((world_x - origin_x) / resolution + 1.0e-9)
+            grid_y = math.floor((world_y - origin_y) / resolution + 1.0e-9)
+            self.assertTrue(0 <= grid_x < width)
+            self.assertTrue(0 <= grid_y < height)
+            row = height - 1 - grid_y
+            return pixels[row * width + grid_x]
+
+        # Every fixed fixture, including the three bedside cabinets, must be
+        # represented by an occupied cell at its surveyed centre.
+        for fixture in field["fixtures"]:
+            ros_x = float(fixture["y_mm"]) / 1000.0
+            ros_y = -float(fixture["x_mm"]) / 1000.0
+            col = int(round((ros_x - origin_x) / resolution))
+            row = height - 1 - int(round((ros_y - origin_y) / resolution))
+            self.assertTrue(0 <= col < width and 0 <= row < height, fixture["name"])
+            self.assertEqual(pixels[row * width + col], 0, fixture["name"])
+
+        for name, goal in field["goals"].items():
+            ros_x = float(goal["y_mm"]) / 1000.0
+            ros_y = -float(goal["x_mm"]) / 1000.0
+            col = int(round((ros_x - origin_x) / resolution))
+            row = height - 1 - int(round((ros_y - origin_y) / resolution))
+            self.assertTrue(0 <= col < width and 0 <= row < height, name)
+            self.assertNotEqual(pixels[row * width + col], 0, name)
+
+        self.assertNotEqual(pixel_at(5.4, 2.475), 0)
+        self.assertEqual(pixel_at(5.4, 2.525), 0)
+        self.assertNotEqual(pixel_at(5.4, -2.475), 0)
+        self.assertEqual(pixel_at(5.4, -2.525), 0)
+
+        fixtures = {fixture["name"]: fixture for fixture in field["fixtures"]}
+        nurse = fixtures["nurse_station"]
+        self.assertEqual(float(nurse["width_mm"]), 1100.0)
+        self.assertEqual(float(nurse["y_mm"]) - float(nurse["height_mm"]) / 2.0, 1900.0)
+        self.assertEqual(float(nurse["y_mm"]) + float(nurse["height_mm"]) / 2.0, 2700.0)
+        self.assertNotEqual(pixel_at(1.875, 0.0), 0)
+        self.assertEqual(pixel_at(1.925, 0.0), 0)
+        self.assertEqual(pixel_at(2.675, 0.0), 0)
+        self.assertNotEqual(pixel_at(2.725, 0.0), 0)
+        for bed_name in ("bed1", "bed2", "bed3"):
+            bed = fixtures[bed_name]
+            lower_edge = float(bed["y_mm"]) - float(bed["height_mm"]) / 2.0
+            self.assertAlmostEqual(lower_edge, 4450.0, delta=25.0, msg=bed_name)
+
+        parking_checks = (
+            (
+                "bed1", "bedside_cabinet1", "bed1", "right", "left",
+                3550.0, 285.0, 1300.0,
+            ),
+            (
+                "bed3", "bedside_cabinet3", "bed3", "left", "right",
+                3550.0, 335.0, 1350.0,
+            ),
+        )
+        for (
+            goal_name,
+            cabinet_name,
+            bed_name,
+            bed_side_name,
+            field_side_name,
+            field_side_x,
+            expected_bed_clearance,
+            expected_field_clearance,
+        ) in parking_checks:
+            goal = field["goals"][goal_name]
+            cabinet = fixtures[cabinet_name]
+            bed = fixtures[bed_name]
+            goal_x = float(goal["x_mm"])
+            goal_y = float(goal["y_mm"])
+            cabinet_x_min = float(cabinet["x_mm"]) - float(cabinet["width_mm"]) / 2.0
+            cabinet_x_max = float(cabinet["x_mm"]) + float(cabinet["width_mm"]) / 2.0
+            cabinet_y_min = float(cabinet["y_mm"]) - float(cabinet["height_mm"]) / 2.0
+            cabinet_y_max = float(cabinet["y_mm"]) + float(cabinet["height_mm"]) / 2.0
+            cabinet_dx = max(cabinet_x_min - goal_x, 0.0, goal_x - cabinet_x_max)
+            cabinet_dy = max(cabinet_y_min - goal_y, 0.0, goal_y - cabinet_y_max)
+            cabinet_clearance = math.hypot(cabinet_dx, cabinet_dy)
+            bed_side = (
+                float(bed["x_mm"]) + float(bed["width_mm"]) / 2.0
+                if bed_side_name == "right"
+                else float(bed["x_mm"]) - float(bed["width_mm"]) / 2.0
+            )
+            field_side_x = -field_side_x if field_side_name == "left" else field_side_x
+            self.assertAlmostEqual(cabinet_clearance, 500.0, delta=1.0, msg=goal_name)
+            self.assertAlmostEqual(
+                abs(goal_x - bed_side),
+                expected_bed_clearance,
+                delta=1.0,
+                msg=goal_name,
+            )
+            self.assertAlmostEqual(
+                abs(goal_x - field_side_x),
+                expected_field_clearance,
+                delta=1.0,
+                msg=goal_name,
+            )
+
+        bed1 = fixtures["bed1"]
+        bed2 = fixtures["bed2"]
+        bed3 = fixtures["bed3"]
+        bed1_right = float(bed1["x_mm"]) + float(bed1["width_mm"]) / 2.0
+        bed2_left = float(bed2["x_mm"]) - float(bed2["width_mm"]) / 2.0
+        bed2_right = float(bed2["x_mm"]) + float(bed2["width_mm"]) / 2.0
+        bed3_left = float(bed3["x_mm"]) - float(bed3["width_mm"]) / 2.0
+        self.assertEqual(bed2_left - bed1_right, 1720.0)
+        self.assertEqual(bed3_left - bed2_right, 2350.0)
+
+        # The 600 mm cabinets share an edge with their associated beds.
+        touching = (
+            ("bed1", "bedside_cabinet1", "right", "left"),
+            ("bed2", "bedside_cabinet2", "right", "left"),
+            ("bed3", "bedside_cabinet3", "left", "right"),
+        )
+        for bed_name, cabinet_name, bed_edge, cabinet_edge in touching:
+            bed = fixtures[bed_name]
+            cabinet = fixtures[cabinet_name]
+            bed_x = float(bed["x_mm"]) + (
+                float(bed["width_mm"]) / 2.0 if bed_edge == "right" else -float(bed["width_mm"]) / 2.0
+            )
+            cabinet_x = float(cabinet["x_mm"]) + (
+                float(cabinet["width_mm"]) / 2.0 if cabinet_edge == "right" else -float(cabinet["width_mm"]) / 2.0
+            )
+            self.assertAlmostEqual(bed_x, cabinet_x, delta=1.0, msg=cabinet_name)
+
+
+if __name__ == "__main__":
+    unittest.main()

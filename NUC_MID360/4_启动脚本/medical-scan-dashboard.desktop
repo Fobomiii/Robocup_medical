@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=医疗扫码界面
+Comment=显示护士台、1床和3床扫码结果及扫码摄像头
+Exec=/bin/bash -lc "$HOME/start_scan_dashboard.sh"
+Icon=camera-photo
+Terminal=false
+Categories=Utility;Robotics;
+StartupNotify=true
+X-GNOME-Autostart-enabled=true

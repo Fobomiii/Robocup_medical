@@ -1,0 +1,302 @@
+========== CAPTURE START ==========
+2026-10-02T20:16:25,332336932+08:00
+
+========== NODES ==========
+/behavior_server
+/bt_navigator
+/bt_navigator_navigate_through_poses_rclcpp_node
+/bt_navigator_navigate_to_pose_rclcpp_node
+/code_scanner
+/collision_monitor
+/controller_server
+/global_costmap/global_costmap
+/health_ble_bridge
+/home_approach_limiter
+/lidar_odometry_guard
+/lidar_self_filter
+/lifecycle_manager_map
+/lifecycle_manager_navigation
+/lifecycle_manager_safety_pipeline
+/livox_lidar_publisher
+/local_costmap/local_costmap
+/map_server
+/medical_navigator
+/planner_server
+/robot_state_publisher
+/scan_dashboard
+/smoother_server
+/transform_listener_impl_5590765496a0
+/transform_listener_impl_58eea69ca940
+/transform_listener_impl_5bf1f7bed4e0
+/transform_listener_impl_5ef2dfdd8450
+/transform_listener_impl_62fd799cc0d0
+/velocity_smoother
+/waypoint_follower
+
+========== TOPICS ==========
+/ApproachPolygon [geometry_msgs/msg/PolygonStamped]
+/StopPolygon [geometry_msgs/msg/PolygonStamped]
+/bond [bond/msg/Status]
+/cmd_vel_home_limited [geometry_msgs/msg/Twist]
+/cmd_vel_safe [geometry_msgs/msg/Twist]
+/collision_monitor/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/diagnostics [diagnostic_msgs/msg/DiagnosticArray]
+/global_costmap/costmap_raw [nav2_msgs/msg/Costmap]
+/global_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]
+/joint_states [sensor_msgs/msg/JointState]
+/livox/imu [sensor_msgs/msg/Imu]
+/livox/lidar [sensor_msgs/msg/PointCloud2]
+/livox/lidar_nav [sensor_msgs/msg/PointCloud2]
+/local_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]
+/map [nav_msgs/msg/OccupancyGrid]
+/map_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/medical_nav/bridge_status [std_msgs/msg/String]
+/medical_nav/health_status [std_msgs/msg/String]
+/medical_nav/scan_result [std_msgs/msg/String]
+/medical_nav/scanner_preview/compressed [sensor_msgs/msg/CompressedImage]
+/medical_nav/scanner_status [std_msgs/msg/String]
+/medical_nav/tele_scanner_preview/compressed [sensor_msgs/msg/CompressedImage]
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/plan_smoothed [nav_msgs/msg/Path]
+/robot_description [std_msgs/msg/String]
+/rosout [rcl_interfaces/msg/Log]
+/smoother_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/tf [tf2_msgs/msg/TFMessage]
+/tf_static [tf2_msgs/msg/TFMessage]
+
+========== ACTION ==========
+Action: /navigate_to_pose
+Action clients: 0
+Action servers: 0
+
+========== LIFECYCLE ==========
+--- /controller_server ---
+Node not found
+--- /planner_server ---
+Node not found
+--- /smoother_server ---
+--- /behavior_server ---
+active [3]
+--- /bt_navigator ---
+active [3]
+--- /velocity_smoother ---
+active [3]
+--- /collision_monitor ---
+active [3]
+
+========== IMPORTANT PARAMETERS ==========
+Boolean value is: True
+Double value is: 20.0
+Double value is: 20.0
+failed to check service availability: rcl node's context is invalid, at ./src/rcl/node.c:428
+Double values are: array('d', [-1.3, -1.3, -2.0])
+String value is: /cmd_vel_home_limited
+String value is: /cmd_vel_safe
+
+========== VELOCITY TOPIC GRAPH ==========
+--- /cmd_vel_nav ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: controller_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.9d.09.35.0b.00.00.00.00.00.00.4d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: velocity_smoother
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.a9.09.36.84.00.00.00.00.00.00.1e.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+--- /cmd_vel ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 4
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.a3.09.7e.1f.00.00.00.00.00.00.2b.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.a3.09.7e.1f.00.00.00.00.00.00.34.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.a3.09.7e.1f.00.00.00.00.00.00.3d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: velocity_smoother
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.a9.09.36.84.00.00.00.00.00.00.1d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: home_approach_limiter
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.e1.08.78.31.00.00.00.00.00.00.12.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+--- /cmd_vel_home_limited ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: home_approach_limiter
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.e1.08.78.31.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: collision_monitor
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.e3.08.85.1d.00.00.00.00.00.00.25.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+--- /cmd_vel_safe ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: collision_monitor
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.e3.08.85.1d.00.00.00.00.00.00.26.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: stm32_bridge
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.d3.08.84.5b.00.00.00.00.00.00.22.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+--- /medical_nav/bridge_cmd_debug ---
+Type: std_msgs/msg/String
+
+Publisher count: 1
+
+Node name: stm32_bridge
+Node namespace: /
+Topic type: std_msgs/msg/String
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.d3.08.84.5b.00.00.00.00.00.00.18.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+========== CAPTURE END ==========
+2026-10-02T20:17:30,870562595+08:00

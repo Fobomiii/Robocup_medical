@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<!-- Minimal kinematic description for Nav2.
+
+     base_link is the chassis rotation centre. The Mid360 centre is directly
+     above it at a measured height of 0.35 m. base_link +X is the physical front and
+     points toward motor 4 in the cross layout. The Mid360 and arm are aligned
+     with this physical centreline and require no additional yaw rotation. The
+     driver keeps the original PointCloud2 timestamp and livox_frame; TF is
+     the only place where this mounting transform is applied.
+-->
+<robot name="medical_robot">
+  <link name="base_link"/>
+
+  <link name="chassis">
+    <visual>
+      <geometry>
+        <cylinder radius="0.225" length="0.30"/>
+      </geometry>
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
+      <material name="steel">
+        <color rgba="0.75 0.75 0.78 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="chassis_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Red block marks physical front: base_link +X toward motor 4. -->
+  <link name="front_marker">
+    <visual>
+      <geometry>
+        <box size="0.08 0.04 0.04"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <material name="front_red">
+        <color rgba="0.95 0.05 0.05 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="front_marker_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="front_marker"/>
+    <origin xyz="0.205 0 0.32" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Arm motion-sweep filter volume. It includes the measured payload plus
+       margins for motion and lidar jitter while preserving returns below
+       z=0.45 m. This visual is the volume lidar_self_filter removes, so it
+       and arm_x_min/arm_x_max/arm_half_width/arm_yaw_deg/
+       arm_min_z/arm_max_z in obstacle.launch.py must be
+       changed together: the two are deliberately the same box. -->
+  <link name="arm">
+    <visual>
+      <geometry>
+        <box size="0.30 0.28 0.37"/>
+      </geometry>
+      <origin xyz="0.25 0 0.635" rpy="0 0 0"/>
+      <material name="arm_grey">
+        <color rgba="0.35 0.35 0.40 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="arm_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="livox_frame"/>
+
+  <joint name="livox_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="livox_frame"/>
+    <origin xyz="0 0 0.35" rpy="0 0 0"/>
+  </joint>
+</robot>

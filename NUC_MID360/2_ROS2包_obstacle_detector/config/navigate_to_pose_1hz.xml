@@ -1,0 +1,37 @@
+<!--
+  Nav2 Humble's navigate-to-pose recovery flow with bounded 1 Hz live global
+  replanning so newly visible competition cones are avoided before braking.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <RateController hz="1.0">
+          <RecoveryNode number_of_retries="1" name="ComputeAndSmoothPath">
+            <Sequence name="PlanThenSmooth">
+              <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
+              <Fallback name="SmoothOrKeepOriginal">
+                <!-- Humble defaults this footprint check to false. Only a
+                     collision-checked result may replace this cycle's plan. -->
+                <SmoothPath unsmoothed_path="{path}" smoothed_path="{path}" smoother_id="constrained_smoother" max_smoothing_duration="0.45" check_for_collisions="true"/>
+                <AlwaysSuccess/>
+              </Fallback>
+            </Sequence>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </RecoveryNode>
+        </RateController>
+        <RecoveryNode number_of_retries="1" name="FollowPath">
+          <FollowPath path="{path}" controller_id="FollowPathDWB"/>
+          <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+        </RecoveryNode>
+      </PipelineSequence>
+      <ReactiveFallback name="RecoveryFallback">
+        <GoalUpdated/>
+        <Sequence name="ClearCostmapsAndRefresh">
+          <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+          <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+        </Sequence>
+      </ReactiveFallback>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

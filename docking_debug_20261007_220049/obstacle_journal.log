@@ -1,0 +1,220 @@
+10月 07 22:00:49.024018 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381649.023672378] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:49.147213 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381649.146860621] [smoother_server]: Received a path to smooth.
+10月 07 22:00:49.167007 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381649.166765651] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:00:49.188326 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381649.187600127] [controller_server]: Passing new path to controller.
+10月 07 22:00:49.223638 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381649.223278522] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:49.324897 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381649.324199779] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:49.537185 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381649.535996847] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:49.724128 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381649.723487832] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:50.227556 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381650.227033506] [smoother_server]: Received a path to smooth.
+10月 07 22:00:50.238740 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381650.237657791] [controller_server]: Passing new path to controller.
+10月 07 22:00:50.288228 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381650.287667616] [controller_server]: Passing new path to controller.
+10月 07 22:00:50.325300 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381650.324705800] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:50.425021 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381650.424518438] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:50.635460 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381650.634824753] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:50.725048 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381650.724380333] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:51.307149 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381651.306790643] [smoother_server]: Received a path to smooth.
+10月 07 22:00:51.325027 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381651.324433766] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:51.327421 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381651.327068285] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:00:51.337946 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381651.337609954] [controller_server]: Passing new path to controller.
+10月 07 22:00:51.423982 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381651.423550732] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:51.926754 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381651.925733276] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:52.124750 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381652.124188541] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:52.397375 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381652.396880166] [smoother_server]: Received a path to smooth.
+10月 07 22:00:52.417454 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381652.417027434] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:00:52.437983 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381652.437611193] [controller_server]: Passing new path to controller.
+10月 07 22:00:53.425686 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381653.425059444] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:53.477506 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381653.476962277] [smoother_server]: Received a path to smooth.
+10月 07 22:00:53.488226 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381653.487638812] [controller_server]: Passing new path to controller.
+10月 07 22:00:53.524988 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381653.524345808] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:53.538271 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381653.537620830] [controller_server]: Passing new path to controller.
+10月 07 22:00:53.724752 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381653.724334188] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:53.924896 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381653.924380542] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:54.425506 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381654.424874394] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:54.547225 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381654.546836680] [smoother_server]: Received a path to smooth.
+10月 07 22:00:54.567542 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381654.567008594] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:00:54.588075 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381654.587619657] [controller_server]: Passing new path to controller.
+10月 07 22:00:54.625204 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381654.624684087] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:54.826096 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381654.825373111] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:54.924132 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381654.923740224] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:55.225676 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381655.224969186] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:55.324947 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381655.324409196] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:55.627368 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381655.626860329] [smoother_server]: Received a path to smooth.
+10月 07 22:00:55.637904 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381655.637613548] [controller_server]: Passing new path to controller.
+10月 07 22:00:55.688219 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381655.687629754] [controller_server]: Passing new path to controller.
+10月 07 22:00:56.124130 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381656.123835234] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:56.226004 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381656.225204220] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:56.697185 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381656.696808334] [smoother_server]: Received a path to smooth.
+10月 07 22:00:56.717172 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381656.716813514] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:00:56.738137 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381656.737628085] [controller_server]: Passing new path to controller.
+10月 07 22:00:57.224957 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381657.224546756] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:57.486298 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381657.485725442] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:57.524360 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381657.523972166] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:57.584854 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381657.584424051] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:57.757241 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381657.756872420] [smoother_server]: Received a path to smooth.
+10月 07 22:00:57.777079 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381657.776808377] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:00:57.788056 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381657.787619412] [controller_server]: Passing new path to controller.
+10月 07 22:00:58.325158 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381658.324641943] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:58.425457 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381658.424897247] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:58.827159 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381658.826801146] [smoother_server]: Received a path to smooth.
+10月 07 22:00:58.837946 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381658.837616728] [controller_server]: Passing new path to controller.
+10月 07 22:00:58.888166 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381658.887628427] [controller_server]: Passing new path to controller.
+10月 07 22:00:59.326072 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381659.325352712] [collision_monitor]: Robot to continue normal operation
+10月 07 22:00:59.424998 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381659.424290287] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:00:59.907143 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381659.906744150] [smoother_server]: Received a path to smooth.
+10月 07 22:00:59.927107 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381659.926808288] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:00:59.937991 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381659.937587532] [controller_server]: Passing new path to controller.
+10月 07 22:01:00.725718 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381660.725118083] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:00.835784 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381660.835148220] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:00.997350 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381660.996859030] [smoother_server]: Received a path to smooth.
+10月 07 22:01:01.017687 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381661.017108844] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:01.026179 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381661.025661776] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:01.037994 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381661.037593717] [controller_server]: Passing new path to controller.
+10月 07 22:01:01.125314 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381661.124433350] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:01.725693 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381661.725165200] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:01.825120 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381661.824520774] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:02.087366 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381662.087006913] [smoother_server]: Received a path to smooth.
+10月 07 22:01:02.087802 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381662.087582343] [controller_server]: Passing new path to controller.
+10月 07 22:01:02.138093 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381662.137602136] [controller_server]: Passing new path to controller.
+10月 07 22:01:02.326566 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381662.325747574] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:02.423774 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381662.423433670] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:02.988306 fzurobot bash[11239]: [controller_server-17] [ERROR] [1791381662.987694118] [controller_server]: Failed to make progress
+10月 07 22:01:02.988764 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381662.987821526] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:03.007280 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381663.006788135] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 07 22:01:03.007919 fzurobot bash[11239]: [planner_server-19] [INFO] [1791381663.007141970] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10月 07 22:01:03.086395 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381663.085882111] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:03.157371 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381663.156840211] [smoother_server]: Received a path to smooth.
+10月 07 22:01:03.177373 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381663.176971978] [controller_server]: Received a goal, begin computing control effort.
+10月 07 22:01:03.286278 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381663.285789416] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:03.425279 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381663.424721148] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:03.524803 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381663.524321756] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:03.825742 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381663.825249328] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:04.025953 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381664.025325652] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:04.124600 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381664.124186349] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:04.185207 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381664.184931987] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:04.224267 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381664.224011334] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:04.227159 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381664.226808717] [smoother_server]: Received a path to smooth.
+10月 07 22:01:04.227517 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381664.227114784] [controller_server]: Passing new path to controller.
+10月 07 22:01:04.277744 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381664.277169441] [controller_server]: Passing new path to controller.
+10月 07 22:01:04.325272 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381664.324537840] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:04.825977 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381664.825373951] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:05.025533 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381665.024932818] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:05.307289 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381665.306908905] [smoother_server]: Received a path to smooth.
+10月 07 22:01:05.327382 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381665.326951744] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:05.327846 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381665.327179376] [controller_server]: Passing new path to controller.
+10月 07 22:01:06.397214 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381666.396836850] [smoother_server]: Received a path to smooth.
+10月 07 22:01:06.417525 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381666.416968927] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:06.427583 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381666.427130203] [controller_server]: Passing new path to controller.
+10月 07 22:01:07.226423 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381667.225745979] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:07.425359 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381667.424846433] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:07.477626 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381667.476995912] [smoother_server]: Received a path to smooth.
+10月 07 22:01:07.497391 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381667.496934038] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:07.527537 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381667.527153103] [controller_server]: Passing new path to controller.
+10月 07 22:01:08.026113 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381668.025561076] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:08.124460 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381668.124058403] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:08.547345 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381668.546906166] [smoother_server]: Received a path to smooth.
+10月 07 22:01:08.567617 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381668.567068390] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:08.577394 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381668.577160353] [controller_server]: Passing new path to controller.
+10月 07 22:01:08.724983 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381668.724550458] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:08.835352 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381668.834815050] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:09.647501 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381669.646942358] [smoother_server]: Received a path to smooth.
+10月 07 22:01:09.667467 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381669.666995499] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:09.677440 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381669.677116848] [controller_server]: Passing new path to controller.
+10月 07 22:01:09.726366 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381669.725785851] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:09.827892 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381669.827250077] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:10.702188 fzurobot bash[11239]: [planner_server-19] [ERROR] [1791381670.701716850] [planner_server]: GridBased goal is blocked within 0.10 m tolerance
+10月 07 22:01:10.702512 fzurobot bash[11239]: [planner_server-19] [WARN] [1791381670.701798979] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (5.40, -2.20)
+10月 07 22:01:10.702512 fzurobot bash[11239]: [planner_server-19] [WARN] [1791381670.701817603] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+10月 07 22:01:10.717037 fzurobot bash[11239]: [planner_server-19] [INFO] [1791381670.716746821] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10月 07 22:01:10.907319 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381670.906851614] [smoother_server]: Received a path to smooth.
+10月 07 22:01:10.907845 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381670.907011474] [smoother_server]: Smoother simple_smoother did not complete smoothing in specified time limit(0.350000 seconds) and was interrupted after 0.000160 seconds
+10月 07 22:01:10.927091 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381670.926783372] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:10.927465 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381670.927116044] [controller_server]: Passing new path to controller.
+10月 07 22:01:11.124163 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381671.123830001] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:11.224466 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381671.224115548] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:11.977459 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381671.976989032] [smoother_server]: Received a path to smooth.
+10月 07 22:01:11.997522 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381671.997059218] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:12.027644 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381672.027129421] [controller_server]: Passing new path to controller.
+10月 07 22:01:12.135604 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381672.135022004] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:12.225892 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381672.225349309] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:12.425038 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381672.424500809] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:12.525509 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381672.524869371] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:13.057330 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381673.056903690] [smoother_server]: Received a path to smooth.
+10月 07 22:01:13.077610 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381673.076997660] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:13.078459 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381673.077246575] [controller_server]: Passing new path to controller.
+10月 07 22:01:13.926600 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381673.926232341] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:14.026240 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381674.025527926] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:14.147287 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381674.146906821] [smoother_server]: Received a path to smooth.
+10月 07 22:01:14.167795 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381674.167184108] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:14.177489 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381674.177119947] [controller_server]: Passing new path to controller.
+10月 07 22:01:15.227662 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381675.227050397] [smoother_server]: Received a path to smooth.
+10月 07 22:01:15.247675 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381675.247178039] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:15.277789 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381675.277158596] [controller_server]: Passing new path to controller.
+10月 07 22:01:15.626877 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381675.626212339] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:15.724524 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381675.724080124] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:16.317140 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381676.316785950] [smoother_server]: Received a path to smooth.
+10月 07 22:01:16.325748 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381676.325337981] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:16.327351 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381676.327119091] [controller_server]: Passing new path to controller.
+10月 07 22:01:16.377381 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381676.377126550] [controller_server]: Passing new path to controller.
+10月 07 22:01:16.425768 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381676.425144839] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:17.025846 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381677.025259611] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:17.126019 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381677.125383185] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:17.326143 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381677.325406784] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:17.407220 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381677.406866292] [smoother_server]: Received a path to smooth.
+10月 07 22:01:17.424253 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381677.423901402] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:17.426996 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381677.426785026] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:17.427235 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381677.427121602] [controller_server]: Passing new path to controller.
+10月 07 22:01:17.526431 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381677.525865339] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:17.726243 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381677.725590509] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:18.177473 fzurobot bash[11239]: [controller_server-17] [ERROR] [1791381678.177163224] [controller_server]: Failed to make progress
+10月 07 22:01:18.177563 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381678.177245895] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:18.196973 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381678.196703054] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 07 22:01:18.197377 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381678.197156570] [controller_server]: Received a goal, begin computing control effort.
+10月 07 22:01:18.226014 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381678.225519518] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:18.289286 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381678.288621897] [controller_server]: Control loop missed its desired rate of 20.0000Hz
+10月 07 22:01:18.325987 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381678.325318621] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:18.425363 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381678.425010432] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:18.487597 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381678.487067173] [smoother_server]: Received a path to smooth.
+10月 07 22:01:18.497868 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381678.497325706] [controller_server]: Passing new path to controller.
+10月 07 22:01:18.525024 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381678.524502827] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:18.547814 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381678.547302071] [controller_server]: Passing new path to controller.
+10月 07 22:01:19.425849 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381679.425339275] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:19.525485 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381679.524943036] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:19.577249 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381679.576885997] [smoother_server]: Received a path to smooth.
+10月 07 22:01:19.597716 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381679.597112600] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:19.598319 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381679.597408461] [controller_server]: Passing new path to controller.
+10月 07 22:01:20.657639 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381680.657076190] [smoother_server]: Received a path to smooth.
+10月 07 22:01:20.677619 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381680.677053312] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:20.697773 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381680.697348661] [controller_server]: Passing new path to controller.
+10月 07 22:01:21.026716 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381681.025996958] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:21.126144 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381681.125384546] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:21.525007 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381681.524543300] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:21.626047 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381681.625244540] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:21.737231 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381681.736868545] [smoother_server]: Received a path to smooth.
+10月 07 22:01:21.747740 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381681.747303622] [controller_server]: Passing new path to controller.
+10月 07 22:01:21.797754 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381681.797308618] [controller_server]: Passing new path to controller.
+10月 07 22:01:22.827368 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381682.826917595] [smoother_server]: Received a path to smooth.
+10月 07 22:01:22.847618 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381682.847024295] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:22.848311 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381682.847365933] [controller_server]: Passing new path to controller.
+10月 07 22:01:23.125837 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381683.125388405] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:23.226401 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381683.225619994] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:23.925247 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381683.924770022] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:23.927375 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381683.926977986] [smoother_server]: Received a path to smooth.
+10月 07 22:01:23.947660 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381683.947087254] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:23.948366 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381683.947423189] [controller_server]: Passing new path to controller.
+10月 07 22:01:24.026181 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381684.025466171] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:25.007171 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381685.006917155] [smoother_server]: Received a path to smooth.
+10月 07 22:01:25.026121 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381685.025489565] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:25.027456 fzurobot bash[11239]: [controller_server-17] [WARN] [1791381685.027051433] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 07 22:01:25.047637 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381685.047331202] [controller_server]: Passing new path to controller.
+10月 07 22:01:25.126496 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381685.125925651] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:25.626297 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381685.625653845] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:25.725430 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381685.724837332] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:26.026789 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381686.026195574] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:26.087374 fzurobot bash[11239]: [smoother_server-18] [INFO] [1791381686.086938983] [smoother_server]: Received a path to smooth.
+10月 07 22:01:26.097610 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381686.097334082] [controller_server]: Passing new path to controller.
+10月 07 22:01:26.125660 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381686.125131823] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:26.147852 fzurobot bash[11239]: [controller_server-17] [INFO] [1791381686.147320350] [controller_server]: Passing new path to controller.
+10月 07 22:01:26.424699 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381686.424379959] [collision_monitor]: Robot to continue normal operation
+10月 07 22:01:26.525316 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381686.524825781] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 07 22:01:27.025068 fzurobot bash[11239]: [collision_monitor-14] [INFO] [1791381687.024674197] [collision_monitor]: Robot to continue normal operation

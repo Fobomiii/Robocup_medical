@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=录制 Bed13 Rosbag
+Comment=在本机 NUC 录制 Bed13 ROS 2 数据
+Exec=/bin/bash -lc "$HOME/record_bed13_local.sh"
+Icon=media-record
+Terminal=true
+Categories=Development;Robotics;
+StartupNotify=true

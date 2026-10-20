@@ -1,0 +1,1076 @@
+
+===== C:\Users\ASUS\Desktop\Robocup“Ω¡∆\bed13_full_20261002_225423\journal.log =====
+SIZE=103161
+10Êú?02 22:54:31.249447 fzurobot bash[48031]: [cone_footprint_compensator-3] [WARN] [1790952871.248733585] [cone_footprint_compensator]: Cone compensation TF base_link->odom unavailable: Lookup would require extrapolation into the future.  Requested time 1790952871.065753 but the latest data is at time 1790952870.982590, when looking up transform from frame [base_link] to frame [odom]
+10Êú?02 22:54:31.550433 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952871.549740320] [local_costmap.local_costmap]: Message Filter dropping message: frame 'base_link' at time 1790952871.066 for reason 'the timestamp on the message is earlier than all the data in the transform cache'
+10Êú?02 22:54:31.550942 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952871.549871139] [global_costmap.global_costmap]: Message Filter dropping message: frame 'base_link' at time 1790952871.066 for reason 'the timestamp on the message is earlier than all the data in the transform cache'
+10Êú?02 22:54:33.252044 fzurobot bash[48031]: [cone_footprint_compensator-3] [WARN] [1790952873.251159081] [cone_footprint_compensator]: Cone compensation TF base_link->odom unavailable: Lookup would require extrapolation into the future.  Requested time 1790952873.066183 but the latest data is at time 1790952870.982590, when looking up transform from frame [base_link] to frame [odom]
+10Êú?02 22:54:34.149464 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952874.148724807] [local_costmap.local_costmap]: Message Filter dropping message: frame 'base_link' at time 1790952873.666 for reason 'the timestamp on the message is earlier than all the data in the transform cache'
+10Êú?02 22:54:34.150065 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952874.148758390] [global_costmap.global_costmap]: Message Filter dropping message: frame 'base_link' at time 1790952873.666 for reason 'the timestamp on the message is earlier than all the data in the transform cache'
+10Êú?02 22:54:34.284916 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952874.284452855] [stm32_bridge]: New medical mission epoch=5: cleared stale navigation, scan and calibration state
+10Êú?02 22:54:34.285957 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952874.285591792] [stm32_bridge]: STM32 goal request #1 -> nurse
+10Êú?02 22:54:34.288406 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952874.287923806] [medical_navigator]: Dispatching nurse_scan_center -> map(1.70, -0.00) request=1
+10Êú?02 22:54:34.311290 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952874.310563992] [code_scanner]: Released primary camera for USB handoff
+10Êú?02 22:54:34.331839 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952874.331475798] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (1.70, -0.00)
+10Êú?02 22:54:34.382511 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952874.382033115] [controller_server]: Received a goal, begin computing control effort.
+10Êú?02 22:54:34.384613 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952874.384275908] [controller_server]: Optimizer reset
+10Êú?02 22:54:34.460856 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952874.459917516] [code_scanner]: Opening tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 with YUYV:1920x1080@5
+10Êú?02 22:54:34.485746 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952874.485145282] [code_scanner]: STM32 mission epoch changed 4->5; restarting 15-second tele scan window
+10Êú?02 22:54:34.934810 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952874.934496219] [planner_server]: GridBased switched route: risk improvement 53.9%, time improvement 0.12 s
+10Êú?02 22:54:34.982676 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952874.982183938] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:35.532776 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952875.532192139] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:36.082664 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952876.082179484] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:36.301751 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952876.301133887] [code_scanner]: Opened tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 as YUYV:1920x1080
+10Êú?02 22:54:36.379193 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952876.378464940] [code_scanner]: Confirmed scan context=1 format=1 value=11 via tele_zxing_qr
+10Êú?02 22:54:36.382569 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952876.382179169] [controller_server]: Goal was canceled. Stopping the robot.
+10Êú?02 22:54:36.382730 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952876.382232490] [controller_server]: [follow_path] [ActionServer] Client requested to cancel the goal. Cancelling.
+10Êú?02 22:54:36.383037 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952876.382403433] [bt_navigator]: [navigate_to_pose] [ActionServer] Client requested to cancel the goal. Cancelling.
+10Êú?02 22:54:36.383078 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952876.382544880] [bt_navigator]: Goal canceled
+10Êú?02 22:54:36.403212 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952876.402832022] [stm32_bridge]: STM32 accepted scan #13: 11
+10Êú?02 22:54:36.403593 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952876.403372126] [stm32_bridge]: STM32 goal request #2 -> bed1
+10Êú?02 22:54:36.404822 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952876.404507474] [medical_navigator]: Dispatching bed1 -> map(5.40, 2.20) request=2
+10Êú?02 22:54:36.441125 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952876.440830265] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (5.40, 2.20)
+10Êú?02 22:54:36.486875 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952876.486491351] [code_scanner]: Released tele camera for USB handoff
+10Êú?02 22:54:36.539321 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952876.538886413] [code_scanner]: Opening primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 with MJPG:1920x1200@30
+10Êú?02 22:54:36.541691 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952876.541417456] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:36.562265 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952876.561707827] [controller_server]: Received a goal, begin computing control effort.
+10Êú?02 22:54:36.670258 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952876.669871372] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.303946 seconds. Ignoring the source.
+10Êú?02 22:54:36.720303 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952876.719929762] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.354004 seconds. Ignoring the source.
+10Êú?02 22:54:36.770244 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952876.769855834] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.403931 seconds. Ignoring the source.
+10Êú?02 22:54:36.820334 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952876.819944267] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.454019 seconds. Ignoring the source.
+10Êú?02 22:54:36.870015 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952876.869731777] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.503807 seconds. Ignoring the source.
+10Êú?02 22:54:36.920084 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952876.919808113] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.553883 seconds. Ignoring the source.
+10Êú?02 22:54:36.970190 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952876.969802102] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.603878 seconds. Ignoring the source.
+10Êú?02 22:54:37.020032 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.019757391] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.653833 seconds. Ignoring the source.
+10Êú?02 22:54:37.070238 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.069885188] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.703961 seconds. Ignoring the source.
+10Êú?02 22:54:37.120167 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.119827716] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.753903 seconds. Ignoring the source.
+10Êú?02 22:54:37.170319 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.169931862] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.804007 seconds. Ignoring the source.
+10Êú?02 22:54:37.175688 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952877.175451966] [code_scanner]: Opened primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 as MJPG:1920x1200
+10Êú?02 22:54:37.220351 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.219926160] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.854001 seconds. Ignoring the source.
+10Êú?02 22:54:37.270162 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.269866637] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.903941 seconds. Ignoring the source.
+10Êú?02 22:54:37.320259 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.319830897] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.953905 seconds. Ignoring the source.
+10Êú?02 22:54:37.343553 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.343203770] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.877372 seconds. Ignoring the source.
+10Êú?02 22:54:37.343880 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.343625846] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.877795 seconds. Ignoring the source.
+10Êú?02 22:54:37.364127 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.363646619] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.497894 seconds. Ignoring the source.
+10Êú?02 22:54:37.364776 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.364355039] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.498603 seconds. Ignoring the source.
+10Êú?02 22:54:37.370955 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.370373883] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.504621 seconds. Ignoring the source.
+10Êú?02 22:54:37.384566 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.384116222] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.417895 seconds. Ignoring the source.
+10Êú?02 22:54:37.385134 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.384588805] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.418368 seconds. Ignoring the source.
+10Êú?02 22:54:37.404757 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.404201509] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.338371 seconds. Ignoring the source.
+10Êú?02 22:54:37.405347 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952877.404851210] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.339022 seconds. Ignoring the source.
+10Êú?02 22:54:37.671746 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952877.671356459] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:37.692173 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952877.691587130] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:54:37.712250 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952877.711881888] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:38.510087 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952878.509744124] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:54:38.756177 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952878.755710281] [planner_server]: GridBased switched route because the retained route is blocked
+10Êú?02 22:54:38.771743 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952878.771418035] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:38.791847 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952878.791433758] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:54:38.812419 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952878.811898245] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:38.815590 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952878.814958580] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:54:38.851650 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952878.851343239] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:54:38.888269 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952878.887803554] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:54:39.115810 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952879.115317056] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:54:39.130245 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952879.129722475] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:54:39.845794 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952879.845488386] [planner_server]: GridBased switched route: risk improvement 19.4%, time improvement 0.09 s
+10Êú?02 22:54:39.862212 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952879.861614213] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:39.882162 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952879.881572320] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:54:39.912285 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952879.911880098] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:40.934519 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952880.934113676] [planner_server]: GridBased switched route: risk improvement 13.6%, time improvement 0.11 s
+10Êú?02 22:54:40.952131 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952880.951624653] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:40.962341 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952880.961896689] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:41.012424 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952881.011889240] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:42.031778 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952882.031389940] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:42.051868 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952882.051515198] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:54:42.062075 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952882.061878261] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:43.101905 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952883.101464342] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:43.112181 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952883.111880030] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:43.334335 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952883.333589162] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:54:43.434141 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952883.433548544] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:54:43.531903 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952883.531568117] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:54:43.592668 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952883.592269906] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:54:43.734582 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952883.733882618] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:54:43.893763 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952883.893263545] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:54:43.993275 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952883.992850325] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:54:44.148961 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952884.148599623] [planner_server]: GridBased switched route: risk improvement 50.2%, time improvement 0.01 s
+10Êú?02 22:54:44.161663 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952884.161308454] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:44.162101 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952884.161878081] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:44.163463 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952884.163209411] [stm32_bridge]: STP23L calibrated at bed1: OPS offset=(-126.0, -68.0) mm, field pose=(-2186.0, 5349.0) mm
+10Êú?02 22:54:44.165785 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952884.165574324] [controller_server]: Reached the goal!
+10Êú?02 22:54:44.211668 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952884.211122699] [bt_navigator]: Goal succeeded
+10Êú?02 22:54:44.213746 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952884.213253596] [medical_navigator]: Navigation succeeded (state=3)
+10Êú?02 22:54:44.234947 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952884.234415703] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:54:45.003166 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952885.002778721] [code_scanner]: Confirmed scan context=2 format=2 value=6946522463487 via zbar_fast
+10Êú?02 22:54:45.043296 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952885.042985545] [stm32_bridge]: STM32 accepted scan #14: 6946522463487
+10Êú?02 22:54:45.844841 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952885.844252410] [stm32_bridge]: Started NUC TTS request=1 bed=1
+10Êú?02 22:54:47.444625 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952887.444090913] [stm32_bridge]: Completed NUC TTS request=1 bed=1: /home/fzurobot/Downloads/1_.mp3 via pulse
+10Êú?02 22:54:47.484363 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952887.483676569] [stm32_bridge]: STM32 goal request #3 -> bed3
+10Êú?02 22:54:47.485329 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952887.484818122] [medical_navigator]: Dispatching bed3 -> map(5.40, -2.20) request=3
+10Êú?02 22:54:47.486035 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952887.485613607] [bt_navigator]: Begin navigating from current location (5.39, 2.20) to (5.40, -2.20)
+10Êú?02 22:54:47.627025 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952887.626442929] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:47.647128 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952887.646594273] [controller_server]: Received a goal, begin computing control effort.
+10Êú?02 22:54:47.650014 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952887.649678990] [controller_server]: Optimizer reset
+10Êú?02 22:54:48.466369 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952888.466094645] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.300381 seconds. Ignoring the source.
+10Êú?02 22:54:48.470145 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952888.469845980] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.304132 seconds. Ignoring the source.
+10Êú?02 22:54:48.776716 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952888.776259170] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:48.796882 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952888.796389595] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:54:48.797394 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952888.796781028] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:49.910427 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952889.910071910] [planner_server]: GridBased switched route because the retained route is blocked
+10Êú?02 22:54:49.926659 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952889.926291398] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:49.947134 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952889.946556834] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:54:49.947903 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952889.946823962] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:50.952030 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952890.951451942] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:54:51.011072 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952891.010808947] [planner_server]: GridBased switched route because the retained route is blocked
+10Êú?02 22:54:51.027172 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952891.026480408] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:51.047035 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952891.046551595] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:54:51.047306 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952891.046809708] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:51.489131 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952891.488515637] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:54:51.850838 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952891.850254600] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:54:52.126722 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952892.126219664] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:52.147313 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952892.146594725] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:54:52.147975 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952892.146985526] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:53.206586 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952893.206206462] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:53.226383 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952893.226058383] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:54:53.247092 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952893.246780929] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:53.452571 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952893.452231447] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:54:54.253151 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952894.252760910] [planner_server]: GridBased switched route: risk improvement 11.7%, time improvement 0.05 s
+10Êú?02 22:54:54.266595 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952894.266204478] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:54.286791 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952894.286343592] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:54:54.297140 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952894.296792646] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:55.346777 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952895.346301106] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:55.347150 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952895.346778853] [controller_server]: Passing new path to controller.
+10Êú?02 22:54:55.431732 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952895.431311430] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:54:55.531835 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952895.531380162] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:54:55.955693 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952895.955106110] [controller_server]: Reached the goal!
+10Êú?02 22:54:55.986502 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952895.985946872] [bt_navigator]: Goal succeeded
+10Êú?02 22:54:55.988414 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952895.988053714] [medical_navigator]: Navigation succeeded (state=3)
+10Êú?02 22:54:56.104549 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952896.103959670] [stm32_bridge]: STP23L calibrated at bed3: OPS offset=(-155.9, 28.0) mm, field pose=(2064.1, 5409.0) mm
+10Êú?02 22:54:57.135872 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952897.135544717] [code_scanner]: Confirmed scan context=3 format=2 value=6906841121017 via zbar_fast
+10Êú?02 22:54:57.163343 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952897.162975576] [stm32_bridge]: STM32 accepted scan #15: 6906841121017
+10Êú?02 22:54:58.027832 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952898.027125631] [stm32_bridge]: Started NUC TTS request=2 bed=3
+10Êú?02 22:54:59.626665 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952899.625942460] [stm32_bridge]: Completed NUC TTS request=2 bed=3: /home/fzurobot/Downloads/3_.mp3 via pulse
+10Êú?02 22:54:59.643935 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952899.643534074] [stm32_bridge]: STM32 goal request #4 -> home
+10Êú?02 22:54:59.645502 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952899.645048542] [medical_navigator]: Dispatching home -> map(0.00, -0.00) request=4
+10Êú?02 22:54:59.646144 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952899.645880414] [bt_navigator]: Begin navigating from current location (5.40, -2.19) to (0.00, -0.00)
+10Êú?02 22:54:59.706895 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952899.706526067] [smoother_server]: Received a path to smooth.
+10Êú?02 22:54:59.727400 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952899.726850889] [controller_server]: Received a goal, begin computing control effort.
+10Êú?02 22:54:59.730902 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952899.730508596] [controller_server]: Optimizer reset
+10Êú?02 22:55:00.806976 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952900.806557083] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:00.826996 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952900.826645665] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:55:00.827349 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952900.827030456] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:01.878564 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952901.878279087] [planner_server]: GridBased switched route: risk improvement 79.0%, time improvement 0.12 s
+10Êú?02 22:55:01.896868 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952901.896486955] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:01.916970 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952901.916583211] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:55:01.927529 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952901.927062367] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:02.954734 fzurobot bash[48031]: [planner_server-17] [ERROR] [1790952902.954301608] [planner_server]: GridBased goal is blocked within 0.10 m tolerance
+10Êú?02 22:55:02.955191 fzurobot bash[48031]: [planner_server-17] [WARN] [1790952902.954374512] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (0.00, -0.00)
+10Êú?02 22:55:02.955234 fzurobot bash[48031]: [planner_server-17] [WARN] [1790952902.954389321] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+10Êú?02 22:55:02.966773 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952902.966355435] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10Êú?02 22:55:03.075824 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952903.075511162] [planner_server]: GridBased switched route: risk improvement 13.6%, time improvement -0.07 s
+10Êú?02 22:55:03.086923 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952903.086544052] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:03.087296 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952903.086659305] [smoother_server]: Smoother simple_smoother did not complete smoothing in specified time limit(0.350000 seconds) and was interrupted after 0.000115 seconds
+10Êú?02 22:55:03.106707 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952903.106402396] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:55:03.127584 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952903.127049374] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:04.167052 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952904.166577457] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:04.177509 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952904.177070832] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:04.227347 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952904.227080257] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:05.237083 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952905.236588780] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:05.277632 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952905.277070140] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:05.885870 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952905.885378953] [controller_server]: Reached the goal!
+10Êú?02 22:55:05.916591 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952905.916172064] [bt_navigator]: Goal succeeded
+10Êú?02 22:55:05.917757 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952905.917487828] [medical_navigator]: Navigation succeeded (state=3)
+10Êú?02 22:55:09.555263 fzurobot bash[48031]: [cone_footprint_compensator-3] [WARN] [1790952909.554359016] [cone_footprint_compensator]: Cone compensation TF base_link->odom unavailable: Lookup would require extrapolation into the future.  Requested time 1790952909.365967 but the latest data is at time 1790952909.322839, when looking up transform from frame [base_link] to frame [odom]
+10Êú?02 22:55:09.856594 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952909.855548951] [local_costmap.local_costmap]: Message Filter dropping message: frame 'base_link' at time 1790952909.366 for reason 'the timestamp on the message is earlier than all the data in the transform cache'
+10Êú?02 22:55:09.857279 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952909.855681617] [global_costmap.global_costmap]: Message Filter dropping message: frame 'base_link' at time 1790952909.366 for reason 'the timestamp on the message is earlier than all the data in the transform cache'
+10Êú?02 22:55:11.650923 fzurobot bash[48031]: [cone_footprint_compensator-3] [WARN] [1790952911.650335399] [cone_footprint_compensator]: Cone compensation TF base_link->odom unavailable: Lookup would require extrapolation into the future.  Requested time 1790952911.465812 but the latest data is at time 1790952909.322839, when looking up transform from frame [base_link] to frame [odom]
+10Êú?02 22:55:12.450525 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952912.449972908] [local_costmap.local_costmap]: Message Filter dropping message: frame 'base_link' at time 1790952911.966 for reason 'the timestamp on the message is earlier than all the data in the transform cache'
+10Êú?02 22:55:12.451154 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952912.450077599] [global_costmap.global_costmap]: Message Filter dropping message: frame 'base_link' at time 1790952911.966 for reason 'the timestamp on the message is earlier than all the data in the transform cache'
+10Êú?02 22:55:12.626860 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952912.625953653] [stm32_bridge]: New medical mission epoch=6: cleared stale navigation, scan and calibration state
+10Êú?02 22:55:12.644871 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952912.644186784] [stm32_bridge]: STM32 goal request #1 -> nurse
+10Êú?02 22:55:12.646453 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952912.646006901] [medical_navigator]: Dispatching nurse_scan_center -> map(1.70, -0.00) request=1
+10Êú?02 22:55:12.651468 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952912.650859955] [code_scanner]: Released primary camera for USB handoff
+10Êú?02 22:55:12.702377 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952912.701731054] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (1.70, -0.00)
+10Êú?02 22:55:12.720201 fzurobot bash[48031]: [planner_server-17] [ERROR] [1790952912.719947060] [planner_server]: GridBased start pose is in a collision cell
+10Êú?02 22:55:12.720498 fzurobot bash[48031]: [planner_server-17] [WARN] [1790952912.719996678] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (1.70, -0.00)
+10Êú?02 22:55:12.720576 fzurobot bash[48031]: [planner_server-17] [WARN] [1790952912.720007201] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+10Êú?02 22:55:12.732486 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952912.732159873] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10Êú?02 22:55:12.739799 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952912.739570305] [code_scanner]: Opening tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 with YUYV:1920x1080@5
+10Êú?02 22:55:12.842915 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952912.842398866] [controller_server]: Received a goal, begin computing control effort.
+10Êú?02 22:55:12.847255 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952912.846935424] [controller_server]: Optimizer reset
+10Êú?02 22:55:13.443224 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952913.442554062] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:13.486792 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952913.486115333] [code_scanner]: STM32 mission epoch changed 5->6; restarting 15-second tele scan window
+10Êú?02 22:55:13.992967 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952913.992544999] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:14.587056 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952914.586511658] [code_scanner]: Opened tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 as YUYV:1920x1080
+10Êú?02 22:55:14.592853 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952914.592545436] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:14.711636 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952914.711096317] [code_scanner]: Confirmed scan context=1 format=1 value=11 via tele_zxing_qr
+10Êú?02 22:55:14.733307 fzurobot bash[48031]: [bt_navigator-19] [ERROR] [1790952914.732448594] [bt_navigator_navigate_to_pose_rclcpp_node]: Failed to get result for follow_path in node halt!
+10Êú?02 22:55:14.734356 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952914.732621227] [bt_navigator]: [navigate_to_pose] [ActionServer] Client requested to cancel the goal. Cancelling.
+10Êú?02 22:55:14.735131 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952914.733039083] [bt_navigator]: Goal canceled
+10Êú?02 22:55:14.743057 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952914.742581515] [controller_server]: Goal was canceled. Stopping the robot.
+10Êú?02 22:55:14.743157 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952914.742644002] [controller_server]: [follow_path] [ActionServer] Client requested to cancel the goal. Cancelling.
+10Êú?02 22:55:14.744815 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952914.744345717] [stm32_bridge]: STM32 accepted scan #16: 11
+10Êú?02 22:55:14.745917 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952914.745439972] [stm32_bridge]: STM32 goal request #2 -> bed1
+10Êú?02 22:55:14.747431 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952914.746969458] [medical_navigator]: Dispatching bed1 -> map(5.40, 2.20) request=2
+10Êú?02 22:55:14.771571 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952914.770848930] [code_scanner]: Released tele camera for USB handoff
+10Êú?02 22:55:14.809914 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952914.809440012] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (5.40, 2.20)
+10Êú?02 22:55:14.879946 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952914.879557830] [code_scanner]: Opening primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 with MJPG:1920x1200@30
+10Êú?02 22:55:14.930503 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952914.930099441] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:14.951278 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952914.950435080] [controller_server]: Received a goal, begin computing control effort.
+10Êú?02 22:55:15.520783 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952915.520445946] [code_scanner]: Opened primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 as MJPG:1920x1200
+10Êú?02 22:55:16.090702 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952916.090176998] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:16.101076 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952916.100679304] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:16.151202 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952916.150713194] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:16.855391 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952916.855012039] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:55:17.186778 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952917.186465387] [planner_server]: GridBased switched route because the retained route is blocked
+10Êú?02 22:55:17.200428 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952917.200061240] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:17.200895 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952917.200712308] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:17.251235 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952917.250716269] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:17.253166 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952917.252920092] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:55:18.301575 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952918.301302332] [planner_server]: GridBased switched route: risk improvement 29.5%, time improvement 0.11 s
+10Êú?02 22:55:18.320436 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952918.320113226] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:18.340583 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952918.340061780] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:55:18.351249 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952918.350679404] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:19.392111 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952919.391778150] [planner_server]: GridBased switched route: risk improvement 36.5%, time improvement 0.08 s
+10Êú?02 22:55:19.410673 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952919.410187370] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:19.430608 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952919.430117181] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:55:19.451041 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952919.450719534] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:19.734886 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952919.734366830] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:55:19.746280 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952919.745985819] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:55:19.768347 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952919.767816540] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:55:19.811862 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952919.811529900] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:55:19.836138 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952919.835448678] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:55:19.848984 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952919.848519209] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:55:19.954445 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952919.954115711] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:55:20.011243 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952920.010761202] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:55:20.033505 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952920.033204192] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:55:20.147367 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952920.147081858] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:55:20.191722 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952920.191290832] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:55:20.213629 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952920.213272513] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:55:20.480466 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952920.480082083] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:20.500269 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952920.499925719] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:55:20.500842 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952920.500662551] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:21.532570 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952921.532118480] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:55:21.539035 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952921.538641303] [planner_server]: GridBased switched route: risk improvement 57.9%, time improvement 0.02 s
+10Êú?02 22:55:21.550675 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952921.550334159] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:21.551062 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952921.550664709] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:21.694915 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952921.694241086] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:55:22.008347 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952922.007862436] [controller_server]: Reached the goal!
+10Êú?02 22:55:22.040182 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952922.039799311] [bt_navigator]: Goal succeeded
+10Êú?02 22:55:22.042471 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952922.042184368] [medical_navigator]: Navigation succeeded (state=3)
+10Êú?02 22:55:22.124833 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952922.124186945] [stm32_bridge]: STP23L calibrated at bed1: OPS offset=(-75.0, -48.0) mm, field pose=(-2166.0, 5378.0) mm
+10Êú?02 22:55:22.878838 fzurobot bash[48031]: [code_scanner-5] [INFO] [1790952922.878343413] [code_scanner]: Confirmed scan context=2 format=2 value=6946522463487 via zbar_fast
+10Êú?02 22:55:22.905527 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952922.903575607] [stm32_bridge]: STM32 accepted scan #17: 6946522463487
+10Êú?02 22:55:23.705975 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952923.705380907] [stm32_bridge]: Started NUC TTS request=1 bed=1
+10Êú?02 22:55:25.323758 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952925.323362592] [stm32_bridge]: Completed NUC TTS request=1 bed=1: /home/fzurobot/Downloads/1_.mp3 via pulse
+10Êú?02 22:55:25.346390 fzurobot bash[48031]: [stm32_bridge-4] [INFO] [1790952925.345727122] [stm32_bridge]: STM32 goal request #3 -> bed3
+10Êú?02 22:55:25.348460 fzurobot bash[48031]: [medical_navigator-14] [INFO] [1790952925.347918397] [medical_navigator]: Dispatching bed3 -> map(5.40, -2.20) request=3
+10Êú?02 22:55:25.349161 fzurobot bash[48031]: [bt_navigator-19] [INFO] [1790952925.348839287] [bt_navigator]: Begin navigating from current location (5.41, 2.21) to (5.40, -2.20)
+10Êú?02 22:55:25.479986 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952925.479614724] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:25.500788 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952925.499998611] [controller_server]: Received a goal, begin computing control effort.
+10Êú?02 22:55:25.504585 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952925.504048741] [controller_server]: Optimizer reset
+10Êú?02 22:55:26.649930 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952926.649582494] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:26.650559 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952926.650219547] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:26.700798 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952926.700228061] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:27.754283 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952927.753879095] [planner_server]: GridBased switched route because the retained route is blocked
+10Êú?02 22:55:27.769805 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952927.769515110] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:27.789765 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952927.789463080] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:55:27.800651 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952927.800269554] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:28.708320 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952928.707941235] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:55:28.854447 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952928.854107522] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:55:28.879997 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952928.879559204] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:28.899904 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952928.899509521] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:55:28.900608 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952928.900221786] [controller_server]: Passing new path to controller.
+10Êú?02 22:55:29.749762 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952929.749487906] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10Êú?02 22:55:29.924757 fzurobot bash[48031]: [planner_server-17] [ERROR] [1790952929.924397791] [planner_server]: GridBased goal is blocked within 0.10 m tolerance
+10Êú?02 22:55:29.924995 fzurobot bash[48031]: [planner_server-17] [WARN] [1790952929.924445169] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (5.40, -2.20)
+10Êú?02 22:55:29.924995 fzurobot bash[48031]: [planner_server-17] [WARN] [1790952929.924454155] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+10Êú?02 22:55:29.939712 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952929.939421886] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10Êú?02 22:55:30.003884 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952930.003449003] [controller_server]: Optimizer reset
+10Êú?02 22:55:30.006161 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952930.005924355] [controller_server]: Optimizer reset
+10Êú?02 22:55:30.006453 fzurobot bash[48031]: [controller_server-15] [ERROR] [1790952930.005962923] [controller_server]: Optimizer fail to compute path
+10Êú?02 22:55:30.006515 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952930.005997253] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:55:30.019714 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952930.019348061] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10Êú?02 22:55:30.019898 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952930.019736434] [controller_server]: Received a goal, begin computing control effort.
+10Êú?02 22:55:30.020021 fzurobot bash[48031]: [controller_server-15] [ERROR] [1790952930.019807552] [controller_server]: Invalid path, Path is empty.
+10Êú?02 22:55:30.020040 fzurobot bash[48031]: [controller_server-15] [WARN] [1790952930.019860024] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10Êú?02 22:55:30.060028 fzurobot bash[48031]: [bt_navigator-19] [ERROR] [1790952930.059761897] [bt_navigator_navigate_to_pose_rclcpp_node]: Failed to get result for compute_path_to_pose in node halt!
+10Êú?02 22:55:30.060391 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952930.059871408] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10Êú?02 22:55:30.060578 fzurobot bash[48031]: [planner_server-17] [INFO] [1790952930.060023767] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10Êú?02 22:55:30.060749 fzurobot bash[48031]: [bt_navigator-19] [WARN] [1790952930.060458246] [BehaviorTreeEngine]: Behavior Tree tick rate 100.00 was exceeded!
+10Êú?02 22:55:30.266498 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952930.266158698] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.300112 seconds. Ignoring the source.
+10Êú?02 22:55:30.266498 fzurobot bash[48031]: [collision_monitor-12] [INFO] [1790952930.266199429] [collision_monitor]: Robot to continue normal operation
+10Êú?02 22:55:30.270489 fzurobot bash[48031]: [collision_monitor-12] [WARN] [1790952930.270098620] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.304051 seconds. Ignoring the source.
+10Êú?02 22:55:30.341351 fzurobot bash[48031]: [smoother_server-16] [INFO] [1790952930.340971567] [smoother_server]: Received a path to smooth.
+10Êú?02 22:55:30.361303 fzurobot bash[48031]: [controller_server-15] [INFO] [1790952930.360920348] [controller_server]: Received a goal, begin computing control effort.
+
+===== C:\Users\ASUS\Desktop\Robocup“Ω¡∆\bed13_full_20261002_225423\rosbag.log =====
+SIZE=2529
+stdin is not a terminal device. Keyboard handling disabled.[INFO] [1790952863.651986128] [rosbag2_recorder]: Press SPACE for pausing/resuming
+[INFO] [1790952863.653812535] [rosbag2_storage]: Opened database '/home/fzurobot/bed13_full_20261002_225423/rosbag/rosbag_0.db3' for READ_WRITE.
+[INFO] [1790952863.654617900] [rosbag2_recorder]: Listening for topics...
+[INFO] [1790952863.654657676] [rosbag2_recorder]: Event publisher thread: Starting
+[WARN] [1790952863.654909807] [ROSBAG2_TRANSPORT]: Hidden topics are not recorded. Enable them with --include-hidden-topics
+[INFO] [1790952863.655029515] [rosbag2_recorder]: Recording...
+[INFO] [1790952864.772099010] [rosbag2_recorder]: Subscribed to topic '/cmd_vel_safe'
+[INFO] [1790952864.775156968] [rosbag2_recorder]: Subscribed to topic '/tf_static'
+[INFO] [1790952864.776541751] [rosbag2_recorder]: Subscribed to topic '/medical_nav/bridge_cmd_debug'
+[INFO] [1790952864.778231891] [rosbag2_recorder]: Subscribed to topic '/medical_nav/bridge_status'
+[INFO] [1790952864.779527937] [rosbag2_recorder]: Subscribed to topic '/medical_nav/task_state'
+[INFO] [1790952864.781602125] [rosbag2_recorder]: Subscribed to topic '/medical_nav/wheel_odom'
+[INFO] [1790952864.782538190] [rosbag2_recorder]: Subscribed to topic '/medical_nav/wheel_diagnostics'
+[INFO] [1790952864.783388550] [rosbag2_recorder]: Subscribed to topic '/odom'
+[INFO] [1790952864.784336613] [rosbag2_recorder]: Subscribed to topic '/tf'
+[INFO] [1790952864.889334093] [rosbag2_recorder]: Subscribed to topic '/plan'
+[INFO] [1790952864.890858454] [rosbag2_recorder]: Subscribed to topic '/medical_nav/corner_speed_status'
+[INFO] [1790952864.892639981] [rosbag2_recorder]: Subscribed to topic '/plan_smoothed'
+[INFO] [1790952864.894723137] [rosbag2_recorder]: Subscribed to topic '/cmd_vel_nav'
+[INFO] [1790952864.896585462] [rosbag2_recorder]: Subscribed to topic '/medical_nav/navigator_status'
+[INFO] [1790952864.899213773] [rosbag2_recorder]: Subscribed to topic '/cmd_vel'
+[INFO] [1790952864.902264378] [rosbag2_recorder]: Subscribed to topic '/speed_limit'
+[INFO] [1790952864.904399046] [rosbag2_recorder]: Subscribed to topic '/transformed_global_plan'
+[INFO] [1790952865.743058081] [rosbag2_recorder]: Subscribed to topic '/cmd_vel_home_limited'
+[INFO] [1790953020.533400325] [rosbag2_cpp]: Writing remaining messages from cache to the bag. It may take a while
+[INFO] [1790953020.534962312] [rosbag2_recorder]: Event publisher thread: Exiting
+[INFO] [1790953020.535031233] [rosbag2_recorder]: Recording stopped
+
+===== C:\Users\ASUS\Desktop\Robocup“Ω¡∆\bed13_full_20261002_225423\rosbag\metadata.yaml =====
+SIZE=10701
+rosbag2_bagfile_information:
+  version: 5
+  storage_identifier: sqlite3
+  duration:
+    nanoseconds: 155740470110
+  starting_time:
+    nanoseconds_since_epoch: 1790952864782892987
+  message_count: 47681
+  topics_with_message_count:
+    - topic_metadata:
+        name: /cmd_vel_home_limited
+        type: geometry_msgs/msg/Twist
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 6241
+    - topic_metadata:
+        name: /transformed_global_plan
+        type: nav_msgs/msg/Path
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 1220
+    - topic_metadata:
+        name: /speed_limit
+        type: nav2_msgs/msg/SpeedLimit
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 1556
+    - topic_metadata:
+        name: /cmd_vel
+        type: geometry_msgs/msg/Twist
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false\n- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false\n- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false\n- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 1394
+    - topic_metadata:
+        name: /medical_nav/navigator_status
+        type: std_msgs/msg/String
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 389
+    - topic_metadata:
+        name: /cmd_vel_safe
+        type: geometry_msgs/msg/Twist
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 2790
+    - topic_metadata:
+        name: /tf_static
+        type: tf2_msgs/msg/TFMessage
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 1\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false\n- history: 3\n  depth: 0\n  reliability: 1\n  durability: 1\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 2
+    - topic_metadata:
+        name: /medical_nav/bridge_cmd_debug
+        type: std_msgs/msg/String
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 3087
+    - topic_metadata:
+        name: /medical_nav/bridge_status
+        type: std_msgs/msg/String
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 156
+    - topic_metadata:
+        name: /plan_smoothed
+        type: nav_msgs/msg/Path
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 54
+    - topic_metadata:
+        name: /cmd_vel_nav
+        type: geometry_msgs/msg/Twist
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 1234
+    - topic_metadata:
+        name: /medical_nav/task_state
+        type: std_msgs/msg/UInt8
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 5717
+    - topic_metadata:
+        name: /medical_nav/wheel_odom
+        type: nav_msgs/msg/Odometry
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 5717
+    - topic_metadata:
+        name: /medical_nav/wheel_diagnostics
+        type: std_msgs/msg/String
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 2860
+    - topic_metadata:
+        name: /odom
+        type: nav_msgs/msg/Odometry
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 7294
+    - topic_metadata:
+        name: /medical_nav/corner_speed_status
+        type: std_msgs/msg/String
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 609
+    - topic_metadata:
+        name: /tf
+        type: tf2_msgs/msg/TFMessage
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false\n- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 7294
+    - topic_metadata:
+        name: /plan
+        type: nav_msgs/msg/Path
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 67
+  compression_format: ""
+  compression_mode: ""
+  relative_file_paths:
+    - rosbag_0.db3
+  files:
+    - path: rosbag_0.db3
+      starting_time:
+        nanoseconds_since_epoch: 1790952864782892987
+      duration:
+        nanoseconds: 155740470110
+      message_count: 47681
+
+===== C:\Users\ASUS\Desktop\Robocup“Ω¡∆\bed13_full_20261002_225423\rosbag\rosbag_0.db3 =====
+SIZE=22609920
+
+===== C:\Users\ASUS\Desktop\Robocup“Ω¡∆\bed13_full_20261002_225423\snapshot.txt =====
+SIZE=21927
+========== SNAPSHOT TIME ==========
+2026-10-02T22:57:00,836302223+08:00
+
+========== NODES ==========
+/behavior_server
+/bt_navigator
+/bt_navigator_navigate_through_poses_rclcpp_node
+/bt_navigator_navigate_to_pose_rclcpp_node
+/code_scanner
+/collision_monitor
+/cone_footprint_compensator
+/controller_server
+/corner_speed_limiter
+/global_costmap/global_costmap
+/health_ble_bridge
+/home_approach_limiter
+/lidar_odometry_guard
+/lidar_self_filter
+/lifecycle_manager_map
+/lifecycle_manager_navigation
+/lifecycle_manager_safety_pipeline
+/livox_lidar_publisher
+/local_costmap/local_costmap
+/map_server
+/medical_navigator
+/planner_server
+/robot_state_publisher
+/scan_dashboard
+/smoother_server
+/stm32_bridge
+/transform_listener_impl_57d144db19e0
+/transform_listener_impl_57d253cb9960
+/transform_listener_impl_5846344690e0
+/transform_listener_impl_5c77c09ce500
+/transform_listener_impl_64fa1a0a9050
+/velocity_smoother
+/waypoint_follower
+
+========== TOPICS ==========
+/ApproachPolygon [geometry_msgs/msg/PolygonStamped]
+/StopPolygon [geometry_msgs/msg/PolygonStamped]
+/behavior_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/behavior_tree_log [nav2_msgs/msg/BehaviorTreeLog]
+/bond [bond/msg/Status]
+/bt_navigator/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/cmd_vel [geometry_msgs/msg/Twist]
+/cmd_vel_home_limited [geometry_msgs/msg/Twist]
+/cmd_vel_nav [geometry_msgs/msg/Twist]
+/cmd_vel_safe [geometry_msgs/msg/Twist]
+/collision_monitor/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/controller_selector [std_msgs/msg/String]
+/controller_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/diagnostics [diagnostic_msgs/msg/DiagnosticArray]
+/global_costmap/costmap [nav_msgs/msg/OccupancyGrid]
+/global_costmap/costmap_raw [nav2_msgs/msg/Costmap]
+/global_costmap/costmap_updates [map_msgs/msg/OccupancyGridUpdate]
+/global_costmap/footprint [geometry_msgs/msg/Polygon]
+/global_costmap/global_costmap/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/global_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]
+/goal_pose [geometry_msgs/msg/PoseStamped]
+/joint_states [sensor_msgs/msg/JointState]
+/livox/imu [sensor_msgs/msg/Imu]
+/livox/lidar [sensor_msgs/msg/PointCloud2]
+/livox/lidar_filtered [sensor_msgs/msg/PointCloud2]
+/livox/lidar_nav [sensor_msgs/msg/PointCloud2]
+/local_costmap/costmap [nav_msgs/msg/OccupancyGrid]
+/local_costmap/costmap_raw [nav2_msgs/msg/Costmap]
+/local_costmap/costmap_updates [map_msgs/msg/OccupancyGridUpdate]
+/local_costmap/footprint [geometry_msgs/msg/Polygon]
+/local_costmap/local_costmap/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/local_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]
+/map [nav_msgs/msg/OccupancyGrid]
+/map_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/medical_nav/bridge_cmd_debug [std_msgs/msg/String]
+/medical_nav/bridge_status [std_msgs/msg/String]
+/medical_nav/cone_compensation_status [std_msgs/msg/String]
+/medical_nav/corner_speed_status [std_msgs/msg/String]
+/medical_nav/goal_request [std_msgs/msg/String]
+/medical_nav/health_status [std_msgs/msg/String]
+/medical_nav/lidar_filter_status [std_msgs/msg/String]
+/medical_nav/lidar_odometry_status [std_msgs/msg/String]
+/medical_nav/navigator_status [std_msgs/msg/String]
+/medical_nav/ops_calibration [std_msgs/msg/String]
+/medical_nav/ops_raw_pose [geometry_msgs/msg/PoseStamped]
+/medical_nav/ops_slip_suspected [std_msgs/msg/Bool]
+/medical_nav/plan [nav_msgs/msg/Path]
+/medical_nav/robot_pose [geometry_msgs/msg/PoseStamped]
+/medical_nav/scan_result [std_msgs/msg/String]
+/medical_nav/scan_transport_status [std_msgs/msg/String]
+/medical_nav/scanner_preview/compressed [sensor_msgs/msg/CompressedImage]
+/medical_nav/scanner_status [std_msgs/msg/String]
+/medical_nav/stp23l [std_msgs/msg/String]
+/medical_nav/stp23l/front [sensor_msgs/msg/Range]
+/medical_nav/stp23l/left [sensor_msgs/msg/Range]
+/medical_nav/stp23l/right [sensor_msgs/msg/Range]
+/medical_nav/task_state [std_msgs/msg/UInt8]
+/medical_nav/tele_scanner_preview/compressed [sensor_msgs/msg/CompressedImage]
+/medical_nav/wheel_diagnostics [std_msgs/msg/String]
+/medical_nav/wheel_odom [nav_msgs/msg/Odometry]
+/odom [nav_msgs/msg/Odometry]
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/plan [nav_msgs/msg/Path]
+/plan_smoothed [nav_msgs/msg/Path]
+/planner_selector [std_msgs/msg/String]
+/planner_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/robot_description [std_msgs/msg/String]
+/rosout [rcl_interfaces/msg/Log]
+/smoother_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/speed_limit [nav2_msgs/msg/SpeedLimit]
+/tf [tf2_msgs/msg/TFMessage]
+/tf_static [tf2_msgs/msg/TFMessage]
+/trajectories [visualization_msgs/msg/MarkerArray]
+/transformed_global_plan [nav_msgs/msg/Path]
+/velocity_smoother/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/waypoint_follower/transition_event [lifecycle_msgs/msg/TransitionEvent]
+
+========== VELOCITY GRAPH ==========
+
+--- /cmd_vel_nav ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: controller_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.95.bc.f0.04.00.00.00.00.00.00.4d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: velocity_smoother
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.a1.bc.23.02.00.00.00.00.00.00.1e.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+--- /cmd_vel ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 4
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.9b.bc.f1.45.00.00.00.00.00.00.2b.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.9b.bc.f1.45.00.00.00.00.00.00.34.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.9b.bc.f1.45.00.00.00.00.00.00.3d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: velocity_smoother
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.a1.bc.23.02.00.00.00.00.00.00.1d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: home_approach_limiter
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.cb.bb.57.66.00.00.00.00.00.00.12.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+--- /cmd_vel_home_limited ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: home_approach_limiter
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.cb.bb.57.66.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: collision_monitor
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.cd.bb.23.2a.00.00.00.00.00.00.25.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+--- /cmd_vel_safe ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: collision_monitor
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.cd.bb.23.2a.00.00.00.00.00.00.26.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: stm32_bridge
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.bd.bb.74.ee.00.00.00.00.00.00.22.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+
+===== C:\Users\ASUS\Desktop\Robocup“Ω¡∆\bed13_full_20261002_225423\system.log =====
+SIZE=1248921
+========== 2026-10-02T22:54:23,473347250+08:00 ==========
+LOAD:
+ 22:54:23 up  1:29,  3 users,  load average: 4.01, 3.53, 3.03
+MEMORY:
+               total        used        free      shared  buff/cache   available
+ÂÜÖÂ≠òÔº?     31740        2393       26745          34        2601       28890
+‰∫§Êç¢Ôº?      2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM NLWP COMMAND         COMMAND
+  48063   48031 SLl  49.8  0.8   32 code_scanner    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/code_scanner --ros-args -r __node:=code_scanner --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/scanner.yaml --params-file /tmp/launch_params_n_8yd6t_
+  48059   48031 Sl   28.9  0.2   13 cone_footprint_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/cone_footprint_compensator --ros-args -r __node:=cone_footprint_compensator --params-file /tmp/launch_params__tbuwksv
+  48061   48031 Sl   15.8  0.2   13 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_hgme66hc
+  47988   47964 Sl   15.7  0.1   18 livox_ros_drive /home/fzurobot/livox_ws/install/livox_ros_driver2/lib/livox_ros_driver2/livox_ros_driver2_node --ros-args -r __node:=livox_lidar_publisher --params-file /tmp/launch_params_ym3wwbot --params-file /tmp/launch_params_676jgc_d --params-file /tmp/launch_params_v3tedg6b --params-file /tmp/launch_params_ohjgweqp --params-file /tmp/launch_params_9j_j5m6s --params-file /tmp/launch_params__4c34ttx --params-file /tmp/launch_params_c6v0wbz4 --params-file /tmp/launch_params_5dmok837 --params-file /tmp/launch_params_0mf1o25b
+  48057   48031 Sl   14.2  0.2   11 lidar_self_filt /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_self_filter --ros-args -r __node:=lidar_self_filter --params-file /tmp/launch_params_3usrtue7
+  48277   48031 Sl   11.8  0.1   16 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+  48067   48031 Sl   10.8  0.2   11 lidar_odometry_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_odometry_guard --ros-args -r __node:=lidar_odometry_guard --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48081   48031 Sl    8.2  0.2   11 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_qlpeba0v
+  48073   48031 Sl    7.6  0.2   11 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_jdgnvnlo
+  48077   48031 Sl    7.3  0.1   12 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48562   48534 Sl    7.3  0.4   16 scan_dashboard  /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/scan_dashboard
+  48075   48031 Sl    7.2  0.2   11 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_1xekxwlz
+  48291   48031 Sl    6.9  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --log-level info --ros-args -r __node:=lifecycle_manager_navigation --params-file /tmp/launch_params_r8jsrr_t --params-file /tmp/launch_params_9om1o4je --params-file /tmp/launch_params__rf134yn
+  48281   48031 Sl    6.8  0.1   17 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48285   48031 Sl    6.8  0.1   11 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+   1450    1145 Ssl   6.0  1.4   12 gnome-shell     /usr/bin/gnome-shell
+  48283   48031 Sl    4.7  0.1   12 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48279   48031 Sl    4.2  0.1   13 smoother_server /opt/ros/humble/lib/nav2_smoother/smoother_server --ros-args --log-level info --ros-args -r __node:=smoother_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48287   48031 Sl    3.6  0.1   11 waypoint_follow /opt/ros/humble/lib/nav2_waypoint_follower/waypoint_follower --ros-args --log-level info --ros-args -r __node:=waypoint_follower --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48289   48031 Sl    3.6  0.0   11 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+  48069   48031 Sl    3.5  0.1   11 map_server      /opt/ros/humble/lib/nav2_map_server/map_server --ros-args -r __node:=map_server --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml --params-file /tmp/launch_params_pewb_t6p
+  48071   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_map --params-file /tmp/launch_params_btbx6ww2
+  48079   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_safety_pipeline --params-file /tmp/launch_params_q_py3oh5
+    757       1 Ss    2.9  0.0    1 dbus-daemon     @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+    758       1 Ssl   2.1  0.0    3 NetworkManager  /usr/sbin/NetworkManager --no-daemon
+   1478       1 Ssl   2.1  0.0    3 upowerd         /usr/libexec/upowerd
+  48065   48031 Sl    2.0  0.1   12 health_ble_brid /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/health_ble_bridge --ros-args -r __node:=health_ble_bridge --params-file /tmp/launch_params_9w339hul
+    755       1 Ss    1.3  0.0    1 bluetoothd      /usr/lib/bluetooth/bluetoothd
+   1154    1145 S<sl  1.0  0.0    4 pulseaudio      /usr/bin/pulseaudio --daemonize=no --log-target=journal
+    396       1 S<s   0.8  0.6    1 systemd-journal /lib/systemd/systemd-journald
+    775       1 Ssl   0.7  0.0    4 rsyslogd        /usr/sbin/rsyslogd -n -iNONE
+    833       2 S     0.4  0.0    1 irq/169-nvidia  [irq/169-nvidia]
+   1203    1201 Sl+   0.4  0.2    2 Xorg            /usr/lib/xorg/Xorg vt2 -displayfd 3 -auth /run/user/1000/gdm/Xauthority -nolisten tcp -background none -noreset -keeptty -novtswitch -verbose 3
+   4118       1 Sl    0.3  0.2   11 python3         /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 77 --rmw-implementation rmw_fastrtps_cpp
+
+========== 2026-10-02T22:54:24,497357380+08:00 ==========
+LOAD:
+ 22:54:24 up  1:29,  3 users,  load average: 4.01, 3.53, 3.03
+MEMORY:
+               total        used        free      shared  buff/cache   available
+ÂÜÖÂ≠òÔº?     31740        2410       26727          35        2602       28872
+‰∫§Êç¢Ôº?      2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM NLWP COMMAND         COMMAND
+  48063   48031 SLl  49.8  0.8   32 code_scanner    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/code_scanner --ros-args -r __node:=code_scanner --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/scanner.yaml --params-file /tmp/launch_params_n_8yd6t_
+  48059   48031 Sl   28.9  0.2   13 cone_footprint_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/cone_footprint_compensator --ros-args -r __node:=cone_footprint_compensator --params-file /tmp/launch_params__tbuwksv
+  54536   54512 Sl+  21.0  0.1   15 ros2            /usr/bin/python3 /opt/ros/humble/bin/ros2 bag record --storage sqlite3 -o /home/fzurobot/bed13_full_20261002_225423/rosbag /cmd_vel_nav /cmd_vel /cmd_vel_home_limited /cmd_vel_safe /medical_nav/task_state /medical_nav/navigator_status /medical_nav/bridge_cmd_debug /medical_nav/bridge_status /medical_nav/corner_speed_status /medical_nav/wheel_odom /medical_nav/wheel_diagnostics /odom /plan /plan_smoothed /transformed_global_plan /speed_limit /navigate_to_pose/_action/status /tf /tf_static
+  48061   48031 Sl   15.8  0.2   13 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_hgme66hc
+  47988   47964 Sl   15.7  0.1   18 livox_ros_drive /home/fzurobot/livox_ws/install/livox_ros_driver2/lib/livox_ros_driver2/livox_ros_driver2_node --ros-args -r __node:=livox_lidar_publisher --params-file /tmp/launch_params_ym3wwbot --params-file /tmp/launch_params_676jgc_d --params-file /tmp/launch_params_v3tedg6b --params-file /tmp/launch_params_ohjgweqp --params-file /tmp/launch_params_9j_j5m6s --params-file /tmp/launch_params__4c34ttx --params-file /tmp/launch_params_c6v0wbz4 --params-file /tmp/launch_params_5dmok837 --params-file /tmp/launch_params_0mf1o25b
+  48057   48031 Sl   14.2  0.2   11 lidar_self_filt /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_self_filter --ros-args -r __node:=lidar_self_filter --params-file /tmp/launch_params_3usrtue7
+  48277   48031 Sl   11.8  0.1   16 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+  48067   48031 Sl   10.8  0.2   11 lidar_odometry_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_odometry_guard --ros-args -r __node:=lidar_odometry_guard --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48081   48031 Sl    8.2  0.2   11 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_qlpeba0v
+  48073   48031 Sl    7.6  0.2   11 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_jdgnvnlo
+  48077   48031 Sl    7.3  0.1   12 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48562   48534 Sl    7.3  0.4   16 scan_dashboard  /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/scan_dashboard
+  48075   48031 Sl    7.2  0.2   11 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_1xekxwlz
+  48291   48031 Sl    6.9  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --log-level info --ros-args -r __node:=lifecycle_manager_navigation --params-file /tmp/launch_params_r8jsrr_t --params-file /tmp/launch_params_9om1o4je --params-file /tmp/launch_params__rf134yn
+  48281   48031 Sl    6.8  0.1   17 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48285   48031 Sl    6.8  0.1   11 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+   1450    1145 Ssl   6.0  1.4   12 gnome-shell     /usr/bin/gnome-shell
+  48283   48031 Sl    4.7  0.1   12 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48279   48031 Sl    4.2  0.1   13 smoother_server /opt/ros/humble/lib/nav2_smoother/smoother_server --ros-args --log-level info --ros-args -r __node:=smoother_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48287   48031 Sl    3.6  0.1   11 waypoint_follow /opt/ros/humble/lib/nav2_waypoint_follower/waypoint_follower --ros-args --log-level info --ros-args -r __node:=waypoint_follower --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48289   48031 Sl    3.6  0.0   11 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+  48069   48031 Sl    3.5  0.1   11 map_server      /opt/ros/humble/lib/nav2_map_server/map_server --ros-args -r __node:=map_server --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml --params-file /tmp/launch_params_pewb_t6p
+  48071   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_map --params-file /tmp/launch_params_btbx6ww2
+  48079   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_safety_pipeline --params-file /tmp/launch_params_q_py3oh5
+  54543    1145 SNsl  3.0  0.0    5 tracker-extract /usr/libexec/tracker-extract-3
+    757       1 Ss    2.9  0.0    1 dbus-daemon     @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+    758       1 Ssl   2.1  0.0    3 NetworkManager  /usr/sbin/NetworkManager --no-daemon
+   1478       1 Ssl   2.1  0.0    3 upowerd         /usr/libexec/upowerd
+  48065   48031 Sl    2.0  0.1   12 health_ble_brid /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/health_ble_bridge --ros-args -r __node:=health_ble_bridge --params-file /tmp/launch_params_9w339hul
+    755       1 Ss    1.3  0.0    1 bluetoothd      /usr/lib/bluetooth/bluetoothd
+   1154    1145 S<sl  1.0  0.0    4 pulseaudio      /usr/bin/pulseaudio --daemonize=no --log-target=journal
+  54512    3282 S+    1.0  0.0    1 bash            bash
+    396       1 S<s   0.8  0.6    1 systemd-journal /lib/systemd/systemd-journald
+    775       1 Ssl   0.7  0.0    4 rsyslogd        /usr/sbin/rsyslogd -n -iNONE
+
+========== 2026-10-02T22:54:25,517959676+08:00 ==========
+LOAD:
+ 22:54:25 up  1:29,  3 users,  load average: 4.01, 3.53, 3.03
+MEMORY:
+               total        used        free      shared  buff/cache   available
+ÂÜÖÂ≠òÔº?     31740        2437       26700          35        2602       28844
+‰∫§Êç¢Ôº?      2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM NLWP COMMAND         COMMAND
+  54574   54512 Rl+  68.0  0.2   11 python3         /usr/bin/python3 - /home/fzurobot/bed13_full_20261002_225423/timeline.jsonl
+  48063   48031 SLl  49.8  0.8   32 code_scanner    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/code_scanner --ros-args -r __node:=code_scanner --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/scanner.yaml --params-file /tmp/launch_params_n_8yd6t_
+  48059   48031 Sl   28.9  0.2   13 cone_footprint_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/cone_footprint_compensator --ros-args -r __node:=cone_footprint_compensator --params-file /tmp/launch_params__tbuwksv
+  54536   54512 Sl+  24.0  0.1   15 ros2            /usr/bin/python3 /opt/ros/humble/bin/ros2 bag record --storage sqlite3 -o /home/fzurobot/bed13_full_20261002_225423/rosbag /cmd_vel_nav /cmd_vel /cmd_vel_home_limited /cmd_vel_safe /medical_nav/task_state /medical_nav/navigator_status /medical_nav/bridge_cmd_debug /medical_nav/bridge_status /medical_nav/corner_speed_status /medical_nav/wheel_odom /medical_nav/wheel_diagnostics /odom /plan /plan_smoothed /transformed_global_plan /speed_limit /navigate_to_pose/_action/status /tf /tf_static
+  47988   47964 Sl   15.8  0.1   18 livox_ros_drive /home/fzurobot/livox_ws/install/livox_ros_driver2/lib/livox_ros_driver2/livox_ros_driver2_node --ros-args -r __node:=livox_lidar_publisher --params-file /tmp/launch_params_ym3wwbot --params-file /tmp/launch_params_676jgc_d --params-file /tmp/launch_params_v3tedg6b --params-file /tmp/launch_params_ohjgweqp --params-file /tmp/launch_params_9j_j5m6s --params-file /tmp/launch_params__4c34ttx --params-file /tmp/launch_params_c6v0wbz4 --params-file /tmp/launch_params_5dmok837 --params-file /tmp/launch_params_0mf1o25b
+  48061   48031 Sl   15.8  0.2   13 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_hgme66hc
+  48057   48031 Sl   14.3  0.2   11 lidar_self_filt /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_self_filter --ros-args -r __node:=lidar_self_filter --params-file /tmp/launch_params_3usrtue7
+  48277   48031 Sl   11.8  0.1   16 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+  48067   48031 Sl   10.8  0.2   11 lidar_odometry_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_odometry_guard --ros-args -r __node:=lidar_odometry_guard --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48081   48031 Sl    8.2  0.2   11 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_qlpeba0v
+  48073   48031 Sl    7.6  0.2   11 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_jdgnvnlo
+  48077   48031 Sl    7.3  0.1   12 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48562   48534 Sl    7.3  0.4   16 scan_dashboard  /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/scan_dashboard
+  48075   48031 Sl    7.2  0.2   11 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_1xekxwlz
+  48285   48031 Sl    6.9  0.1   11 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48291   48031 Sl    6.9  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --log-level info --ros-args -r __node:=lifecycle_manager_navigation --params-file /tmp/launch_params_r8jsrr_t --params-file /tmp/launch_params_9om1o4je --params-file /tmp/launch_params__rf134yn
+  48281   48031 Sl    6.8  0.1   17 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+   1450    1145 Ssl   6.0  1.4   12 gnome-shell     /usr/bin/gnome-shell
+  48283   48031 Sl    4.7  0.1   12 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48279   48031 Sl    4.2  0.1   13 smoother_server /opt/ros/humble/lib/nav2_smoother/smoother_server --ros-args --log-level info --ros-args -r __node:=smoother_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48287   48031 Sl    3.6  0.1   11 waypoint_follow /opt/ros/humble/lib/nav2_waypoint_follower/waypoint_follower --ros-args --log-level info --ros-args -r __node:=waypoint_follower --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48289   48031 Sl    3.6  0.1   11 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+  48069   48031 Sl    3.5  0.1   11 map_server      /opt/ros/humble/lib/nav2_map_server/map_server --ros-args -r __node:=map_server --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml --params-file /tmp/launch_params_pewb_t6p
+  48071   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_map --params-file /tmp/launch_params_btbx6ww2
+  48079   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_safety_pipeline --params-file /tmp/launch_params_q_py3oh5
+    757       1 Ss    2.9  0.0    1 dbus-daemon     @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+    758       1 Ssl   2.1  0.0    3 NetworkManager  /usr/sbin/NetworkManager --no-daemon
+   1478       1 Ssl   2.1  0.0    3 upowerd         /usr/libexec/upowerd
+  48065   48031 Sl    2.1  0.1   12 health_ble_brid /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/health_ble_bridge --ros-args -r __node:=health_ble_bridge --params-file /tmp/launch_params_9w339hul
+  54543    1145 SNsl  1.5  0.0    5 tracker-extract /usr/libexec/tracker-extract-3
+    755       1 Ss    1.3  0.0    1 bluetoothd      /usr/lib/bluetooth/bluetoothd
+   1154    1145 S<sl  1.0  0.0    4 pulseaudio      /usr/bin/pulseaudio --daemonize=no --log-target=journal
+    396       1 S<s   0.8  0.6    1 systemd-journal /lib/systemd/systemd-journald
+    775       1 Ssl   0.7  0.0    4 rsyslogd        /usr/sbin/rsyslogd -n -iNONE
+
+========== 2026-10-02T22:54:26,549868935+08:00 ==========
+LOAD:
+ 22:54:26 up  1:29,  3 users,  load average: 4.01, 3.53, 3.03
+MEMORY:
+               total        used        free      shared  buff/cache   available
+ÂÜÖÂ≠òÔº?     31740        2446       26691          36        2603       28836
+‰∫§Êç¢Ôº?      2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM NLWP COMMAND         COMMAND
+  48063   48031 RLl  49.8  0.8   32 code_scanner    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/code_scanner --ros-args -r __node:=code_scanner --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/scanner.yaml --params-file /tmp/launch_params_n_8yd6t_
+  54574   54512 Sl+  46.0  0.2   11 python3         /usr/bin/python3 - /home/fzurobot/bed13_full_20261002_225423/timeline.jsonl
+  48059   48031 Sl   28.9  0.2   13 cone_footprint_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/cone_footprint_compensator --ros-args -r __node:=cone_footprint_compensator --params-file /tmp/launch_params__tbuwksv
+  54536   54512 Sl+  19.6  0.1   15 ros2            /usr/bin/python3 /opt/ros/humble/bin/ros2 bag record --storage sqlite3 -o /home/fzurobot/bed13_full_20261002_225423/rosbag /cmd_vel_nav /cmd_vel /cmd_vel_home_limited /cmd_vel_safe /medical_nav/task_state /medical_nav/navigator_status /medical_nav/bridge_cmd_debug /medical_nav/bridge_status /medical_nav/corner_speed_status /medical_nav/wheel_odom /medical_nav/wheel_diagnostics /odom /plan /plan_smoothed /transformed_global_plan /speed_limit /navigate_to_pose/_action/status /tf /tf_static
+  47988   47964 Sl   15.8  0.1   18 livox_ros_drive /home/fzurobot/livox_ws/install/livox_ros_driver2/lib/livox_ros_driver2/livox_ros_driver2_node --ros-args -r __node:=livox_lidar_publisher --params-file /tmp/launch_params_ym3wwbot --params-file /tmp/launch_params_676jgc_d --params-file /tmp/launch_params_v3tedg6b --params-file /tmp/launch_params_ohjgweqp --params-file /tmp/launch_params_9j_j5m6s --params-file /tmp/launch_params__4c34ttx --params-file /tmp/launch_params_c6v0wbz4 --params-file /tmp/launch_params_5dmok837 --params-file /tmp/launch_params_0mf1o25b
+  48061   48031 Sl   15.8  0.2   13 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_hgme66hc
+  48057   48031 Rl   14.3  0.2   11 lidar_self_filt /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_self_filter --ros-args -r __node:=lidar_self_filter --params-file /tmp/launch_params_3usrtue7
+  48277   48031 Sl   11.8  0.1   16 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+  48067   48031 Sl   10.8  0.2   11 lidar_odometry_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_odometry_guard --ros-args -r __node:=lidar_odometry_guard --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48081   48031 Sl    8.2  0.2   11 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_qlpeba0v
+  48073   48031 Sl    7.6  0.2   11 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_jdgnvnlo
+  48077   48031 Sl    7.3  0.1   12 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48562   48534 Sl    7.3  0.4   16 scan_dashboard  /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/scan_dashboard
+  48075   48031 Sl    7.2  0.2   11 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_1xekxwlz
+  48285   48031 Sl    6.9  0.1   11 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48291   48031 Sl    6.9  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --log-level info --ros-args -r __node:=lifecycle_manager_navigation --params-file /tmp/launch_params_r8jsrr_t --params-file /tmp/launch_params_9om1o4je --params-file /tmp/launch_params__rf134yn
+  48281   48031 Sl    6.8  0.1   17 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+   1450    1145 Ssl   6.0  1.4   12 gnome-shell     /usr/bin/gnome-shell
+  48283   48031 Sl    4.7  0.1   12 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48279   48031 Sl    4.2  0.1   13 smoother_server /opt/ros/humble/lib/nav2_smoother/smoother_server --ros-args --log-level info --ros-args -r __node:=smoother_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48287   48031 Sl    3.6  0.1   11 waypoint_follow /opt/ros/humble/lib/nav2_waypoint_follower/waypoint_follower --ros-args --log-level info --ros-args -r __node:=waypoint_follower --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48289   48031 Sl    3.6  0.1   11 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+  48069   48031 Sl    3.5  0.1   11 map_server      /opt/ros/humble/lib/nav2_map_server/map_server --ros-args -r __node:=map_server --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml --params-file /tmp/launch_params_pewb_t6p
+  48071   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_map --params-file /tmp/launch_params_btbx6ww2
+  48079   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_safety_pipeline --params-file /tmp/launch_params_q_py3oh5
+    757       1 Ss    2.9  0.0    1 dbus-daemon     @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+    758       1 Ssl   2.1  0.0    3 NetworkManager  /usr/sbin/NetworkManager --no-daemon
+   1478       1 Ssl   2.1  0.0    3 upowerd         /usr/libexec/upowerd
+  48065   48031 Sl    2.1  0.1   12 health_ble_brid /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/health_ble_bridge --ros-args -r __node:=health_ble_bridge --params-file /tmp/launch_params_9w339hul
+    755       1 Ss    1.3  0.0    1 bluetoothd      /usr/lib/bluetooth/bluetoothd
+   1154    1145 S<sl  1.0  0.0    4 pulseaudio      /usr/bin/pulseaudio --daemonize=no --log-target=journal
+  54543    1145 SNsl  1.0  0.0    5 tracker-extract /usr/libexec/tracker-extract-3
+    396       1 S<s   0.8  0.6    1 systemd-journal /lib/systemd/systemd-journald
+    775       1 Ssl   0.7  0.0    4 rsyslogd        /usr/sbin/rsyslogd -n -iNONE
+
+========== 2026-10-02T22:54:27,574986108+08:00 ==========
+LOAD:
+ 22:54:27 up  1:29,  3 users,  load average: 4.01, 3.53, 3.03
+MEMORY:
+               total        used        free      shared  buff/cache   available
+ÂÜÖÂ≠òÔº?     31740        2448       26689          36        2603       28834
+‰∫§Êç¢Ôº?      2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM NLWP COMMAND         COMMAND
+  48063   48031 SLl  49.8  0.8   32 code_scanner    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/code_scanner --ros-args -r __node:=code_scanner --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/scanner.yaml --params-file /tmp/launch_params_n_8yd6t_
+  54574   54512 Sl+  38.0  0.2   11 python3         /usr/bin/python3 - /home/fzurobot/bed13_full_20261002_225423/timeline.jsonl
+  48059   48031 Sl   28.9  0.2   13 cone_footprint_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/cone_footprint_compensator --ros-args -r __node:=cone_footprint_compensator --params-file /tmp/launch_params__tbuwksv
+  54536   54512 Sl+  17.7  0.1   15 ros2            /usr/bin/python3 /opt/ros/humble/bin/ros2 bag record --storage sqlite3 -o /home/fzurobot/bed13_full_20261002_225423/rosbag /cmd_vel_nav /cmd_vel /cmd_vel_home_limited /cmd_vel_safe /medical_nav/task_state /medical_nav/navigator_status /medical_nav/bridge_cmd_debug /medical_nav/bridge_status /medical_nav/corner_speed_status /medical_nav/wheel_odom /medical_nav/wheel_diagnostics /odom /plan /plan_smoothed /transformed_global_plan /speed_limit /navigate_to_pose/_action/status /tf /tf_static
+  47988   47964 Sl   15.8  0.1   18 livox_ros_drive /home/fzurobot/livox_ws/install/livox_ros_driver2/lib/livox_ros_driver2/livox_ros_driver2_node --ros-args -r __node:=livox_lidar_publisher --params-file /tmp/launch_params_ym3wwbot --params-file /tmp/launch_params_676jgc_d --params-file /tmp/launch_params_v3tedg6b --params-file /tmp/launch_params_ohjgweqp --params-file /tmp/launch_params_9j_j5m6s --params-file /tmp/launch_params__4c34ttx --params-file /tmp/launch_params_c6v0wbz4 --params-file /tmp/launch_params_5dmok837 --params-file /tmp/launch_params_0mf1o25b
+  48061   48031 Sl   15.8  0.2   13 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_hgme66hc
+  48057   48031 Sl   14.3  0.2   11 lidar_self_filt /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_self_filter --ros-args -r __node:=lidar_self_filter --params-file /tmp/launch_params_3usrtue7
+  48277   48031 Sl   11.8  0.1   16 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+  48067   48031 Sl   10.8  0.2   11 lidar_odometry_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_odometry_guard --ros-args -r __node:=lidar_odometry_guard --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48081   48031 Sl    8.2  0.2   11 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_qlpeba0v
+  48073   48031 Sl    7.6  0.2   11 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_jdgnvnlo
+  48077   48031 Sl    7.3  0.1   12 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48562   48534 Sl    7.3  0.4   16 scan_dashboard  /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/scan_dashboard
+  48075   48031 Sl    7.2  0.2   11 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_1xekxwlz
+  48285   48031 Sl    6.9  0.1   11 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48291   48031 Sl    6.9  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --log-level info --ros-args -r __node:=lifecycle_manager_navigation --params-file /tmp/launch_params_r8jsrr_t --params-file /tmp/launch_params_9om1o4je --params-file /tmp/launch_params__rf134yn
+  48281   48031 Sl    6.8  0.1   17 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+   1450    1145 Ssl   6.0  1.4   12 gnome-shell     /usr/bin/gnome-shell
+  48283   48031 Sl    4.7  0.1   12 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48279   48031 Sl    4.2  0.1   13 smoother_server /opt/ros/humble/lib/nav2_smoother/smoother_server --ros-args --log-level info --ros-args -r __node:=smoother_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48287   48031 Sl    3.6  0.1   11 waypoint_follow /opt/ros/humble/lib/nav2_waypoint_follower/waypoint_follower --ros-args --log-level info --ros-args -r __node:=waypoint_follower --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48289   48031 Sl    3.6  0.1   11 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+  48069   48031 Sl    3.5  0.1   11 map_server      /opt/ros/humble/lib/nav2_map_server/map_server --ros-args -r __node:=map_server --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml --params-file /tmp/launch_params_pewb_t6p
+  48071   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_map --params-file /tmp/launch_params_btbx6ww2
+  48079   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_safety_pipeline --params-file /tmp/launch_params_q_py3oh5
+    757       1 Ss    2.9  0.0    1 dbus-daemon     @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+    758       1 Ssl   2.1  0.0    3 NetworkManager  /usr/sbin/NetworkManager --no-daemon
+   1478       1 Ssl   2.1  0.0    3 upowerd         /usr/libexec/upowerd
+  48065   48031 Sl    2.1  0.1   12 health_ble_brid /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/health_ble_bridge --ros-args -r __node:=health_ble_bridge --params-file /tmp/launch_params_9w339hul
+    755       1 Ss    1.3  0.0    1 bluetoothd      /usr/lib/bluetooth/bluetoothd
+   1154    1145 S<sl  1.0  0.0    4 pulseaudio      /usr/bin/pulseaudio --daemonize=no --log-target=journal
+    396       1 S<s   0.8  0.6    1 systemd-journal /lib/systemd/systemd-journald
+    775       1 Ssl   0.7  0.0    4 rsyslogd        /usr/sbin/rsyslogd -n -iNONE
+  54543    1145 SNsl  0.7  0.0    5 tracker-extract /usr/libexec/tracker-extract-3
+
+========== 2026-10-02T22:54:28,597595597+08:00 ==========
+LOAD:
+ 22:54:28 up  1:29,  3 users,  load average: 3.85, 3.50, 3.02
+MEMORY:
+               total        used        free      shared  buff/cache   available
+ÂÜÖÂ≠òÔº?     31740        2448       26689          36        2603       28834
+‰∫§Êç¢Ôº?      2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM NLWP COMMAND         COMMAND
+  48063   48031 SLl  49.7  0.8   32 code_scanner    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/code_scanner --ros-args -r __node:=code_scanner --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/scanner.yaml --params-file /tmp/launch_params_n_8yd6t_
+  54574   54512 Sl+  32.2  0.2   11 python3         /usr/bin/python3 - /home/fzurobot/bed13_full_20261002_225423/timeline.jsonl
+  48059   48031 Sl   29.0  0.2   13 cone_footprint_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/cone_footprint_compensator --ros-args -r __node:=cone_footprint_compensator --params-file /tmp/launch_params__tbuwksv
+  47988   47964 Sl   15.8  0.1   18 livox_ros_drive /home/fzurobot/livox_ws/install/livox_ros_driver2/lib/livox_ros_driver2/livox_ros_driver2_node --ros-args -r __node:=livox_lidar_publisher --params-file /tmp/launch_params_ym3wwbot --params-file /tmp/launch_params_676jgc_d --params-file /tmp/launch_params_v3tedg6b --params-file /tmp/launch_params_ohjgweqp --params-file /tmp/launch_params_9j_j5m6s --params-file /tmp/launch_params__4c34ttx --params-file /tmp/launch_params_c6v0wbz4 --params-file /tmp/launch_params_5dmok837 --params-file /tmp/launch_params_0mf1o25b
+  48061   48031 Sl   15.8  0.2   13 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_hgme66hc
+  54536   54512 Sl+  15.8  0.1   15 ros2            /usr/bin/python3 /opt/ros/humble/bin/ros2 bag record --storage sqlite3 -o /home/fzurobot/bed13_full_20261002_225423/rosbag /cmd_vel_nav /cmd_vel /cmd_vel_home_limited /cmd_vel_safe /medical_nav/task_state /medical_nav/navigator_status /medical_nav/bridge_cmd_debug /medical_nav/bridge_status /medical_nav/corner_speed_status /medical_nav/wheel_odom /medical_nav/wheel_diagnostics /odom /plan /plan_smoothed /transformed_global_plan /speed_limit /navigate_to_pose/_action/status /tf /tf_static
+  48057   48031 Sl   14.2  0.2   11 lidar_self_filt /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_self_filter --ros-args -r __node:=lidar_self_filter --params-file /tmp/launch_params_3usrtue7
+  48277   48031 Sl   11.8  0.1   16 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+  48067   48031 Sl   10.8  0.2   11 lidar_odometry_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_odometry_guard --ros-args -r __node:=lidar_odometry_guard --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48081   48031 Sl    8.2  0.2   11 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_qlpeba0v
+  48073   48031 Sl    7.6  0.2   11 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_jdgnvnlo
+  48077   48031 Sl    7.3  0.1   12 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48562   48534 Sl    7.3  0.4   16 scan_dashboard  /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/scan_dashboard
+  48075   48031 Sl    7.2  0.2   11 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_1xekxwlz
+  48285   48031 Sl    6.9  0.1   11 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48291   48031 Sl    6.9  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --log-level info --ros-args -r __node:=lifecycle_manager_navigation --params-file /tmp/launch_params_r8jsrr_t --params-file /tmp/launch_params_9om1o4je --params-file /tmp/launch_params__rf134yn
+  48281   48031 Sl    6.8  0.1   17 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+   1450    1145 Ssl   6.0  1.4   12 gnome-shell     /usr/bin/gnome-shell
+  48283   48031 Sl    4.7  0.1   12 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48279   48031 Sl    4.2  0.1   13 smoother_server /opt/ros/humble/lib/nav2_smoother/smoother_server --ros-args --log-level info --ros-args -r __node:=smoother_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48287   48031 Sl    3.6  0.1   11 waypoint_follow /opt/ros/humble/lib/nav2_waypoint_follower/waypoint_follower --ros-args --log-level info --ros-args -r __node:=waypoint_follower --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48289   48031 Sl    3.6  0.1   11 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+  48069   48031 Sl    3.5  0.1   11 map_server      /opt/ros/humble/lib/nav2_map_server/map_server --ros-args -r __node:=map_server --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml --params-file /tmp/launch_params_pewb_t6p
+  48071   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_map --params-file /tmp/launch_params_btbx6ww2
+  48079   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_safety_pipeline --params-file /tmp/launch_params_q_py3oh5
+    757       1 Ss    2.9  0.0    1 dbus-daemon     @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+    758       1 Ssl   2.1  0.0    3 NetworkManager  /usr/sbin/NetworkManager --no-daemon
+   1478       1 Ssl   2.1  0.0    3 upowerd         /usr/libexec/upowerd
+  48065   48031 Sl    2.1  0.1   12 health_ble_brid /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/health_ble_bridge --ros-args -r __node:=health_ble_bridge --params-file /tmp/launch_params_9w339hul
+    755       1 Ss    1.3  0.0    1 bluetoothd      /usr/lib/bluetooth/bluetoothd
+   1154    1145 S<sl  1.0  0.0    4 pulseaudio      /usr/bin/pulseaudio --daemonize=no --log-target=journal
+    396       1 S<s   0.8  0.6    1 systemd-journal /lib/systemd/systemd-journald
+    775       1 Ssl   0.7  0.0    4 rsyslogd        /usr/sbin/rsyslogd -n -iNONE
+  54543    1145 SNsl  0.6  0.0    5 tracker-extract /usr/libexec/tracker-extract-3
+
+========== 2026-10-02T22:54:29,614701799+08:00 ==========
+LOAD:
+ 22:54:29 up  1:29,  3 users,  load average: 3.85, 3.50, 3.02
+MEMORY:
+               total        used        free      shared  buff/cache   available
+ÂÜÖÂ≠òÔº?     31740        2450       26687          36        2603       28832
+‰∫§Êç¢Ôº?      2047           0        2047
+PROCESSES:
+    PID    PPID STAT %CPU %MEM NLWP COMMAND         COMMAND
+  48063   48031 SLl  49.7  0.8   32 code_scanner    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/code_scanner --ros-args -r __node:=code_scanner --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/scanner.yaml --params-file /tmp/launch_params_n_8yd6t_
+  54574   54512 Sl+  29.6  0.2   11 python3         /usr/bin/python3 - /home/fzurobot/bed13_full_20261002_225423/timeline.jsonl
+  48059   48031 Sl   29.0  0.2   13 cone_footprint_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/cone_footprint_compensator --ros-args -r __node:=cone_footprint_compensator --params-file /tmp/launch_params__tbuwksv
+  47988   47964 Sl   15.8  0.1   18 livox_ros_drive /home/fzurobot/livox_ws/install/livox_ros_driver2/lib/livox_ros_driver2/livox_ros_driver2_node --ros-args -r __node:=livox_lidar_publisher --params-file /tmp/launch_params_ym3wwbot --params-file /tmp/launch_params_676jgc_d --params-file /tmp/launch_params_v3tedg6b --params-file /tmp/launch_params_ohjgweqp --params-file /tmp/launch_params_9j_j5m6s --params-file /tmp/launch_params__4c34ttx --params-file /tmp/launch_params_c6v0wbz4 --params-file /tmp/launch_params_5dmok837 --params-file /tmp/launch_params_0mf1o25b
+  48061   48031 Sl   15.8  0.2   13 stm32_bridge    /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/stm32_bridge --ros-args -r __node:=stm32_bridge --params-file /tmp/launch_params_hgme66hc
+  54536   54512 Sl+  14.8  0.1   15 ros2            /usr/bin/python3 /opt/ros/humble/bin/ros2 bag record --storage sqlite3 -o /home/fzurobot/bed13_full_20261002_225423/rosbag /cmd_vel_nav /cmd_vel /cmd_vel_home_limited /cmd_vel_safe /medical_nav/task_state /medical_nav/navigator_status /medical_nav/bridge_cmd_debug /medical_nav/bridge_status /medical_nav/corner_speed_status /medical_nav/wheel_odom /medical_nav/wheel_diagnostics /odom /plan /plan_smoothed /transformed_global_plan /speed_limit /navigate_to_pose/_action/status /tf /tf_static
+  48057   48031 Sl   14.2  0.2   11 lidar_self_filt /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_self_filter --ros-args -r __node:=lidar_self_filter --params-file /tmp/launch_params_3usrtue7
+  48277   48031 Sl   11.7  0.1   16 controller_serv /opt/ros/humble/lib/nav2_controller/controller_server --ros-args --log-level info --ros-args --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav
+  48067   48031 Sl   10.8  0.2   11 lidar_odometry_ /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/lidar_odometry_guard --ros-args -r __node:=lidar_odometry_guard --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48081   48031 Sl    8.2  0.2   11 medical_navigat /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/medical_navigator --ros-args -r __node:=medical_navigator --params-file /tmp/launch_params_qlpeba0v
+  48073   48031 Sl    7.6  0.2   11 corner_speed_li /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/corner_speed_limiter --ros-args -r __node:=corner_speed_limiter --params-file /tmp/launch_params_jdgnvnlo
+  48077   48031 Sl    7.3  0.1   12 collision_monit /opt/ros/humble/lib/nav2_collision_monitor/collision_monitor --ros-args -r __node:=collision_monitor --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml
+  48562   48534 Sl    7.3  0.4   16 scan_dashboard  /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/scan_dashboard
+  48075   48031 Sl    7.2  0.2   11 home_approach_l /usr/bin/python3 /home/fzurobot/livox_ws/install/obstacle_detector/lib/obstacle_detector/home_approach_limiter --ros-args -r __node:=home_approach_limiter --params-file /tmp/launch_params_1xekxwlz
+  48285   48031 Sl    6.9  0.1   11 bt_navigator    /opt/ros/humble/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48291   48031 Sl    6.9  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --log-level info --ros-args -r __node:=lifecycle_manager_navigation --params-file /tmp/launch_params_r8jsrr_t --params-file /tmp/launch_params_9om1o4je --params-file /tmp/launch_params__rf134yn
+  48281   48031 Sl    6.8  0.1   17 planner_server  /opt/ros/humble/lib/nav2_planner/planner_server --ros-args --log-level info --ros-args -r __node:=planner_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+   1450    1145 Ssl   6.0  1.4   12 gnome-shell     /usr/bin/gnome-shell
+  48283   48031 Sl    4.7  0.1   12 behavior_server /opt/ros/humble/lib/nav2_behaviors/behavior_server --ros-args --log-level info --ros-args -r __node:=behavior_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48279   48031 Sl    4.2  0.1   13 smoother_server /opt/ros/humble/lib/nav2_smoother/smoother_server --ros-args --log-level info --ros-args -r __node:=smoother_server --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48287   48031 Sl    3.6  0.1   11 waypoint_follow /opt/ros/humble/lib/nav2_waypoint_follower/waypoint_follower --ros-args --log-level info --ros-args -r __node:=waypoint_follower --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static
+  48289   48031 Sl    3.6  0.1   11 velocity_smooth /opt/ros/humble/lib/nav2_velocity_smoother/velocity_smoother --ros-args --log-level info --ros-args -r __node:=velocity_smoother --params-file /tmp/launch_params_dfia0fgm -r /tf:=tf -r /tf_static:=tf_static -r cmd_vel:=cmd_vel_nav -r cmd_vel_smoothed:=cmd_vel
+  48069   48031 Sl    3.5  0.1   11 map_server      /opt/ros/humble/lib/nav2_map_server/map_server --ros-args -r __node:=map_server --params-file /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/nav2_params.yaml --params-file /tmp/launch_params_pewb_t6p
+  48071   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_map --params-file /tmp/launch_params_btbx6ww2
+  48079   48031 Sl    3.4  0.1   13 lifecycle_manag /opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args -r __node:=lifecycle_manager_safety_pipeline --params-file /tmp/launch_params_q_py3oh5
+    757       1 Rs    2.9  0.0    1 dbus-daemon     @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+    758       1 Ssl   2.1  0.0    3 NetworkManager  /usr/sbin/NetworkManager --no-daemon
+
+===== C:\Users\ASUS\Desktop\Robocup“Ω¡∆\bed13_full_20261002_225423\timeline.jsonl =====
+SIZE=9707987

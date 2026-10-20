@@ -1,0 +1,1094 @@
+10月 03 22:12:00.767610 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036720.767097176] [stm32_bridge]: STM32 readiness ready->rebooting
+10月 03 22:12:00.768318 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036720.768052993] [stm32_bridge]: STM32 telemetry lost; blocked motion and lidar until recovery
+10月 03 22:12:00.769221 fzurobot bash[38037]: [lidar_self_filter-3] [WARN] [1791036720.768897985] [lidar_self_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:12:00.769512 fzurobot bash[38037]: [medical_navigator-16] [WARN] [1791036720.769145076] [medical_navigator]: STM32 reset detected; canceled navigation and cleared handoff state
+10月 03 22:12:00.769855 fzurobot bash[38037]: [lidar_self_filter-2] [WARN] [1791036720.769194852] [lidar_safety_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:12:00.770183 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036720.769873062] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:12:00.790338 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036720.789524945] [stm32_bridge]: STM32 readiness rebooting->waiting_telemetry
+10月 03 22:12:02.208802 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036722.208475225] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:12:03.210055 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036723.209469964] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:12:04.288010 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036724.287649018] [stm32_bridge]: New medical mission epoch=3: cleared stale navigation, scan and calibration state
+10月 03 22:12:04.289008 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036724.288631277] [stm32_bridge]: STM32 goal request #1 -> nurse
+10月 03 22:12:04.289411 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036724.288890753] [stm32_bridge]: STM32 readiness waiting_telemetry->recovering
+10月 03 22:12:04.290294 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036724.289823210] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:12:04.305134 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036724.304789667] [code_scanner]: Released primary camera for USB handoff
+10月 03 22:12:04.308604 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036724.308339238] [code_scanner]: STM32 mission epoch changed 2->3; restarting 15-second tele scan window
+10月 03 22:12:04.469914 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036724.469201853] [code_scanner]: Opening tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 with YUYV:1920x1080@5
+10月 03 22:12:05.048238 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036725.047584919] [stm32_bridge]: STM32 readiness recovering->ready
+10月 03 22:12:05.048562 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036725.047878723] [stm32_bridge]: STM32 telemetry stable and stationary; navigation may resume
+10月 03 22:12:05.048878 fzurobot bash[38037]: [lidar_self_filter-3] [INFO] [1791036725.048533277] [lidar_self_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:12:05.048998 fzurobot bash[38037]: [lidar_self_filter-2] [INFO] [1791036725.048625585] [lidar_safety_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:12:05.049745 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036725.049451810] [medical_navigator]: STM32 recovery complete; accepting navigation requests
+10月 03 22:12:05.051343 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036725.050951694] [medical_navigator]: Dispatching nurse_scan_center -> map(1.70, -0.00) request=1 route=unknown->nurse_scan_center controller=FollowPathNurse
+10月 03 22:12:05.129405 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036725.128646111] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (1.70, -0.00)
+10月 03 22:12:05.179740 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036725.179316976] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:05.181014 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036725.180781049] [controller_server]: Optimizer reset
+10月 03 22:12:05.719870 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036725.719431000] [planner_server]: GridBased switched final route: risk improvement 36.8%, time improvement 0.08 s
+10月 03 22:12:05.779782 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036725.779457289] [controller_server]: Passing new path to controller.
+10月 03 22:12:06.315826 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036726.315195335] [code_scanner]: Opened tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 as YUYV:1920x1080
+10月 03 22:12:06.330209 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036726.329475718] [controller_server]: Passing new path to controller.
+10月 03 22:12:06.620898 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036726.620566284] [code_scanner]: Confirmed scan context=1 format=1 value=11 via tele_zxing_qr_fullres
+10月 03 22:12:06.630091 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036726.629467414] [controller_server]: Goal was canceled. Stopping the robot.
+10月 03 22:12:06.630312 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036726.629537116] [controller_server]: [follow_path] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:12:06.630776 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036726.629706935] [bt_navigator]: [navigate_to_pose] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:12:06.630943 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036726.629931434] [bt_navigator]: Goal canceled
+10月 03 22:12:06.648568 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036726.648036002] [stm32_bridge]: STM32 accepted scan #8: 11
+10月 03 22:12:06.649220 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036726.648799545] [stm32_bridge]: STM32 goal request #2 -> bed1
+10月 03 22:12:06.651445 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036726.650992684] [medical_navigator]: Dispatching bed1 -> map(5.40, 2.20) request=2 route=nurse->bed1 controller=FollowPathHeadingHold
+10月 03 22:12:06.685618 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036726.684594637] [code_scanner]: Released tele camera for USB handoff
+10月 03 22:12:06.740467 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036726.738113263] [code_scanner]: Opening primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 with MJPG:1920x1200@30
+10月 03 22:12:06.745773 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036726.745130440] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (5.40, 2.20)
+10月 03 22:12:06.846723 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036726.846331130] [smoother_server]: Received a path to smooth.
+10月 03 22:12:06.866036 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036726.865739423] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:06.868337 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036726.867638795] [controller_server]: Optimizer reset
+10月 03 22:12:07.393150 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036727.392777664] [code_scanner]: Opened primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 as MJPG:1920x1200
+10月 03 22:12:07.946422 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036727.945953445] [smoother_server]: Received a path to smooth.
+10月 03 22:12:07.966533 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036727.965892716] [controller_server]: Passing new path to controller.
+10月 03 22:12:08.016213 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036728.015877669] [controller_server]: Passing new path to controller.
+10月 03 22:12:08.617410 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036728.617000125] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:08.791716 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036728.791049199] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:08.834503 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036728.834018099] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:08.856388 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036728.855915701] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:09.099915 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036729.099489371] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:12:09.116387 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036729.115926954] [smoother_server]: Received a path to smooth.
+10月 03 22:12:09.136352 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036729.135828789] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:09.166256 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036729.165881575] [controller_server]: Passing new path to controller.
+10月 03 22:12:09.321359 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036729.320977789] [controller_server]: Optimizer reset
+10月 03 22:12:09.325994 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036729.325535558] [controller_server]: Optimizer reset
+10月 03 22:12:09.326368 fzurobot bash[38037]: [controller_server-17] [ERROR] [1791036729.325596982] [controller_server]: Optimizer fail to compute path
+10月 03 22:12:09.326723 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036729.325678171] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:09.346174 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036729.345782548] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 03 22:12:09.346661 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036729.346297069] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:09.374980 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036729.374301284] [controller_server]: Optimizer reset
+10月 03 22:12:09.380386 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036729.379871544] [controller_server]: Optimizer reset
+10月 03 22:12:09.380497 fzurobot bash[38037]: [controller_server-17] [ERROR] [1791036729.379973906] [controller_server]: Optimizer fail to compute path
+10月 03 22:12:09.381008 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036729.380060429] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:09.396155 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036729.395717349] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 03 22:12:09.396649 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036729.396053996] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10月 03 22:12:09.524146 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036729.523849065] [planner_server]: GridBased switched final route: risk improvement 45.9%, time improvement 0.21 s
+10月 03 22:12:09.536247 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036729.535877988] [smoother_server]: Received a path to smooth.
+10月 03 22:12:09.536339 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036729.535982578] [smoother_server]: Smoother simple_smoother did not complete smoothing in specified time limit(0.350000 seconds) and was interrupted after 0.000105 seconds
+10月 03 22:12:09.556552 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036729.556028712] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:10.375959 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036730.375545532] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:10.616431 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036730.615832559] [smoother_server]: Received a path to smooth.
+10月 03 22:12:10.636337 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036730.635869627] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:10.656656 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036730.656213825] [controller_server]: Passing new path to controller.
+10月 03 22:12:11.696565 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036731.696200719] [smoother_server]: Received a path to smooth.
+10月 03 22:12:11.706543 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036731.706192989] [controller_server]: Passing new path to controller.
+10月 03 22:12:11.756573 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036731.756306335] [controller_server]: Passing new path to controller.
+10月 03 22:12:11.897650 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036731.896885266] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:12.529620 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036732.529146265] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:12.730305 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036732.729815229] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:12.749157 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036732.748904192] [planner_server]: GridBased switched final route: risk improvement 32.3%, time improvement 0.01 s
+10月 03 22:12:12.766100 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036732.765701964] [smoother_server]: Received a path to smooth.
+10月 03 22:12:12.806517 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036732.806194813] [controller_server]: Passing new path to controller.
+10月 03 22:12:13.088331 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036733.087619419] [stm32_bridge]: STP23L calibrated at bed1: OPS offset=(-74.0, -42.0) mm, field pose=(-2120.0, 5343.0) mm
+10月 03 22:12:13.111505 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036733.111110478] [controller_server]: Reached the goal!
+10月 03 22:12:13.146150 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036733.145538053] [bt_navigator]: Goal succeeded
+10月 03 22:12:13.149569 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036733.148837545] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:12:14.185025 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036734.184690173] [code_scanner]: Confirmed scan context=2 format=2 value=6946522463487 via zbar_fast
+10月 03 22:12:14.208510 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036734.207891621] [stm32_bridge]: STM32 accepted scan #9: 6946522463487
+10月 03 22:12:15.009750 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036735.009035474] [stm32_bridge]: Started NUC TTS request=1 bed=1
+10月 03 22:12:16.609751 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036736.608967234] [stm32_bridge]: Completed NUC TTS request=1 bed=1: /home/fzurobot/Downloads/1_.mp3 via pulse
+10月 03 22:12:16.647587 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036736.647145006] [stm32_bridge]: STM32 goal request #3 -> bed3
+10月 03 22:12:16.648352 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036736.648021728] [medical_navigator]: Dispatching bed3 -> map(5.40, -2.20) request=3 route=bed1->bed3 controller=FollowPathLateralHold
+10月 03 22:12:16.649321 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036736.649028764] [bt_navigator]: Begin navigating from current location (5.41, 2.20) to (5.40, -2.20)
+10月 03 22:12:16.770298 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036736.769929549] [smoother_server]: Received a path to smooth.
+10月 03 22:12:16.790337 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036736.789839859] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:16.792266 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036736.791942392] [controller_server]: Optimizer reset
+10月 03 22:12:17.876833 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036737.876377621] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:12:17.889928 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036737.889502382] [smoother_server]: Received a path to smooth.
+10月 03 22:12:17.890566 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036737.890009470] [controller_server]: Passing new path to controller.
+10月 03 22:12:17.940317 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036737.940012253] [controller_server]: Passing new path to controller.
+10月 03 22:12:18.150910 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036738.150517758] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:18.209888 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036738.209290103] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:18.255516 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036738.254942359] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:18.390580 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036738.389972701] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:18.999982 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036738.999603001] [smoother_server]: Received a path to smooth.
+10月 03 22:12:19.000363 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036738.999702128] [smoother_server]: Smoother simple_smoother did not complete smoothing in specified time limit(0.350000 seconds) and was interrupted after 0.000099 seconds
+10月 03 22:12:19.019852 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036739.019483582] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:19.041866 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036739.040019717] [controller_server]: Passing new path to controller.
+10月 03 22:12:19.954235 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036739.953821393] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:19.997061 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036739.996709077] [controller_server]: Optimizer reset
+10月 03 22:12:19.999206 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036739.999006434] [controller_server]: Optimizer reset
+10月 03 22:12:19.999473 fzurobot bash[38037]: [controller_server-17] [ERROR] [1791036739.999039973] [controller_server]: Optimizer fail to compute path
+10月 03 22:12:19.999608 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036739.999082987] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:20.010101 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036740.009514760] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 03 22:12:20.010655 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036740.010306842] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:20.064708 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036740.064344856] [controller_server]: Control loop missed its desired rate of 20.0000Hz
+10月 03 22:12:20.072975 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036740.072529128] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:12:20.089987 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036740.089572243] [smoother_server]: Received a path to smooth.
+10月 03 22:12:20.095028 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036740.094793525] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:20.110357 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036740.109712760] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:20.110656 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036740.110462947] [controller_server]: Passing new path to controller.
+10月 03 22:12:20.691632 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036740.691175671] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:20.995077 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036740.994692461] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:21.050397 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036741.050031092] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:21.159967 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036741.159567707] [smoother_server]: Received a path to smooth.
+10月 03 22:12:21.160729 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036741.160462458] [controller_server]: Passing new path to controller.
+10月 03 22:12:21.210945 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036741.210499858] [controller_server]: Passing new path to controller.
+10月 03 22:12:21.350747 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036741.350329729] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:22.230025 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036742.229627564] [smoother_server]: Received a path to smooth.
+10月 03 22:12:22.250033 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036742.249624246] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:22.260888 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036742.260495690] [controller_server]: Passing new path to controller.
+10月 03 22:12:23.297608 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036743.297209716] [planner_server]: GridBased switched final route: risk improvement 43.8%, time improvement 0.08 s
+10月 03 22:12:23.310010 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036743.309570507] [smoother_server]: Received a path to smooth.
+10月 03 22:12:23.311021 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036743.310482497] [controller_server]: Passing new path to controller.
+10月 03 22:12:23.914564 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036743.914275924] [controller_server]: Reached the goal!
+10月 03 22:12:23.949926 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036743.949369940] [bt_navigator]: Goal succeeded
+10月 03 22:12:23.950681 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036743.950390861] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:12:24.088889 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036744.088260065] [stm32_bridge]: STP23L calibrated at bed3: OPS offset=(-90.0, -11.0) mm, field pose=(2159.0, 5315.0) mm
+10月 03 22:12:25.107976 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036745.107537268] [code_scanner]: Confirmed scan context=3 format=2 value=6906841121017 via zbar_fast
+10月 03 22:12:25.148410 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036745.148118209] [stm32_bridge]: STM32 accepted scan #10: 6906841121017
+10月 03 22:12:25.928618 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036745.928188748] [stm32_bridge]: Started NUC TTS request=2 bed=3
+10月 03 22:12:27.528016 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036747.527511569] [stm32_bridge]: Completed NUC TTS request=2 bed=3: /home/fzurobot/Downloads/3_.mp3 via pulse
+10月 03 22:12:27.567663 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036747.567245324] [stm32_bridge]: STM32 goal request #4 -> home
+10月 03 22:12:27.568980 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036747.568706661] [medical_navigator]: Dispatching home -> map(0.00, -0.00) request=4 route=bed3->home controller=FollowPathHeadingHold
+10月 03 22:12:27.569443 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036747.569212345] [bt_navigator]: Begin navigating from current location (5.39, -2.18) to (0.00, -0.00)
+10月 03 22:12:27.640421 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036747.639856712] [smoother_server]: Received a path to smooth.
+10月 03 22:12:27.660211 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036747.659764251] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:27.661081 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036747.660804566] [controller_server]: Optimizer reset
+10月 03 22:12:28.750641 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036748.750083862] [smoother_server]: Received a path to smooth.
+10月 03 22:12:28.760167 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036748.759881737] [controller_server]: Passing new path to controller.
+10月 03 22:12:28.810380 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036748.809884704] [controller_server]: Passing new path to controller.
+10月 03 22:12:29.836639 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036749.836341129] [planner_server]: GridBased switched final route: risk improvement 48.0%, time improvement -0.03 s
+10月 03 22:12:29.850363 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036749.849964889] [smoother_server]: Received a path to smooth.
+10月 03 22:12:29.860190 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036749.859880639] [controller_server]: Passing new path to controller.
+10月 03 22:12:29.910590 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036749.909893607] [controller_server]: Passing new path to controller.
+10月 03 22:12:30.920119 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036750.919684291] [smoother_server]: Received a path to smooth.
+10月 03 22:12:30.940366 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036750.939797526] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:30.960380 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036750.959917746] [controller_server]: Passing new path to controller.
+10月 03 22:12:31.990598 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036751.990023605] [smoother_server]: Received a path to smooth.
+10月 03 22:12:32.010474 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036752.009892317] [controller_server]: Passing new path to controller.
+10月 03 22:12:32.066344 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036752.065981135] [controller_server]: Reached the goal!
+10月 03 22:12:32.099811 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036752.099459659] [bt_navigator]: Goal succeeded
+10月 03 22:12:32.100608 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036752.100263052] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:12:35.629902 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036755.627333228] [stm32_bridge]: STM32 readiness ready->rebooting
+10月 03 22:12:35.630462 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036755.628879063] [stm32_bridge]: STM32 telemetry lost; blocked motion and lidar until recovery
+10月 03 22:12:35.631066 fzurobot bash[38037]: [lidar_self_filter-2] [WARN] [1791036755.630115560] [lidar_safety_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:12:35.631559 fzurobot bash[38037]: [lidar_self_filter-3] [WARN] [1791036755.630861781] [lidar_self_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:12:35.632074 fzurobot bash[38037]: [medical_navigator-16] [WARN] [1791036755.631402284] [medical_navigator]: STM32 reset detected; canceled navigation and cleared handoff state
+10月 03 22:12:35.632946 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036755.632534149] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:12:35.647123 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036755.646775552] [stm32_bridge]: STM32 readiness rebooting->waiting_telemetry
+10月 03 22:12:36.708792 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036756.708359773] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:12:38.208619 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036758.208221979] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:12:39.128247 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036759.127813658] [stm32_bridge]: New medical mission epoch=4: cleared stale navigation, scan and calibration state
+10月 03 22:12:39.129264 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036759.129014509] [stm32_bridge]: STM32 goal request #1 -> nurse
+10月 03 22:12:39.129795 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036759.129549919] [stm32_bridge]: STM32 readiness waiting_telemetry->recovering
+10月 03 22:12:39.183384 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036759.182957203] [code_scanner]: Released primary camera for USB handoff
+10月 03 22:12:39.231814 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036759.231177238] [code_scanner]: Opening tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 with YUYV:1920x1080@5
+10月 03 22:12:39.309672 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036759.309074545] [code_scanner]: STM32 mission epoch changed 3->4; restarting 15-second tele scan window
+10月 03 22:12:39.371449 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036759.370716909] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:12:39.887773 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036759.887318147] [stm32_bridge]: STM32 readiness recovering->ready
+10月 03 22:12:39.888276 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036759.887559343] [stm32_bridge]: STM32 telemetry stable and stationary; navigation may resume
+10月 03 22:12:39.888557 fzurobot bash[38037]: [lidar_self_filter-3] [INFO] [1791036759.888225921] [lidar_self_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:12:39.888859 fzurobot bash[38037]: [lidar_self_filter-2] [INFO] [1791036759.888540738] [lidar_safety_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:12:39.889619 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036759.889204891] [medical_navigator]: STM32 recovery complete; accepting navigation requests
+10月 03 22:12:39.891459 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036759.891074812] [medical_navigator]: Dispatching nurse_scan_center -> map(1.70, -0.00) request=1 route=unknown->nurse_scan_center controller=FollowPathNurse
+10月 03 22:12:39.971729 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036759.971106773] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (1.70, -0.00)
+10月 03 22:12:40.022060 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036760.021612484] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:40.023403 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036760.023219509] [controller_server]: Optimizer reset
+10月 03 22:12:40.568064 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036760.567632823] [planner_server]: GridBased switched final route: risk improvement 36.8%, time improvement 0.09 s
+10月 03 22:12:40.622137 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036760.621755495] [controller_server]: Passing new path to controller.
+10月 03 22:12:41.076118 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036761.075526728] [code_scanner]: Opened tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 as YUYV:1920x1080
+10月 03 22:12:41.172025 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036761.171746352] [controller_server]: Passing new path to controller.
+10月 03 22:12:41.354275 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036761.353881935] [code_scanner]: Confirmed scan context=1 format=1 value=11 via tele_zxing_qr_fullres
+10月 03 22:12:41.372267 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036761.371806173] [controller_server]: Goal was canceled. Stopping the robot.
+10月 03 22:12:41.372378 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036761.371863472] [controller_server]: [follow_path] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:12:41.372833 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036761.372213837] [bt_navigator]: [navigate_to_pose] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:12:41.372937 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036761.372473505] [bt_navigator]: Goal canceled
+10月 03 22:12:41.387299 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036761.386980944] [stm32_bridge]: STM32 accepted scan #11: 11
+10月 03 22:12:41.388652 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036761.388138584] [stm32_bridge]: STM32 goal request #2 -> bed1
+10月 03 22:12:41.389810 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036761.389611125] [medical_navigator]: Dispatching bed1 -> map(5.40, 2.20) request=2 route=nurse->bed1 controller=FollowPathHeadingHold
+10月 03 22:12:41.444161 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036761.443179498] [code_scanner]: Released tele camera for USB handoff
+10月 03 22:12:41.453035 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036761.452579168] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (5.40, 2.20)
+10月 03 22:12:41.512880 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036761.512449249] [code_scanner]: Opening primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 with MJPG:1920x1200@30
+10月 03 22:12:41.543510 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036761.543152988] [smoother_server]: Received a path to smooth.
+10月 03 22:12:41.563542 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036761.563153412] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:41.565361 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036761.565157163] [controller_server]: Optimizer reset
+10月 03 22:12:42.154958 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036762.154594169] [code_scanner]: Opened primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 as MJPG:1920x1200
+10月 03 22:12:42.451348 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036762.451012397] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:42.673575 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036762.673196552] [smoother_server]: Received a path to smooth.
+10月 03 22:12:42.693549 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036762.693249393] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:42.695811 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036762.695479702] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:42.715118 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036762.714488350] [controller_server]: Passing new path to controller.
+10月 03 22:12:43.088777 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036763.088416023] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:43.358724 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036763.358230167] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:43.774206 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036763.773567896] [smoother_server]: Received a path to smooth.
+10月 03 22:12:43.793504 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036763.793091037] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:43.813642 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036763.813290607] [controller_server]: Passing new path to controller.
+10月 03 22:12:44.853556 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036764.853142952] [smoother_server]: Received a path to smooth.
+10月 03 22:12:44.863552 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036764.863288740] [controller_server]: Passing new path to controller.
+10月 03 22:12:44.913592 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036764.913287469] [controller_server]: Passing new path to controller.
+10月 03 22:12:45.050436 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036765.050159613] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:45.933629 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036765.933229494] [smoother_server]: Received a path to smooth.
+10月 03 22:12:45.953630 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036765.953160855] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:45.963636 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036765.963285892] [controller_server]: Passing new path to controller.
+10月 03 22:12:46.182493 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036766.182026255] [code_scanner]: Confirmed scan context=2 format=2 value=6946522463487 via zbar_fast
+10月 03 22:12:46.228476 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036766.227816527] [stm32_bridge]: STM32 accepted scan #12: 6946522463487
+10月 03 22:12:46.296666 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036766.296263629] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:46.994033 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036766.993674914] [planner_server]: GridBased switched final route: risk improvement 47.8%, time improvement 0.01 s
+10月 03 22:12:47.013710 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036767.013232054] [smoother_server]: Received a path to smooth.
+10月 03 22:12:47.063893 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036767.063290649] [controller_server]: Passing new path to controller.
+10月 03 22:12:47.272124 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036767.271594149] [controller_server]: Reached the goal!
+10月 03 22:12:47.303287 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036767.302898850] [bt_navigator]: Goal succeeded
+10月 03 22:12:47.303710 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036767.303389896] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:12:47.829093 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036767.828317764] [stm32_bridge]: STP23L calibrated at bed1: OPS offset=(77.0, 33.0) mm, field pose=(-2115.0, 5408.0) mm
+10月 03 22:12:49.650085 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036769.649372309] [stm32_bridge]: Started NUC TTS request=1 bed=1
+10月 03 22:12:51.248385 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036771.247915029] [stm32_bridge]: Completed NUC TTS request=1 bed=1: /home/fzurobot/Downloads/1_.mp3 via pulse
+10月 03 22:12:51.288465 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036771.287586961] [stm32_bridge]: STM32 goal request #3 -> bed3
+10月 03 22:12:51.290775 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036771.289583295] [medical_navigator]: Dispatching bed3 -> map(5.40, -2.20) request=3 route=bed1->bed3 controller=FollowPathLateralHold
+10月 03 22:12:51.291746 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036771.291352193] [bt_navigator]: Begin navigating from current location (5.41, 2.18) to (5.40, -2.20)
+10月 03 22:12:51.392423 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036771.392018218] [smoother_server]: Received a path to smooth.
+10月 03 22:12:51.412303 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036771.411919671] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:51.414774 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036771.414508294] [controller_server]: Optimizer reset
+10月 03 22:12:52.512469 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036772.512063091] [smoother_server]: Received a path to smooth.
+10月 03 22:12:52.532183 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036772.531897717] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:52.562416 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036772.562101356] [controller_server]: Passing new path to controller.
+10月 03 22:12:52.953687 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036772.953271924] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:53.358587 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036773.358113013] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:53.608705 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036773.608388388] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:12:53.622248 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036773.621884703] [smoother_server]: Received a path to smooth.
+10月 03 22:12:53.642228 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036773.641922515] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:53.662363 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036773.662055564] [controller_server]: Passing new path to controller.
+10月 03 22:12:54.675550 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036774.675176072] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:12:54.692961 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036774.692361156] [smoother_server]: Received a path to smooth.
+10月 03 22:12:54.693607 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036774.692507443] [smoother_server]: Smoother simple_smoother did not complete smoothing in specified time limit(0.350000 seconds) and was interrupted after 0.000145 seconds
+10月 03 22:12:54.712382 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036774.712014680] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:54.712881 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036774.712149179] [controller_server]: Passing new path to controller.
+10月 03 22:12:54.951701 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036774.951417876] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:12:55.358606 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036775.358265551] [collision_monitor]: Robot to continue normal operation
+10月 03 22:12:55.749561 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036775.749185550] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:12:55.762386 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036775.761964188] [smoother_server]: Received a path to smooth.
+10月 03 22:12:55.782359 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036775.781966831] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:55.812666 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036775.812074272] [controller_server]: Passing new path to controller.
+10月 03 22:12:55.915539 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036775.914980692] [controller_server]: Optimizer reset
+10月 03 22:12:55.918624 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036775.918003009] [controller_server]: Optimizer reset
+10月 03 22:12:55.918624 fzurobot bash[38037]: [controller_server-17] [ERROR] [1791036775.918051148] [controller_server]: Optimizer fail to compute path
+10月 03 22:12:55.918624 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036775.918101442] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:55.932157 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036775.931790740] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 03 22:12:55.932466 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036775.932273387] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:12:56.842484 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036776.842060521] [smoother_server]: Received a path to smooth.
+10月 03 22:12:56.862324 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036776.861960582] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:12:56.882800 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036776.882417693] [controller_server]: Passing new path to controller.
+10月 03 22:12:57.922675 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036777.922221783] [smoother_server]: Received a path to smooth.
+10月 03 22:12:57.932859 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036777.932419993] [controller_server]: Passing new path to controller.
+10月 03 22:12:58.186251 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036778.185836594] [controller_server]: Reached the goal!
+10月 03 22:12:58.222332 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036778.221823710] [bt_navigator]: Goal succeeded
+10月 03 22:12:58.224880 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036778.224356369] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:12:58.828481 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036778.827932001] [stm32_bridge]: STP23L calibrated at bed3: OPS offset=(39.0, -45.0) mm, field pose=(2180.0, 5323.0) mm
+10月 03 22:12:59.850166 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036779.849737475] [code_scanner]: Confirmed scan context=3 format=2 value=6906841121017 via zbar_fast
+10月 03 22:12:59.887371 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036779.887041370] [stm32_bridge]: STM32 accepted scan #13: 6906841121017
+10月 03 22:13:00.669177 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036780.668690552] [stm32_bridge]: Started NUC TTS request=2 bed=3
+10月 03 22:13:02.288639 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036782.288220738] [stm32_bridge]: Completed NUC TTS request=2 bed=3: /home/fzurobot/Downloads/3_.mp3 via pulse
+10月 03 22:13:02.328131 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036782.327457773] [stm32_bridge]: STM32 goal request #4 -> home
+10月 03 22:13:02.329896 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036782.329424440] [medical_navigator]: Dispatching home -> map(0.00, -0.00) request=4 route=bed3->home controller=FollowPathHeadingHold
+10月 03 22:13:02.330748 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036782.330297131] [bt_navigator]: Begin navigating from current location (5.40, -2.19) to (0.00, -0.00)
+10月 03 22:13:02.401390 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036782.401007484] [smoother_server]: Received a path to smooth.
+10月 03 22:13:02.421216 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036782.420833129] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:13:02.422959 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036782.422806153] [controller_server]: Optimizer reset
+10月 03 22:13:03.491343 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036783.490964375] [smoother_server]: Received a path to smooth.
+10月 03 22:13:03.511635 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036783.511224241] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:03.521346 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036783.520977944] [controller_server]: Passing new path to controller.
+10月 03 22:13:04.584150 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036784.583841943] [planner_server]: GridBased switched final route: risk improvement 67.2%, time improvement -0.03 s
+10月 03 22:13:04.601422 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036784.601058640] [smoother_server]: Received a path to smooth.
+10月 03 22:13:04.621237 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036784.620832546] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:04.621609 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036784.620971193] [controller_server]: Passing new path to controller.
+10月 03 22:13:05.178860 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036785.178113325] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:05.190706 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036785.190230805] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:05.233258 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036785.232850357] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:05.254469 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036785.254056055] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:05.660324 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036785.660064936] [planner_server]: GridBased switched final route: risk improvement 52.1%, time improvement 0.05 s
+10月 03 22:13:05.671452 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036785.671022250] [smoother_server]: Received a path to smooth.
+10月 03 22:13:05.691641 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036785.691084233] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:05.721347 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036785.720971060] [controller_server]: Passing new path to controller.
+10月 03 22:13:06.751347 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036786.750986929] [smoother_server]: Received a path to smooth.
+10月 03 22:13:06.771398 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036786.770924353] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:06.772148 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036786.771585325] [controller_server]: Passing new path to controller.
+10月 03 22:13:07.824961 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036787.824556701] [planner_server]: GridBased switched final route: risk improvement 39.4%, time improvement 0.08 s
+10月 03 22:13:07.841518 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036787.841048028] [smoother_server]: Received a path to smooth.
+10月 03 22:13:07.871546 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036787.870987227] [controller_server]: Passing new path to controller.
+10月 03 22:13:08.177055 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036788.176442637] [controller_server]: Reached the goal!
+10月 03 22:13:08.211403 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036788.210773605] [bt_navigator]: Goal succeeded
+10月 03 22:13:08.213644 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036788.213099672] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:13:11.327726 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036791.327143057] [stm32_bridge]: STM32 readiness ready->rebooting
+10月 03 22:13:11.329189 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036791.327891745] [stm32_bridge]: STM32 telemetry lost; blocked motion and lidar until recovery
+10月 03 22:13:11.329701 fzurobot bash[38037]: [lidar_self_filter-3] [WARN] [1791036791.329247490] [lidar_self_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:13:11.330125 fzurobot bash[38037]: [lidar_self_filter-2] [WARN] [1791036791.329312284] [lidar_safety_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:13:11.330310 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036791.329380552] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:13:11.330463 fzurobot bash[38037]: [medical_navigator-16] [WARN] [1791036791.329413200] [medical_navigator]: STM32 reset detected; canceled navigation and cleared handoff state
+10月 03 22:13:11.347025 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036791.346725120] [stm32_bridge]: STM32 readiness rebooting->waiting_telemetry
+10月 03 22:13:12.709985 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036792.709325885] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:13:14.209286 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036794.208567714] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:13:14.828497 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036794.828038422] [stm32_bridge]: New medical mission epoch=5: cleared stale navigation, scan and calibration state
+10月 03 22:13:14.829756 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036794.829282268] [stm32_bridge]: STM32 goal request #1 -> nurse
+10月 03 22:13:14.830600 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036794.829925475] [stm32_bridge]: STM32 readiness waiting_telemetry->recovering
+10月 03 22:13:14.889790 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036794.889213888] [code_scanner]: Released primary camera for USB handoff
+10月 03 22:13:14.891218 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036794.890877514] [code_scanner]: Opening tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 with YUYV:1920x1080@5
+10月 03 22:13:15.211387 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036795.210766254] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:13:15.311032 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036795.310472446] [code_scanner]: STM32 mission epoch changed 4->5; restarting 15-second tele scan window
+10月 03 22:13:15.589852 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036795.588999407] [stm32_bridge]: STM32 readiness recovering->ready
+10月 03 22:13:15.592768 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036795.589505399] [stm32_bridge]: STM32 telemetry stable and stationary; navigation may resume
+10月 03 22:13:15.592768 fzurobot bash[38037]: [lidar_self_filter-2] [INFO] [1791036795.590972839] [lidar_safety_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:13:15.592768 fzurobot bash[38037]: [lidar_self_filter-3] [INFO] [1791036795.591276166] [lidar_self_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:13:15.592768 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036795.591860301] [medical_navigator]: STM32 recovery complete; accepting navigation requests
+10月 03 22:13:15.594724 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036795.594223827] [medical_navigator]: Dispatching nurse_scan_center -> map(1.70, -0.00) request=1 route=unknown->nurse_scan_center controller=FollowPathNurse
+10月 03 22:13:15.683759 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036795.683072296] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (1.70, -0.00)
+10月 03 22:13:15.734158 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036795.733758441] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:13:15.736578 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036795.736361144] [controller_server]: Optimizer reset
+10月 03 22:13:16.334890 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036796.334219788] [controller_server]: Passing new path to controller.
+10月 03 22:13:16.734266 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036796.733904481] [code_scanner]: Opened tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 as YUYV:1920x1080
+10月 03 22:13:16.817434 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036796.816929308] [code_scanner]: Confirmed scan context=1 format=1 value=11 via tele_zxing_qr
+10月 03 22:13:16.834298 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036796.833896605] [controller_server]: Goal was canceled. Stopping the robot.
+10月 03 22:13:16.834451 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036796.833942927] [controller_server]: [follow_path] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:13:16.834773 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036796.834113140] [bt_navigator]: [navigate_to_pose] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:13:16.834855 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036796.834229154] [bt_navigator]: Goal canceled
+10月 03 22:13:16.847893 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036796.847461155] [stm32_bridge]: STM32 accepted scan #14: 11
+10月 03 22:13:16.848335 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036796.848138351] [stm32_bridge]: STM32 goal request #2 -> bed1
+10月 03 22:13:16.849011 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036796.848821185] [medical_navigator]: Dispatching bed1 -> map(5.40, 2.20) request=2 route=nurse->bed1 controller=FollowPathHeadingHold
+10月 03 22:13:16.905768 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036796.905403456] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (5.40, 2.20)
+10月 03 22:13:16.918900 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036796.918405986] [code_scanner]: Released tele camera for USB handoff
+10月 03 22:13:16.968499 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036796.968165361] [code_scanner]: Opening primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 with MJPG:1920x1200@30
+10月 03 22:13:17.006410 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036797.006011371] [smoother_server]: Received a path to smooth.
+10月 03 22:13:17.026335 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036797.025963013] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:13:17.027383 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036797.027100799] [controller_server]: Optimizer reset
+10月 03 22:13:17.609361 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036797.608923522] [code_scanner]: Opened primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 as MJPG:1920x1200
+10月 03 22:13:18.126324 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036798.125943550] [smoother_server]: Received a path to smooth.
+10月 03 22:13:18.126760 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036798.126098312] [controller_server]: Passing new path to controller.
+10月 03 22:13:18.176495 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036798.176107520] [controller_server]: Passing new path to controller.
+10月 03 22:13:19.216443 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036799.216015649] [smoother_server]: Received a path to smooth.
+10月 03 22:13:19.226457 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036799.226106118] [controller_server]: Passing new path to controller.
+10月 03 22:13:19.276532 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036799.276144788] [controller_server]: Passing new path to controller.
+10月 03 22:13:19.297136 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036799.296853006] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:19.458285 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036799.457865421] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:20.295357 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036800.294922624] [planner_server]: GridBased switched final route: risk improvement 41.7%, time improvement -0.02 s
+10月 03 22:13:20.306557 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036800.306130831] [smoother_server]: Received a path to smooth.
+10月 03 22:13:20.326273 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036800.325919747] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:20.326569 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036800.326100275] [controller_server]: Passing new path to controller.
+10月 03 22:13:21.198821 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036801.197917523] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:21.367574 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036801.367237091] [planner_server]: GridBased switched final route: risk improvement 32.5%, time improvement 0.09 s
+10月 03 22:13:21.386559 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036801.386196709] [smoother_server]: Received a path to smooth.
+10月 03 22:13:21.396130 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036801.395740121] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:21.406507 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036801.406146746] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:21.417825 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036801.417396441] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:21.426468 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036801.426106532] [controller_server]: Passing new path to controller.
+10月 03 22:13:22.258469 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036802.258165324] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:22.444896 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036802.444405342] [code_scanner]: Confirmed scan context=2 format=2 value=6946522463487 via zbar_fast
+10月 03 22:13:22.466357 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036802.465887852] [smoother_server]: Received a path to smooth.
+10月 03 22:13:22.467568 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036802.467208937] [stm32_bridge]: STM32 accepted scan #15: 6946522463487
+10月 03 22:13:22.476430 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036802.476103383] [controller_server]: Passing new path to controller.
+10月 03 22:13:22.526485 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036802.526102969] [controller_server]: Passing new path to controller.
+10月 03 22:13:23.528038 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036803.527571339] [planner_server]: GridBased switched final route: risk improvement 30.1%, time improvement 0.02 s
+10月 03 22:13:23.546416 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036803.545972988] [smoother_server]: Received a path to smooth.
+10月 03 22:13:23.576420 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036803.576106943] [controller_server]: Passing new path to controller.
+10月 03 22:13:23.930819 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036803.928441768] [stm32_bridge]: STP23L calibrated at bed1: OPS offset=(-111.0, -12.0) mm, field pose=(-2121.0, 5393.0) mm
+10月 03 22:13:23.937532 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036803.936953348] [controller_server]: Reached the goal!
+10月 03 22:13:23.975997 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036803.975607067] [bt_navigator]: Goal succeeded
+10月 03 22:13:23.977822 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036803.977477608] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:13:25.808934 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036805.808447394] [stm32_bridge]: Started NUC TTS request=1 bed=1
+10月 03 22:13:27.388617 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036807.388140339] [stm32_bridge]: Completed NUC TTS request=1 bed=1: /home/fzurobot/Downloads/1_.mp3 via pulse
+10月 03 22:13:27.428487 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036807.428047240] [stm32_bridge]: STM32 goal request #3 -> bed3
+10月 03 22:13:27.428886 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036807.428491526] [medical_navigator]: Dispatching bed3 -> map(5.40, -2.20) request=3 route=bed1->bed3 controller=FollowPathLateralHold
+10月 03 22:13:27.429269 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036807.428987655] [bt_navigator]: Begin navigating from current location (5.40, 2.19) to (5.40, -2.20)
+10月 03 22:13:27.530534 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036807.529955502] [smoother_server]: Received a path to smooth.
+10月 03 22:13:27.550514 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036807.549893332] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:13:27.552820 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036807.552629948] [controller_server]: Optimizer reset
+10月 03 22:13:28.659911 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036808.659515913] [smoother_server]: Received a path to smooth.
+10月 03 22:13:28.679974 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036808.679688617] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:28.700636 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036808.700079832] [controller_server]: Passing new path to controller.
+10月 03 22:13:29.770365 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036809.770092115] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:13:29.790332 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036809.789823923] [smoother_server]: Received a path to smooth.
+10月 03 22:13:29.800366 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036809.800075044] [controller_server]: Passing new path to controller.
+10月 03 22:13:29.850539 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036809.850113961] [controller_server]: Passing new path to controller.
+10月 03 22:13:29.904343 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036809.904073132] [controller_server]: Optimizer reset
+10月 03 22:13:29.906545 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036809.906358245] [controller_server]: Optimizer reset
+10月 03 22:13:29.906589 fzurobot bash[38037]: [controller_server-17] [ERROR] [1791036809.906388311] [controller_server]: Optimizer fail to compute path
+10月 03 22:13:29.906733 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036809.906430355] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:29.919668 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036809.919359306] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 03 22:13:29.920094 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036809.919904305] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:13:30.879911 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036810.879602779] [smoother_server]: Received a path to smooth.
+10月 03 22:13:30.880194 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036810.879677757] [smoother_server]: Smoother simple_smoother did not complete smoothing in specified time limit(0.350000 seconds) and was interrupted after 0.000075 seconds
+10月 03 22:13:30.900290 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036810.899711942] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:30.920636 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036810.920027254] [controller_server]: Passing new path to controller.
+10月 03 22:13:31.699274 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036811.698754792] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:31.831257 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036811.830617817] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:31.959902 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036811.959499350] [smoother_server]: Received a path to smooth.
+10月 03 22:13:31.970398 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036811.970016272] [controller_server]: Passing new path to controller.
+10月 03 22:13:32.020430 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036812.020012077] [controller_server]: Passing new path to controller.
+10月 03 22:13:33.040077 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036813.039602618] [smoother_server]: Received a path to smooth.
+10月 03 22:13:33.059984 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036813.059533303] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:33.070359 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036813.070017008] [controller_server]: Passing new path to controller.
+10月 03 22:13:33.974899 fzurobot bash[38037]: [collision_monitor-14] [WARN] [1791036813.974520262] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.303601 seconds. Ignoring the source.
+10月 03 22:13:34.119968 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036814.119602242] [smoother_server]: Received a path to smooth.
+10月 03 22:13:34.120402 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036814.120007841] [controller_server]: Passing new path to controller.
+10月 03 22:13:35.209851 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036815.209476215] [smoother_server]: Received a path to smooth.
+10月 03 22:13:35.220317 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036815.220015926] [controller_server]: Passing new path to controller.
+10月 03 22:13:35.248130 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036815.247659674] [stm32_bridge]: STP23L calibrated at bed3: OPS offset=(-122.0, 30.0) mm, field pose=(2175.0, 5300.0) mm
+10月 03 22:13:35.274294 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036815.274020442] [controller_server]: Reached the goal!
+10月 03 22:13:35.310278 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036815.309796962] [bt_navigator]: Goal succeeded
+10月 03 22:13:35.313147 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036815.312687199] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:13:36.243032 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036816.242698703] [code_scanner]: Confirmed scan context=3 format=2 value=6906841121017 via zbar_fast
+10月 03 22:13:36.268061 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036816.267518536] [stm32_bridge]: STM32 accepted scan #16: 6906841121017
+10月 03 22:13:37.110346 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036817.109668852] [stm32_bridge]: Started NUC TTS request=2 bed=3
+10月 03 22:13:38.688536 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036818.687926194] [stm32_bridge]: Completed NUC TTS request=2 bed=3: /home/fzurobot/Downloads/3_.mp3 via pulse
+10月 03 22:13:38.708352 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036818.707728053] [stm32_bridge]: STM32 goal request #4 -> home
+10月 03 22:13:38.710545 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036818.710029906] [stm32_bridge]: Ignored stale navigator status for request=3 goal=4
+10月 03 22:13:38.711066 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036818.710467385] [medical_navigator]: Dispatching home -> map(0.00, -0.00) request=4 route=bed3->home controller=FollowPathHeadingHold
+10月 03 22:13:38.711648 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036818.711399918] [bt_navigator]: Begin navigating from current location (5.37, -2.20) to (0.00, -0.00)
+10月 03 22:13:38.782626 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036818.782141833] [smoother_server]: Received a path to smooth.
+10月 03 22:13:38.802546 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036818.802166512] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:13:38.804388 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036818.804191154] [controller_server]: Optimizer reset
+10月 03 22:13:39.296178 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036819.295832946] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:39.351843 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036819.351200708] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:39.864931 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036819.864559192] [planner_server]: GridBased switched final route: risk improvement 30.3%, time improvement -0.00 s
+10月 03 22:13:39.882361 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036819.881999365] [smoother_server]: Received a path to smooth.
+10月 03 22:13:39.902673 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036819.902172632] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:39.903264 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036819.902380423] [controller_server]: Passing new path to controller.
+10月 03 22:13:40.913646 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036820.913080990] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:40.956626 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036820.956190642] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:40.960190 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036820.960000720] [planner_server]: GridBased switched final route: risk improvement 89.0%, time improvement -0.01 s
+10月 03 22:13:40.972598 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036820.972164125] [smoother_server]: Received a path to smooth.
+10月 03 22:13:40.992634 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036820.992181371] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:41.002743 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036821.002327776] [controller_server]: Passing new path to controller.
+10月 03 22:13:41.098387 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036821.097989270] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:42.042562 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036822.042155947] [smoother_server]: Received a path to smooth.
+10月 03 22:13:42.052726 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036822.052353639] [controller_server]: Passing new path to controller.
+10月 03 22:13:42.097929 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036822.097156418] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:42.102673 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036822.102298784] [controller_server]: Passing new path to controller.
+10月 03 22:13:42.131319 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036822.130824636] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:42.153908 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036822.153281464] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:43.112483 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036823.112047354] [smoother_server]: Received a path to smooth.
+10月 03 22:13:43.152883 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036823.152305820] [controller_server]: Passing new path to controller.
+10月 03 22:13:43.457546 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036823.457037991] [controller_server]: Reached the goal!
+10月 03 22:13:43.492151 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036823.491713327] [bt_navigator]: Goal succeeded
+10月 03 22:13:43.493925 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036823.493647171] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:13:47.448164 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036827.447388150] [stm32_bridge]: STM32 readiness ready->rebooting
+10月 03 22:13:47.449116 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036827.448638030] [stm32_bridge]: STM32 telemetry lost; blocked motion and lidar until recovery
+10月 03 22:13:47.450765 fzurobot bash[38037]: [lidar_self_filter-3] [WARN] [1791036827.450309561] [lidar_self_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:13:47.451212 fzurobot bash[38037]: [lidar_self_filter-2] [WARN] [1791036827.450392972] [lidar_safety_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:13:47.451564 fzurobot bash[38037]: [medical_navigator-16] [WARN] [1791036827.451219554] [medical_navigator]: STM32 reset detected; canceled navigation and cleared handoff state
+10月 03 22:13:47.452126 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036827.451427082] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:13:47.468389 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036827.467661360] [stm32_bridge]: STM32 readiness rebooting->waiting_telemetry
+10月 03 22:13:48.709398 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036828.708827527] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:13:50.209120 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036830.208667407] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:13:50.967159 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036830.966841007] [stm32_bridge]: New medical mission epoch=6: cleared stale navigation, scan and calibration state
+10月 03 22:13:50.968050 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036830.967597086] [stm32_bridge]: STM32 goal request #1 -> nurse
+10月 03 22:13:50.968897 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036830.968581496] [stm32_bridge]: STM32 readiness waiting_telemetry->recovering
+10月 03 22:13:51.017904 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036831.017317935] [code_scanner]: Released primary camera for USB handoff
+10月 03 22:13:51.030661 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036831.030351866] [code_scanner]: Opening tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 with YUYV:1920x1080@5
+10月 03 22:13:51.209232 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036831.208925301] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:13:51.311207 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036831.310548410] [code_scanner]: STM32 mission epoch changed 5->6; restarting 15-second tele scan window
+10月 03 22:13:51.728810 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036831.728183344] [stm32_bridge]: STM32 readiness recovering->ready
+10月 03 22:13:51.729487 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036831.728697161] [stm32_bridge]: STM32 telemetry stable and stationary; navigation may resume
+10月 03 22:13:51.730675 fzurobot bash[38037]: [lidar_self_filter-3] [INFO] [1791036831.730117490] [lidar_self_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:13:51.731192 fzurobot bash[38037]: [lidar_self_filter-2] [INFO] [1791036831.730120997] [lidar_safety_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:13:51.731434 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036831.730387823] [medical_navigator]: STM32 recovery complete; accepting navigation requests
+10月 03 22:13:51.732195 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036831.731898663] [medical_navigator]: Dispatching nurse_scan_center -> map(1.70, -0.00) request=1 route=unknown->nurse_scan_center controller=FollowPathNurse
+10月 03 22:13:51.809140 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036831.808219198] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (1.70, -0.00)
+10月 03 22:13:51.859712 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036831.859129419] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:13:51.862603 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036831.862319465] [controller_server]: Optimizer reset
+10月 03 22:13:52.413736 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036832.413426556] [planner_server]: GridBased switched final route: risk improvement 36.8%, time improvement 0.08 s
+10月 03 22:13:52.459656 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036832.459298813] [controller_server]: Passing new path to controller.
+10月 03 22:13:52.876203 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036832.875800440] [code_scanner]: Opened tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 as YUYV:1920x1080
+10月 03 22:13:52.956742 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036832.956053070] [code_scanner]: Confirmed scan context=1 format=1 value=11 via tele_zxing_qr
+10月 03 22:13:52.979473 fzurobot bash[38037]: [bt_navigator-21] [ERROR] [1791036832.979123326] [bt_navigator_navigate_to_pose_rclcpp_node]: Failed to get result for compute_path_to_pose in node halt!
+10月 03 22:13:52.988476 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036832.988073838] [stm32_bridge]: STM32 accepted scan #17: 11
+10月 03 22:13:52.988974 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036832.988749253] [stm32_bridge]: STM32 goal request #2 -> bed1
+10月 03 22:13:52.992972 fzurobot bash[38037]: [medical_navigator-16] [WARN] [1791036832.992751597] [medical_navigator]: Previous goal did not accept cancellation; keeping chassis stopped until the action reaches a terminal state
+10月 03 22:13:53.000055 fzurobot bash[38037]: [bt_navigator-21] [ERROR] [1791036832.999738185] [bt_navigator_navigate_to_pose_rclcpp_node]: Failed to get result for follow_path in node halt!
+10月 03 22:13:53.000471 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036832.999806675] [bt_navigator]: [navigate_to_pose] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:13:53.000761 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036832.999974604] [bt_navigator]: Goal canceled
+10月 03 22:13:53.001836 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036833.001592244] [medical_navigator]: Dispatching bed1 -> map(5.40, 2.20) request=2 route=nurse->bed1 controller=FollowPathHeadingHold
+10月 03 22:13:53.010767 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036833.009376875] [controller_server]: Goal was canceled. Stopping the robot.
+10月 03 22:13:53.010767 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036833.009455820] [controller_server]: [follow_path] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:13:53.061994 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036833.061166653] [code_scanner]: Released tele camera for USB handoff
+10月 03 22:13:53.084978 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036833.084292445] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (5.40, 2.20)
+10月 03 22:13:53.099461 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036833.099047584] [code_scanner]: Opening primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 with MJPG:1920x1200@30
+10月 03 22:13:53.185297 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036833.184928955] [smoother_server]: Received a path to smooth.
+10月 03 22:13:53.205720 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036833.205262882] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:13:53.208029 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036833.207278548] [controller_server]: Optimizer reset
+10月 03 22:13:53.744889 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036833.744481782] [code_scanner]: Opened primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 as MJPG:1920x1200
+10月 03 22:13:54.315281 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036834.314909207] [smoother_server]: Received a path to smooth.
+10月 03 22:13:54.335407 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036834.335003059] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:54.356065 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036834.355418863] [controller_server]: Passing new path to controller.
+10月 03 22:13:54.911339 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036834.910652263] [controller_server]: Optimizer reset
+10月 03 22:13:54.916062 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036834.915370597] [controller_server]: Optimizer reset
+10月 03 22:13:54.916624 fzurobot bash[38037]: [controller_server-17] [ERROR] [1791036834.915458835] [controller_server]: Optimizer fail to compute path
+10月 03 22:13:54.916720 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036834.915540154] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:54.935444 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036834.934966411] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 03 22:13:54.935920 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036834.935696953] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:13:55.418998 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036835.418598238] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:13:55.435417 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036835.435001175] [smoother_server]: Received a path to smooth.
+10月 03 22:13:55.436111 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036835.435817795] [controller_server]: Passing new path to controller.
+10月 03 22:13:55.486206 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036835.485822658] [controller_server]: Passing new path to controller.
+10月 03 22:13:56.531083 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036836.530715334] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:13:56.545519 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036836.545077089] [smoother_server]: Received a path to smooth.
+10月 03 22:13:56.565552 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036836.565094637] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:56.586192 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036836.585820974] [controller_server]: Passing new path to controller.
+10月 03 22:13:57.642226 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036837.641843726] [planner_server]: GridBased switched final route: risk improvement 65.6%, time improvement 0.14 s
+10月 03 22:13:57.655381 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036837.654993754] [smoother_server]: Received a path to smooth.
+10月 03 22:13:57.675472 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036837.675046225] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:13:57.686233 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036837.685871592] [controller_server]: Passing new path to controller.
+10月 03 22:13:58.553352 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036838.552621565] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:58.735184 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036838.734912459] [smoother_server]: Received a path to smooth.
+10月 03 22:13:58.735984 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036838.735808789] [controller_server]: Passing new path to controller.
+10月 03 22:13:58.786264 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036838.785863572] [controller_server]: Passing new path to controller.
+10月 03 22:13:59.018540 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036839.017953049] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:59.051417 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036839.051042843] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:59.212442 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036839.212161436] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:59.255004 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036839.254656692] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:59.351265 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036839.350976752] [collision_monitor]: Robot to continue normal operation
+10月 03 22:13:59.735601 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036839.735186981] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:13:59.805417 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036839.805032940] [smoother_server]: Received a path to smooth.
+10月 03 22:13:59.836233 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036839.835819438] [controller_server]: Passing new path to controller.
+10月 03 22:13:59.935820 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036839.935529951] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:00.037260 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036840.036582936] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:00.095600 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036840.095293033] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:00.374675 fzurobot bash[38037]: [collision_monitor-14] [WARN] [1791036840.374235195] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.303526 seconds. Ignoring the source.
+10月 03 22:14:00.389187 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036840.388807239] [controller_server]: Reached the goal!
+10月 03 22:14:00.425039 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036840.424648362] [bt_navigator]: Goal succeeded
+10月 03 22:14:00.427496 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036840.426797066] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:14:00.647639 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036840.647227871] [stm32_bridge]: STP23L calibrated at bed1: OPS offset=(-5.1, -15.0) mm, field pose=(-2111.1, 5346.0) mm
+10月 03 22:14:01.716483 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036841.716076784] [code_scanner]: Confirmed scan context=2 format=2 value=6946522463487 via zbar_fast
+10月 03 22:14:01.750466 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036841.747653928] [stm32_bridge]: STM32 accepted scan #18: 6946522463487
+10月 03 22:14:02.528060 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036842.527571148] [stm32_bridge]: Started NUC TTS request=1 bed=1
+10月 03 22:14:04.129996 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036844.128657905] [stm32_bridge]: Completed NUC TTS request=1 bed=1: /home/fzurobot/Downloads/1_.mp3 via pulse
+10月 03 22:14:04.169149 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036844.168680310] [stm32_bridge]: STM32 goal request #3 -> bed3
+10月 03 22:14:04.170310 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036844.169880858] [medical_navigator]: Dispatching bed3 -> map(5.40, -2.20) request=3 route=bed1->bed3 controller=FollowPathLateralHold
+10月 03 22:14:04.170821 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036844.170435023] [bt_navigator]: Begin navigating from current location (5.41, 2.18) to (5.40, -2.20)
+10月 03 22:14:04.261549 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036844.261104398] [smoother_server]: Received a path to smooth.
+10月 03 22:14:04.281384 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036844.281005311] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:14:04.283902 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036844.283699331] [controller_server]: Optimizer reset
+10月 03 22:14:05.365768 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036845.365350061] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:14:05.381381 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036845.381030026] [smoother_server]: Received a path to smooth.
+10月 03 22:14:05.401397 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036845.401110563] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:05.431634 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036845.431150962] [controller_server]: Passing new path to controller.
+10月 03 22:14:05.860717 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036845.860224619] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:06.258410 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036846.257800252] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:06.516602 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036846.516223026] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:14:06.531392 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036846.531015343] [smoother_server]: Received a path to smooth.
+10月 03 22:14:06.531771 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036846.531124838] [smoother_server]: Smoother simple_smoother did not complete smoothing in specified time limit(0.350000 seconds) and was interrupted after 0.000109 seconds
+10月 03 22:14:06.551235 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036846.550964732] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:06.581789 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036846.581154275] [controller_server]: Passing new path to controller.
+10月 03 22:14:07.621545 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036847.621051550] [smoother_server]: Received a path to smooth.
+10月 03 22:14:07.631721 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036847.631155368] [controller_server]: Passing new path to controller.
+10月 03 22:14:07.681726 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036847.681204817] [controller_server]: Passing new path to controller.
+10月 03 22:14:07.996788 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036847.996351451] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:08.212894 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036848.212556177] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:08.691170 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036848.690917963] [smoother_server]: Received a path to smooth.
+10月 03 22:14:08.711313 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036848.711033475] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:08.731641 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036848.731150753] [controller_server]: Passing new path to controller.
+10月 03 22:14:08.784107 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036848.783814533] [controller_server]: Optimizer reset
+10月 03 22:14:08.786294 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036848.786077446] [controller_server]: Optimizer reset
+10月 03 22:14:08.786495 fzurobot bash[38037]: [controller_server-17] [ERROR] [1791036848.786107144] [controller_server]: Optimizer fail to compute path
+10月 03 22:14:08.786555 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036848.786143070] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:08.801253 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036848.800857272] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 03 22:14:08.801662 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036848.801419267] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:14:08.866097 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036848.865696942] [controller_server]: Optimizer reset
+10月 03 22:14:08.868882 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036848.868245625] [controller_server]: Optimizer reset
+10月 03 22:14:08.868882 fzurobot bash[38037]: [controller_server-17] [ERROR] [1791036848.868295415] [controller_server]: Optimizer fail to compute path
+10月 03 22:14:08.869000 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036848.868338311] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:08.881390 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036848.881018330] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 03 22:14:08.881741 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036848.881440233] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10月 03 22:14:08.989133 fzurobot bash[38037]: [planner_server-19] [ERROR] [1791036848.988851551] [planner_server]: GridBased start pose is in a collision cell
+10月 03 22:14:08.989197 fzurobot bash[38037]: [planner_server-19] [WARN] [1791036848.988898788] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (5.40, -2.20)
+10月 03 22:14:08.989394 fzurobot bash[38037]: [planner_server-19] [WARN] [1791036848.988928132] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+10月 03 22:14:09.001094 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036849.000848560] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10月 03 22:14:09.255545 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036849.255109846] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:14:09.271545 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036849.271176003] [smoother_server]: Received a path to smooth.
+10月 03 22:14:09.291581 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036849.291158571] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:14:10.341245 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036850.340992377] [smoother_server]: Received a path to smooth.
+10月 03 22:14:10.341549 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036850.341296598] [controller_server]: Passing new path to controller.
+10月 03 22:14:10.391622 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036850.391292237] [controller_server]: Passing new path to controller.
+10月 03 22:14:10.976858 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036850.976403192] [code_scanner]: Confirmed scan context=3 format=2 value=6906841121017 via zbar_fast
+10月 03 22:14:11.007307 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036851.006955827] [stm32_bridge]: STM32 accepted scan #19: 6906841121017
+10月 03 22:14:11.431880 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036851.431236334] [smoother_server]: Received a path to smooth.
+10月 03 22:14:11.441707 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036851.441299427] [controller_server]: Passing new path to controller.
+10月 03 22:14:12.050383 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036852.049741383] [controller_server]: Reached the goal!
+10月 03 22:14:12.080925 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036852.080664017] [bt_navigator]: Goal succeeded
+10月 03 22:14:12.081897 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036852.081740471] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:14:12.449269 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036852.448689494] [stm32_bridge]: STP23L calibrated at bed3: OPS offset=(-22.0, -19.0) mm, field pose=(2188.0, 5323.0) mm
+10月 03 22:14:14.310108 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036854.309559399] [stm32_bridge]: Started NUC TTS request=2 bed=3
+10月 03 22:14:15.889827 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036855.889101575] [stm32_bridge]: Completed NUC TTS request=2 bed=3: /home/fzurobot/Downloads/3_.mp3 via pulse
+10月 03 22:14:15.929009 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036855.928375225] [stm32_bridge]: STM32 goal request #4 -> home
+10月 03 22:14:15.930937 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036855.930402191] [medical_navigator]: Dispatching home -> map(0.00, -0.00) request=4 route=bed3->home controller=FollowPathHeadingHold
+10月 03 22:14:15.932044 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036855.931448264] [bt_navigator]: Begin navigating from current location (5.39, -2.20) to (0.00, -0.00)
+10月 03 22:14:16.012428 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036856.012037479] [smoother_server]: Received a path to smooth.
+10月 03 22:14:16.032557 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036856.032129133] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:14:16.034048 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036856.033862645] [controller_server]: Optimizer reset
+10月 03 22:14:16.317385 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036856.317037890] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:16.413858 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036856.413429136] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:17.052689 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036857.052294058] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:17.106560 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036857.106203154] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:14:17.122575 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036857.122183626] [smoother_server]: Received a path to smooth.
+10月 03 22:14:17.132633 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036857.132271273] [controller_server]: Passing new path to controller.
+10月 03 22:14:17.182644 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036857.182271177] [controller_server]: Passing new path to controller.
+10月 03 22:14:17.213453 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036857.213081862] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:18.204504 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036858.204070805] [planner_server]: GridBased switched final route: risk improvement 87.7%, time improvement 0.03 s
+10月 03 22:14:18.222517 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036858.222129325] [smoother_server]: Received a path to smooth.
+10月 03 22:14:18.232781 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036858.232272202] [controller_server]: Passing new path to controller.
+10月 03 22:14:18.282750 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036858.282338112] [controller_server]: Passing new path to controller.
+10月 03 22:14:18.522696 fzurobot bash[38037]: [lidar_odometry_guard-9] [WARN] [1791036858.522299674] [lidar_odometry_guard]: OPS slip suspected: OPS/Livox displacement differs by 0.157 m for 3 windows
+10月 03 22:14:19.312502 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036859.312142693] [smoother_server]: Received a path to smooth.
+10月 03 22:14:19.332869 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036859.332268317] [controller_server]: Passing new path to controller.
+10月 03 22:14:19.333079 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036859.332320467] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:20.392472 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036860.392045582] [smoother_server]: Received a path to smooth.
+10月 03 22:14:20.432849 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036860.432269945] [controller_server]: Passing new path to controller.
+10月 03 22:14:20.485539 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036860.485081787] [controller_server]: Reached the goal!
+10月 03 22:14:20.522191 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036860.521762903] [bt_navigator]: Goal succeeded
+10月 03 22:14:20.524871 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036860.523994887] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:14:21.324656 fzurobot bash[38037]: [lidar_odometry_guard-9] [INFO] [1791036861.324319188] [lidar_odometry_guard]: OPS/Livox displacement agreement recovered
+10月 03 22:14:24.067100 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036864.066799116] [stm32_bridge]: STM32 readiness ready->rebooting
+10月 03 22:14:24.067590 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036864.067355746] [stm32_bridge]: STM32 telemetry lost; blocked motion and lidar until recovery
+10月 03 22:14:24.068367 fzurobot bash[38037]: [lidar_self_filter-3] [WARN] [1791036864.068102345] [lidar_self_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:14:24.068581 fzurobot bash[38037]: [lidar_self_filter-2] [WARN] [1791036864.068281442] [lidar_safety_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:14:24.068757 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036864.068527140] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:14:24.068895 fzurobot bash[38037]: [medical_navigator-16] [WARN] [1791036864.068757979] [medical_navigator]: STM32 reset detected; canceled navigation and cleared handoff state
+10月 03 22:14:24.087173 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036864.086885626] [stm32_bridge]: STM32 readiness rebooting->waiting_telemetry
+10月 03 22:14:25.210206 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036865.209566255] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:14:26.710520 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036866.709905633] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:14:27.587847 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036867.587401500] [stm32_bridge]: New medical mission epoch=7: cleared stale navigation, scan and calibration state
+10月 03 22:14:27.588422 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036867.588172553] [stm32_bridge]: STM32 goal request #1 -> nurse
+10月 03 22:14:27.588616 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036867.588425388] [stm32_bridge]: STM32 readiness waiting_telemetry->recovering
+10月 03 22:14:27.600214 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036867.599892517] [code_scanner]: Released primary camera for USB handoff
+10月 03 22:14:27.715659 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036867.715329170] [code_scanner]: Opening tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 with YUYV:1920x1080@5
+10月 03 22:14:27.830858 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036867.830303140] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:14:28.310845 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036868.310284453] [code_scanner]: STM32 mission epoch changed 6->7; restarting 15-second tele scan window
+10月 03 22:14:28.349919 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036868.349366569] [stm32_bridge]: STM32 readiness recovering->ready
+10月 03 22:14:28.351022 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036868.349906092] [stm32_bridge]: STM32 telemetry stable and stationary; navigation may resume
+10月 03 22:14:28.351641 fzurobot bash[38037]: [lidar_self_filter-2] [INFO] [1791036868.351052523] [lidar_safety_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:14:28.352175 fzurobot bash[38037]: [lidar_self_filter-3] [INFO] [1791036868.351402104] [lidar_self_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:14:28.352439 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036868.351670763] [medical_navigator]: STM32 recovery complete; accepting navigation requests
+10月 03 22:14:28.353530 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036868.353255496] [medical_navigator]: Dispatching nurse_scan_center -> map(1.70, -0.00) request=1 route=unknown->nurse_scan_center controller=FollowPathNurse
+10月 03 22:14:28.438701 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036868.438043284] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (1.70, -0.00)
+10月 03 22:14:28.489026 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036868.488713996] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:14:28.491311 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036868.491125135] [controller_server]: Optimizer reset
+10月 03 22:14:29.026209 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036869.025908251] [planner_server]: GridBased switched final route: risk improvement 52.1%, time improvement 0.11 s
+10月 03 22:14:29.039121 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036869.038860144] [controller_server]: Passing new path to controller.
+10月 03 22:14:29.564470 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036869.563913900] [code_scanner]: Opened tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 as YUYV:1920x1080
+10月 03 22:14:29.639349 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036869.638867650] [controller_server]: Passing new path to controller.
+10月 03 22:14:29.686641 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036869.686217457] [code_scanner]: Confirmed scan context=1 format=1 value=11 via tele_zxing_qr
+10月 03 22:14:29.689470 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036869.688871520] [controller_server]: Goal was canceled. Stopping the robot.
+10月 03 22:14:29.689669 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036869.688937922] [controller_server]: [follow_path] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:14:29.690245 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036869.689202845] [bt_navigator]: [navigate_to_pose] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:14:29.690379 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036869.689435898] [bt_navigator]: Goal canceled
+10月 03 22:14:29.728455 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036869.727341799] [stm32_bridge]: STM32 accepted scan #20: 11
+10月 03 22:14:29.729288 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036869.728530385] [stm32_bridge]: STM32 goal request #2 -> bed1
+10月 03 22:14:29.731068 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036869.730614882] [medical_navigator]: Dispatching bed1 -> map(5.40, 2.20) request=2 route=nurse->bed1 controller=FollowPathHeadingHold
+10月 03 22:14:29.748222 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036869.747093776] [code_scanner]: Released tele camera for USB handoff
+10月 03 22:14:29.796883 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036869.796403019] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (5.40, 2.20)
+10月 03 22:14:29.828923 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036869.828585040] [code_scanner]: Opening primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 with MJPG:1920x1200@30
+10月 03 22:14:29.887409 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036869.887027432] [smoother_server]: Received a path to smooth.
+10月 03 22:14:29.907641 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036869.907155349] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:14:29.910230 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036869.909592115] [controller_server]: Optimizer reset
+10月 03 22:14:30.475589 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036870.475153807] [code_scanner]: Opened primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 as MJPG:1920x1200
+10月 03 22:14:31.008036 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036871.007191575] [smoother_server]: Received a path to smooth.
+10月 03 22:14:31.027543 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036871.027008091] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:31.057941 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036871.057372319] [controller_server]: Passing new path to controller.
+10月 03 22:14:31.752105 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036871.751668127] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:31.913564 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036871.913093621] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:32.093781 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036872.093363165] [planner_server]: GridBased switched final route: risk improvement 35.9%, time improvement -0.01 s
+10月 03 22:14:32.107487 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036872.107093612] [smoother_server]: Received a path to smooth.
+10月 03 22:14:32.127204 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036872.126904950] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:32.157842 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036872.157419139] [controller_server]: Passing new path to controller.
+10月 03 22:14:33.073374 fzurobot bash[38037]: [collision_monitor-14] [WARN] [1791036873.073026888] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.302259 seconds. Ignoring the source.
+10月 03 22:14:33.180873 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036873.180473842] [planner_server]: GridBased switched final route: risk improvement 47.7%, time improvement 0.16 s
+10月 03 22:14:33.197482 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036873.197101208] [smoother_server]: Received a path to smooth.
+10月 03 22:14:33.207536 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036873.207292392] [controller_server]: Passing new path to controller.
+10月 03 22:14:33.257962 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036873.257307275] [controller_server]: Passing new path to controller.
+10月 03 22:14:33.315480 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036873.315131101] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:33.359698 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036873.358942189] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:33.372358 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036873.371715060] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:33.394007 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036873.393610178] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:33.458276 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036873.457756923] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:33.469750 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036873.469152882] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:33.512687 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036873.512155374] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:34.257491 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036874.257089733] [smoother_server]: Received a path to smooth.
+10月 03 22:14:34.277558 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036874.277161476] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:34.308141 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036874.307830196] [controller_server]: Passing new path to controller.
+10月 03 22:14:34.618522 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036874.618252128] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:34.629652 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036874.629367419] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:34.650897 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036874.650602139] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:35.327517 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036875.327008541] [smoother_server]: Received a path to smooth.
+10月 03 22:14:35.357558 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036875.357292838] [controller_server]: Passing new path to controller.
+10月 03 22:14:35.870334 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036875.869683586] [controller_server]: Reached the goal!
+10月 03 22:14:35.907329 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036875.906823150] [bt_navigator]: Goal succeeded
+10月 03 22:14:35.911173 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036875.910623185] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:14:36.388329 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036876.387920468] [stm32_bridge]: STP23L calibrated at bed1: OPS offset=(74.0, 63.0) mm, field pose=(-2118.0, 5390.0) mm
+10月 03 22:14:37.512024 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036877.511606295] [code_scanner]: Confirmed scan context=2 format=2 value=6946522463487 via zbar_fast
+10月 03 22:14:37.528056 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036877.527458755] [stm32_bridge]: STM32 accepted scan #21: 6946522463487
+10月 03 22:14:38.329036 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036878.328560468] [stm32_bridge]: Started NUC TTS request=1 bed=1
+10月 03 22:14:39.931163 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036879.929989029] [stm32_bridge]: Completed NUC TTS request=1 bed=1: /home/fzurobot/Downloads/1_.mp3 via pulse
+10月 03 22:14:39.975051 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036879.967160059] [stm32_bridge]: STM32 goal request #3 -> bed3
+10月 03 22:14:39.975051 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036879.968892435] [medical_navigator]: Dispatching bed3 -> map(5.40, -2.20) request=3 route=bed1->bed3 controller=FollowPathLateralHold
+10月 03 22:14:39.975051 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036879.970052188] [bt_navigator]: Begin navigating from current location (5.40, 2.19) to (5.40, -2.20)
+10月 03 22:14:40.071371 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036880.071013680] [smoother_server]: Received a path to smooth.
+10月 03 22:14:40.091527 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036880.091076910] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:14:40.094127 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036880.093815041] [controller_server]: Optimizer reset
+10月 03 22:14:41.201229 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036881.200845988] [smoother_server]: Received a path to smooth.
+10月 03 22:14:41.221202 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036881.220850116] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:41.241579 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036881.241246453] [controller_server]: Passing new path to controller.
+10月 03 22:14:41.390106 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036881.389500043] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:41.757708 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036881.757131574] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:42.302115 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036882.301860493] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:14:42.321314 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036882.320895224] [smoother_server]: Received a path to smooth.
+10月 03 22:14:42.341123 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036882.340743389] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:42.341483 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036882.341217663] [controller_server]: Passing new path to controller.
+10月 03 22:14:43.318601 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036883.318244574] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:43.411350 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036883.410922898] [smoother_server]: Received a path to smooth.
+10月 03 22:14:43.431283 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036883.430857892] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:43.441593 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036883.441254385] [controller_server]: Passing new path to controller.
+10月 03 22:14:43.714357 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036883.713935060] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:44.211227 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036884.210931403] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:44.318254 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036884.317789106] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:44.329626 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036884.329142484] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:44.351403 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036884.350928756] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:44.393983 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036884.393576085] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:44.467715 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036884.467277703] [planner_server]: GridBased switched final route: risk improvement 30.7%, time improvement 0.06 s
+10月 03 22:14:44.481032 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036884.480688361] [smoother_server]: Received a path to smooth.
+10月 03 22:14:44.490088 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036884.489658875] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:44.491510 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036884.491211316] [controller_server]: Passing new path to controller.
+10月 03 22:14:44.511277 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036884.510875713] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:44.541473 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036884.541211102] [controller_server]: Passing new path to controller.
+10月 03 22:14:44.654059 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036884.653007917] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:44.696130 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036884.695685611] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:44.717183 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036884.716862222] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:45.561203 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036885.560749749] [smoother_server]: Received a path to smooth.
+10月 03 22:14:45.591638 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036885.591246866] [controller_server]: Passing new path to controller.
+10月 03 22:14:45.895362 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036885.894956845] [controller_server]: Reached the goal!
+10月 03 22:14:45.931157 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036885.930527519] [bt_navigator]: Goal succeeded
+10月 03 22:14:45.934441 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036885.933971099] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:14:46.487931 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036886.487514989] [stm32_bridge]: STP23L calibrated at bed3: OPS offset=(56.0, -25.0) mm, field pose=(2176.0, 5314.0) mm
+10月 03 22:14:47.580157 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036887.579836637] [code_scanner]: Confirmed scan context=3 format=2 value=6906841121017 via zbar_fast
+10月 03 22:14:47.607779 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036887.607281970] [stm32_bridge]: STM32 accepted scan #22: 6906841121017
+10月 03 22:14:48.389462 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036888.388931835] [stm32_bridge]: Started NUC TTS request=2 bed=3
+10月 03 22:14:49.970089 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036889.969393557] [stm32_bridge]: Completed NUC TTS request=2 bed=3: /home/fzurobot/Downloads/3_.mp3 via pulse
+10月 03 22:14:49.989196 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036889.988746355] [stm32_bridge]: STM32 goal request #4 -> home
+10月 03 22:14:49.989819 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036889.989573490] [medical_navigator]: Dispatching home -> map(0.00, -0.00) request=4 route=bed3->home controller=FollowPathHeadingHold
+10月 03 22:14:49.990546 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036889.990131333] [bt_navigator]: Begin navigating from current location (5.39, -2.20) to (0.00, -0.00)
+10月 03 22:14:50.051269 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036890.050908636] [smoother_server]: Received a path to smooth.
+10月 03 22:14:50.071337 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036890.070926622] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:14:50.073161 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036890.072911673] [controller_server]: Optimizer reset
+10月 03 22:14:50.923568 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036890.923245708] [controller_server]: Optimizer reset
+10月 03 22:14:50.925143 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036890.924986561] [controller_server]: Optimizer reset
+10月 03 22:14:50.925328 fzurobot bash[38037]: [controller_server-17] [ERROR] [1791036890.925014480] [controller_server]: Optimizer fail to compute path
+10月 03 22:14:50.925411 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036890.925048107] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:50.941205 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036890.940667325] [local_costmap.local_costmap]: Received request to clear entirely the local_costmap
+10月 03 22:14:50.941858 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036890.941371049] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:14:51.151109 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036891.150806919] [smoother_server]: Received a path to smooth.
+10月 03 22:14:51.171452 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036891.170983815] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:14:51.191845 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036891.191533337] [controller_server]: Passing new path to controller.
+10月 03 22:14:52.226286 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036892.225889300] [planner_server]: GridBased switched final route: risk improvement 77.9%, time improvement 0.05 s
+10月 03 22:14:52.241170 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036892.240809315] [smoother_server]: Received a path to smooth.
+10月 03 22:14:52.241700 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036892.241495366] [controller_server]: Passing new path to controller.
+10月 03 22:14:52.291938 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036892.291540394] [controller_server]: Passing new path to controller.
+10月 03 22:14:53.009533 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036893.008987845] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:53.117755 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036893.117453001] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:53.151380 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036893.150828783] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:14:53.331302 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036893.330882114] [smoother_server]: Received a path to smooth.
+10月 03 22:14:53.341885 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036893.341537565] [controller_server]: Passing new path to controller.
+10月 03 22:14:53.391916 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036893.391516056] [controller_server]: Passing new path to controller.
+10月 03 22:14:53.608877 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036893.608522773] [collision_monitor]: Robot to continue normal operation
+10月 03 22:14:54.401102 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036894.400692833] [smoother_server]: Received a path to smooth.
+10月 03 22:14:54.442139 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036894.441534790] [controller_server]: Passing new path to controller.
+10月 03 22:14:54.895839 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036894.895315824] [controller_server]: Reached the goal!
+10月 03 22:14:54.930859 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036894.930461995] [bt_navigator]: Goal succeeded
+10月 03 22:14:54.931835 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036894.931555285] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:14:57.807273 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036897.806799525] [stm32_bridge]: STM32 readiness ready->rebooting
+10月 03 22:14:57.807822 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036897.807372116] [stm32_bridge]: STM32 telemetry lost; blocked motion and lidar until recovery
+10月 03 22:14:57.808250 fzurobot bash[38037]: [lidar_self_filter-2] [WARN] [1791036897.808000745] [lidar_safety_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:14:57.808591 fzurobot bash[38037]: [lidar_self_filter-3] [WARN] [1791036897.808212334] [lidar_self_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:14:57.808980 fzurobot bash[38037]: [medical_navigator-16] [WARN] [1791036897.808329734] [medical_navigator]: STM32 reset detected; canceled navigation and cleared handoff state
+10月 03 22:14:57.809580 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036897.809084555] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:14:57.827890 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036897.827170246] [stm32_bridge]: STM32 readiness rebooting->waiting_telemetry
+10月 03 22:14:59.208985 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036899.208572723] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:00.209523 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036900.209066802] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:01.710850 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036901.710281093] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:03.210483 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036903.208662288] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:04.209365 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036904.208698459] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:05.210099 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036905.209520808] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:06.710376 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036906.709648528] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:07.267688 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036907.267367987] [stm32_bridge]: New medical mission epoch=8: cleared stale navigation, scan and calibration state
+10月 03 22:15:07.268548 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036907.268175538] [stm32_bridge]: STM32 readiness waiting_telemetry->recovering
+10月 03 22:15:07.287912 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036907.287151381] [stm32_bridge]: STM32 goal request #1 -> nurse
+10月 03 22:15:07.309600 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036907.308953224] [code_scanner]: STM32 mission epoch changed 7->8; restarting 15-second tele scan window
+10月 03 22:15:07.333862 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036907.333411336] [code_scanner]: Released primary camera for USB handoff
+10月 03 22:15:07.405898 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036907.405323088] [code_scanner]: Opening tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 with YUYV:1920x1080@5
+10月 03 22:15:07.711767 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036907.711170904] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:08.030286 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036908.029677606] [stm32_bridge]: STM32 readiness recovering->ready
+10月 03 22:15:08.031050 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036908.030399911] [stm32_bridge]: STM32 telemetry stable and stationary; navigation may resume
+10月 03 22:15:08.032139 fzurobot bash[38037]: [lidar_self_filter-2] [INFO] [1791036908.031570806] [lidar_safety_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:15:08.032825 fzurobot bash[38037]: [lidar_self_filter-3] [INFO] [1791036908.031954144] [lidar_self_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:15:08.033967 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036908.032471243] [medical_navigator]: STM32 recovery complete; accepting navigation requests
+10月 03 22:15:08.035553 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036908.035032233] [medical_navigator]: Dispatching nurse_scan_center -> map(1.70, -0.00) request=1 route=unknown->nurse_scan_center controller=FollowPathNurse
+10月 03 22:15:08.114290 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036908.113851298] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (1.70, -0.00)
+10月 03 22:15:08.165101 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036908.164654910] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:15:08.167795 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036908.167305667] [controller_server]: Optimizer reset
+10月 03 22:15:08.765076 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036908.764813867] [controller_server]: Passing new path to controller.
+10月 03 22:15:09.252266 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036909.251893245] [code_scanner]: Opened tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 as YUYV:1920x1080
+10月 03 22:15:09.315109 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036909.314818268] [controller_server]: Passing new path to controller.
+10月 03 22:15:09.356574 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036909.355906546] [code_scanner]: Confirmed scan context=1 format=1 value=11 via tele_zxing_qr
+10月 03 22:15:09.365089 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036909.364814900] [controller_server]: Goal was canceled. Stopping the robot.
+10月 03 22:15:09.365370 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036909.364863564] [controller_server]: [follow_path] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:15:09.365536 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036909.364990330] [bt_navigator]: [navigate_to_pose] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:15:09.365558 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036909.365157326] [bt_navigator]: Goal canceled
+10月 03 22:15:09.367874 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036909.367616087] [stm32_bridge]: STM32 accepted scan #23: 11
+10月 03 22:15:09.369430 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036909.368061527] [stm32_bridge]: STM32 goal request #2 -> bed1
+10月 03 22:15:09.369622 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036909.369342049] [medical_navigator]: Dispatching bed1 -> map(5.40, 2.20) request=2 route=nurse->bed1 controller=FollowPathHeadingHold
+10月 03 22:15:09.437267 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036909.436583679] [code_scanner]: Released tele camera for USB handoff
+10月 03 22:15:09.455100 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036909.454555745] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (5.40, 2.20)
+10月 03 22:15:09.555883 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036909.555441857] [smoother_server]: Received a path to smooth.
+10月 03 22:15:09.561151 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036909.560906299] [code_scanner]: Opening primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 with MJPG:1920x1200@30
+10月 03 22:15:09.575587 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036909.575127291] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:15:09.577280 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036909.577115916] [controller_server]: Optimizer reset
+10月 03 22:15:10.207397 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036910.206830901] [code_scanner]: Opened primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 as MJPG:1920x1200
+10月 03 22:15:10.655526 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036910.655173077] [smoother_server]: Received a path to smooth.
+10月 03 22:15:10.675605 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036910.675204924] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:10.676098 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036910.675280576] [controller_server]: Passing new path to controller.
+10月 03 22:15:11.072034 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036911.071696191] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:11.256200 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036911.255885321] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:11.277804 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036911.277377428] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:11.311438 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036911.311127565] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:11.693471 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036911.693023072] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:11.766071 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036911.765444550] [smoother_server]: Received a path to smooth.
+10月 03 22:15:11.776677 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036911.775285534] [controller_server]: Passing new path to controller.
+10月 03 22:15:11.814022 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036911.813724571] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:11.825589 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036911.825297832] [controller_server]: Passing new path to controller.
+10月 03 22:15:12.822190 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036912.821781407] [planner_server]: GridBased switched final route: risk improvement 37.7%, time improvement 0.08 s
+10月 03 22:15:12.836098 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036912.835476105] [smoother_server]: Received a path to smooth.
+10月 03 22:15:12.855663 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036912.855253659] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:12.875576 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036912.875265248] [controller_server]: Passing new path to controller.
+10月 03 22:15:13.415511 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036913.414968723] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:13.915557 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036913.915201703] [smoother_server]: Received a path to smooth.
+10月 03 22:15:13.925587 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036913.925264950] [controller_server]: Passing new path to controller.
+10月 03 22:15:13.975673 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036913.975261975] [controller_server]: Passing new path to controller.
+10月 03 22:15:14.457721 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036914.457439476] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:14.479323 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036914.478870836] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:14.490909 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036914.490459679] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:14.879283 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036914.878782437] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:14.975520 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036914.975149163] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:14.990674 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036914.990151587] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:14.995928 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036914.995630600] [smoother_server]: Received a path to smooth.
+10月 03 22:15:15.025846 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036915.025268647] [controller_server]: Passing new path to controller.
+10月 03 22:15:15.492224 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036915.491555215] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:15.636238 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036915.635610989] [controller_server]: Reached the goal!
+10月 03 22:15:15.675181 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036915.674877607] [bt_navigator]: Goal succeeded
+10月 03 22:15:15.678234 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036915.677936883] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:15:15.988903 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036915.988281735] [stm32_bridge]: STP23L calibrated at bed1: OPS offset=(-0.0, 38.0) mm, field pose=(-2122.0, 5382.0) mm
+10月 03 22:15:16.979247 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036916.978949861] [code_scanner]: Confirmed scan context=2 format=2 value=6946522463487 via zbar_fast
+10月 03 22:15:17.007328 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036917.006981776] [stm32_bridge]: STM32 accepted scan #24: 6946522463487
+10月 03 22:15:17.848312 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036917.847935257] [stm32_bridge]: Started NUC TTS request=1 bed=1
+10月 03 22:15:19.428417 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036919.427913202] [stm32_bridge]: Completed NUC TTS request=1 bed=1: /home/fzurobot/Downloads/1_.mp3 via pulse
+10月 03 22:15:19.449329 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036919.448584072] [stm32_bridge]: STM32 goal request #3 -> bed3
+10月 03 22:15:19.450596 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036919.450116394] [medical_navigator]: Dispatching bed3 -> map(5.40, -2.20) request=3 route=bed1->bed3 controller=FollowPathLateralHold
+10月 03 22:15:19.451530 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036919.451064848] [bt_navigator]: Begin navigating from current location (5.42, 2.20) to (5.40, -2.20)
+10月 03 22:15:19.552113 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036919.551756347] [smoother_server]: Received a path to smooth.
+10月 03 22:15:19.572526 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036919.571906996] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:15:19.575042 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036919.574571352] [controller_server]: Optimizer reset
+10月 03 22:15:20.682338 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036920.681927028] [smoother_server]: Received a path to smooth.
+10月 03 22:15:20.702186 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036920.701825050] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:20.722544 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036920.722097334] [controller_server]: Passing new path to controller.
+10月 03 22:15:21.049117 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036921.048715948] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:21.113109 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036921.112706951] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:21.134755 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036921.134331563] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:21.292221 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036921.291540729] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:21.729945 fzurobot bash[38037]: [planner_server-19] [ERROR] [1791036921.729325887] [planner_server]: GridBased goal is blocked within 0.10 m tolerance
+10月 03 22:15:21.730496 fzurobot bash[38037]: [planner_server-19] [WARN] [1791036921.729422434] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (5.40, -2.20)
+10月 03 22:15:21.730496 fzurobot bash[38037]: [planner_server-19] [WARN] [1791036921.729448566] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+10月 03 22:15:21.742109 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036921.741708565] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+10月 03 22:15:22.040829 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036922.040467604] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:15:22.052054 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036922.051697693] [smoother_server]: Received a path to smooth.
+10月 03 22:15:22.072083 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036922.071794430] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:22.072398 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036922.072085077] [controller_server]: Passing new path to controller.
+10月 03 22:15:23.015039 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036923.014630708] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:23.132177 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036923.131720616] [smoother_server]: Received a path to smooth.
+10月 03 22:15:23.151921 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036923.151539964] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:23.172527 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036923.172105844] [controller_server]: Passing new path to controller.
+10月 03 22:15:23.318695 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036923.318136228] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:24.180978 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036924.180641843] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:15:24.192110 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036924.191749638] [smoother_server]: Received a path to smooth.
+10月 03 22:15:24.211950 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036924.211589077] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:24.222348 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036924.222124676] [controller_server]: Passing new path to controller.
+10月 03 22:15:25.262149 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036925.261701770] [smoother_server]: Received a path to smooth.
+10月 03 22:15:25.272885 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036925.272100722] [controller_server]: Passing new path to controller.
+10月 03 22:15:25.510626 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036925.509934109] [code_scanner]: Confirmed scan context=3 format=2 value=6906841121017 via zbar_fast
+10月 03 22:15:25.511557 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036925.511031945] [stm32_bridge]: Ignored scan outside expected task state: state=13 value=6906841121017
+10月 03 22:15:26.126495 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036926.126125902] [controller_server]: Reached the goal!
+10月 03 22:15:26.161893 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036926.161391925] [bt_navigator]: Goal succeeded
+10月 03 22:15:26.164380 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036926.164126682] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:15:26.567987 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036926.567522902] [stm32_bridge]: STP23L calibrated at bed3: OPS offset=(-20.0, 3.0) mm, field pose=(2175.0, 5306.0) mm
+10月 03 22:15:27.596628 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036927.596066350] [code_scanner]: Confirmed scan context=3 format=2 value=6906841121017 via zbar_fast
+10月 03 22:15:27.627597 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036927.627150455] [stm32_bridge]: STM32 accepted scan #25: 6906841121017
+10月 03 22:15:28.468199 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036928.467906536] [stm32_bridge]: Started NUC TTS request=2 bed=3
+10月 03 22:15:30.069434 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036930.068744435] [stm32_bridge]: Completed NUC TTS request=2 bed=3: /home/fzurobot/Downloads/3_.mp3 via pulse
+10月 03 22:15:30.088003 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036930.087656706] [stm32_bridge]: STM32 goal request #4 -> home
+10月 03 22:15:30.088706 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036930.088496622] [medical_navigator]: Dispatching home -> map(0.00, -0.00) request=4 route=bed3->home controller=FollowPathHeadingHold
+10月 03 22:15:30.089017 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036930.088835891] [bt_navigator]: Begin navigating from current location (5.38, -2.19) to (0.00, -0.00)
+10月 03 22:15:30.210413 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036930.209834253] [smoother_server]: Received a path to smooth.
+10月 03 22:15:30.229798 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036930.229401131] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:15:30.231927 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036930.231707191] [controller_server]: Optimizer reset
+10月 03 22:15:30.516105 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036930.515262228] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:30.712321 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036930.711927706] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:31.316994 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036931.316729229] [planner_server]: GridBased switched final route: risk improvement 31.6%, time improvement 0.03 s
+10月 03 22:15:31.330253 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036931.329664573] [smoother_server]: Received a path to smooth.
+10月 03 22:15:31.349708 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036931.349349871] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:31.380128 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036931.379538565] [controller_server]: Passing new path to controller.
+10月 03 22:15:32.402223 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036932.401914251] [planner_server]: GridBased switched final route: risk improvement 95.1%, time improvement 0.04 s
+10月 03 22:15:32.419737 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036932.419349790] [smoother_server]: Received a path to smooth.
+10月 03 22:15:32.430156 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036932.429529407] [controller_server]: Passing new path to controller.
+10月 03 22:15:32.479890 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036932.479595232] [controller_server]: Passing new path to controller.
+10月 03 22:15:32.775023 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036932.774576909] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:32.775608 fzurobot bash[38037]: [collision_monitor-14] [WARN] [1791036932.774867028] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.304396 seconds. Ignoring the source.
+10月 03 22:15:32.775774 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036932.774920528] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:32.813776 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036932.813151298] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:33.009443 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036933.008997069] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:33.031222 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036933.030804250] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:33.053427 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036933.053019116] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:33.096277 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036933.095960009] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:33.152533 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036933.152141152] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:33.175147 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036933.174454243] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:33.349761 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036933.349260408] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:33.372485 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036933.371794082] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:33.415842 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036933.415424548] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:33.499883 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036933.499461796] [smoother_server]: Received a path to smooth.
+10月 03 22:15:33.519779 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036933.519420642] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:33.530112 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036933.529537285] [controller_server]: Passing new path to controller.
+10月 03 22:15:34.564862 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036934.564467259] [planner_server]: GridBased switched final route: risk improvement 51.2%, time improvement -0.00 s
+10月 03 22:15:34.579936 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036934.579525692] [smoother_server]: Received a path to smooth.
+10月 03 22:15:34.630060 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036934.629573948] [controller_server]: Passing new path to controller.
+10月 03 22:15:34.835729 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036934.835081461] [controller_server]: Reached the goal!
+10月 03 22:15:34.869336 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036934.869085796] [bt_navigator]: Goal succeeded
+10月 03 22:15:34.869734 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036934.869469553] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:15:37.847897 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036937.847289678] [stm32_bridge]: STM32 readiness ready->rebooting
+10月 03 22:15:37.848862 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036937.848451598] [stm32_bridge]: STM32 telemetry lost; blocked motion and lidar until recovery
+10月 03 22:15:37.850330 fzurobot bash[38037]: [lidar_self_filter-2] [WARN] [1791036937.849822637] [lidar_safety_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:15:37.850799 fzurobot bash[38037]: [lidar_self_filter-3] [WARN] [1791036937.849837387] [lidar_self_filter]: STM32 unavailable; suppressing navigation point clouds
+10月 03 22:15:37.851241 fzurobot bash[38037]: [medical_navigator-16] [WARN] [1791036937.850571937] [medical_navigator]: STM32 reset detected; canceled navigation and cleared handoff state
+10月 03 22:15:37.851793 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036937.851122098] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:37.867351 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036937.866884120] [stm32_bridge]: STM32 readiness rebooting->waiting_telemetry
+10月 03 22:15:39.210113 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036939.209508980] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:40.708412 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036940.708055308] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:41.387986 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036941.387594920] [stm32_bridge]: New medical mission epoch=9: cleared stale navigation, scan and calibration state
+10月 03 22:15:41.389009 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036941.388683064] [stm32_bridge]: STM32 goal request #1 -> nurse
+10月 03 22:15:41.389315 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036941.389049283] [stm32_bridge]: STM32 readiness waiting_telemetry->recovering
+10月 03 22:15:41.401845 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036941.401504400] [code_scanner]: Released primary camera for USB handoff
+10月 03 22:15:41.487502 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036941.486761853] [code_scanner]: Opening tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 with YUYV:1920x1080@5
+10月 03 22:15:41.708601 fzurobot bash[38037]: [stm32_bridge-6] [WARN] [1791036941.708270495] [stm32_bridge]: Ignored stale navigator status for request=0 goal=0
+10月 03 22:15:42.148924 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036942.148498787] [stm32_bridge]: STM32 readiness recovering->ready
+10月 03 22:15:42.149347 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036942.148985473] [stm32_bridge]: STM32 telemetry stable and stationary; navigation may resume
+10月 03 22:15:42.149782 fzurobot bash[38037]: [lidar_self_filter-2] [INFO] [1791036942.149601336] [lidar_safety_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:15:42.150041 fzurobot bash[38037]: [lidar_self_filter-3] [INFO] [1791036942.149771882] [lidar_self_filter]: STM32 recovered; resuming navigation point clouds
+10月 03 22:15:42.150258 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036942.150140269] [medical_navigator]: STM32 recovery complete; accepting navigation requests
+10月 03 22:15:42.151871 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036942.151496496] [medical_navigator]: Dispatching nurse_scan_center -> map(1.70, -0.00) request=1 route=unknown->nurse_scan_center controller=FollowPathNurse
+10月 03 22:15:42.221289 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036942.220594470] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (1.70, -0.00)
+10月 03 22:15:42.271557 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036942.271181850] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:15:42.273996 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036942.273765596] [controller_server]: Optimizer reset
+10月 03 22:15:42.310638 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036942.309922033] [code_scanner]: STM32 mission epoch changed 8->9; restarting 15-second tele scan window
+10月 03 22:15:42.871804 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036942.871319271] [controller_server]: Passing new path to controller.
+10月 03 22:15:43.335976 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036943.335531861] [code_scanner]: Opened tele camera /dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0 as YUYV:1920x1080
+10月 03 22:15:43.420915 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036943.420297858] [code_scanner]: Confirmed scan context=1 format=1 value=11 via tele_zxing_qr
+10月 03 22:15:43.421779 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036943.421367107] [controller_server]: Passing new path to controller.
+10月 03 22:15:43.447353 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036943.446976492] [stm32_bridge]: STM32 accepted scan #26: 11
+10月 03 22:15:43.448514 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036943.448242208] [stm32_bridge]: STM32 goal request #2 -> bed1
+10月 03 22:15:43.450009 fzurobot bash[38037]: [medical_navigator-16] [WARN] [1791036943.449581021] [medical_navigator]: Previous goal did not accept cancellation; keeping chassis stopped until the action reaches a terminal state
+10月 03 22:15:43.452012 fzurobot bash[38037]: [bt_navigator-21] [ERROR] [1791036943.451551247] [bt_navigator_navigate_to_pose_rclcpp_node]: Failed to get result for follow_path in node halt!
+10月 03 22:15:43.452644 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036943.451654898] [bt_navigator]: [navigate_to_pose] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:15:43.452943 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036943.451916406] [bt_navigator]: Goal canceled
+10月 03 22:15:43.454235 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036943.453877189] [medical_navigator]: Dispatching bed1 -> map(5.40, 2.20) request=2 route=nurse->bed1 controller=FollowPathHeadingHold
+10月 03 22:15:43.471866 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036943.471318165] [controller_server]: Goal was canceled. Stopping the robot.
+10月 03 22:15:43.472055 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036943.471388026] [controller_server]: [follow_path] [ActionServer] Client requested to cancel the goal. Cancelling.
+10月 03 22:15:43.520698 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036943.519838907] [code_scanner]: Released tele camera for USB handoff
+10月 03 22:15:43.540211 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036943.539801976] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (5.40, 2.20)
+10月 03 22:15:43.630498 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036943.630203963] [code_scanner]: Opening primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 with MJPG:1920x1200@30
+10月 03 22:15:43.640860 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036943.640488688] [smoother_server]: Received a path to smooth.
+10月 03 22:15:43.660916 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036943.660543627] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:15:43.662726 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036943.662546685] [controller_server]: Optimizer reset
+10月 03 22:15:44.273452 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036944.273015848] [code_scanner]: Opened primary camera /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0 as MJPG:1920x1200
+10月 03 22:15:44.771075 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036944.770633847] [smoother_server]: Received a path to smooth.
+10月 03 22:15:44.791150 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036944.790719506] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:44.811110 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036944.810841071] [controller_server]: Passing new path to controller.
+10月 03 22:15:45.880976 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036945.880519908] [smoother_server]: Received a path to smooth.
+10月 03 22:15:45.900916 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036945.900463119] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:45.911198 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036945.910698016] [controller_server]: Passing new path to controller.
+10月 03 22:15:46.854295 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036946.853957606] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:46.961038 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036946.960495500] [smoother_server]: Received a path to smooth.
+10月 03 22:15:46.980887 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036946.980451541] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:47.010971 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036947.010675166] [controller_server]: Passing new path to controller.
+10月 03 22:15:48.026841 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036948.026509112] [planner_server]: GridBased switched final route: risk improvement 30.7%, time improvement 0.04 s
+10月 03 22:15:48.040689 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036948.040301645] [smoother_server]: Received a path to smooth.
+10月 03 22:15:48.060730 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036948.060411574] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:48.061129 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036948.060671541] [controller_server]: Passing new path to controller.
+10月 03 22:15:48.833385 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036948.833097010] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:48.854484 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036948.854133771] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:49.107983 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036949.107557945] [planner_server]: GridBased switched final route: risk improvement 35.2%, time improvement 0.03 s
+10月 03 22:15:49.121057 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036949.120597148] [smoother_server]: Received a path to smooth.
+10月 03 22:15:49.161136 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036949.160824965] [controller_server]: Passing new path to controller.
+10月 03 22:15:49.492999 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036949.492610154] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:49.513785 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036949.513483583] [controller_server]: Reached the goal!
+10月 03 22:15:49.550281 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036949.550040093] [bt_navigator]: Goal succeeded
+10月 03 22:15:49.551318 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036949.551100016] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:15:49.688037 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036949.687610703] [stm32_bridge]: STP23L calibrated at bed1: OPS offset=(8.0, 31.0) mm, field pose=(-2162.0, 5287.0) mm
+10月 03 22:15:50.918921 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036950.918495681] [code_scanner]: Confirmed scan context=2 format=2 value=6946522463487 via zbar_fast
+10月 03 22:15:50.948807 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036950.948377724] [stm32_bridge]: STM32 accepted scan #27: 6946522463487
+10月 03 22:15:51.808755 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036951.808259496] [stm32_bridge]: Started NUC TTS request=1 bed=1
+10月 03 22:15:53.408456 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036953.407940690] [stm32_bridge]: Completed NUC TTS request=1 bed=1: /home/fzurobot/Downloads/1_.mp3 via pulse
+10月 03 22:15:53.428326 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036953.427944197] [stm32_bridge]: STM32 goal request #3 -> bed3
+10月 03 22:15:53.429147 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036953.428892268] [medical_navigator]: Dispatching bed3 -> map(5.40, -2.20) request=3 route=bed1->bed3 controller=FollowPathLateralHold
+10月 03 22:15:53.430052 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036953.429607120] [bt_navigator]: Begin navigating from current location (5.42, 2.20) to (5.40, -2.20)
+10月 03 22:15:53.520681 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036953.520230960] [smoother_server]: Received a path to smooth.
+10月 03 22:15:53.541538 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036953.540969193] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:15:53.543989 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036953.543820152] [controller_server]: Optimizer reset
+10月 03 22:15:54.660571 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036954.660205251] [smoother_server]: Received a path to smooth.
+10月 03 22:15:54.680659 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036954.680293734] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:54.691413 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036954.691095745] [controller_server]: Passing new path to controller.
+10月 03 22:15:55.095933 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036955.095594618] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:55.357427 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036955.357040309] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:55.790939 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036955.790511335] [smoother_server]: Received a path to smooth.
+10月 03 22:15:55.791387 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036955.791094323] [controller_server]: Passing new path to controller.
+10月 03 22:15:55.841730 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036955.841114487] [controller_server]: Passing new path to controller.
+10月 03 22:15:56.880658 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036956.880295465] [smoother_server]: Received a path to smooth.
+10月 03 22:15:56.891423 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036956.891137778] [controller_server]: Passing new path to controller.
+10月 03 22:15:56.941625 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036956.941132511] [controller_server]: Passing new path to controller.
+10月 03 22:15:57.054169 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036957.053655386] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:15:57.517314 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036957.516204653] [collision_monitor]: Robot to continue normal operation
+10月 03 22:15:57.960993 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036957.960540806] [smoother_server]: Received a path to smooth.
+10月 03 22:15:57.981690 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036957.981281128] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:15:57.991526 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036957.991108825] [controller_server]: Passing new path to controller.
+10月 03 22:15:59.017273 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036959.016892501] [planner_server]: GridBased switched final route because the retained route is blocked
+10月 03 22:15:59.030692 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036959.030323562] [smoother_server]: Received a path to smooth.
+10月 03 22:15:59.041440 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036959.041094088] [controller_server]: Passing new path to controller.
+10月 03 22:15:59.091461 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036959.091095803] [controller_server]: Passing new path to controller.
+10月 03 22:16:00.080540 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036960.080234203] [planner_server]: GridBased switched final route: risk improvement 45.1%, time improvement 0.03 s
+10月 03 22:16:00.100701 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036960.100294024] [smoother_server]: Received a path to smooth.
+10月 03 22:16:00.141743 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036960.141109606] [controller_server]: Passing new path to controller.
+10月 03 22:16:00.295078 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036960.294756193] [controller_server]: Reached the goal!
+10月 03 22:16:00.330618 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036960.330006500] [bt_navigator]: Goal succeeded
+10月 03 22:16:00.333753 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036960.333223939] [medical_navigator]: Navigation succeeded (state=3)
+10月 03 22:16:00.787927 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036960.787443328] [stm32_bridge]: STP23L calibrated at bed3: OPS offset=(-1.0, -4.0) mm, field pose=(2172.0, 5320.0) mm
+10月 03 22:16:01.783355 fzurobot bash[38037]: [code_scanner-7] [INFO] [1791036961.782982230] [code_scanner]: Confirmed scan context=3 format=2 value=6906841121017 via zbar_fast
+10月 03 22:16:01.807407 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036961.806983714] [stm32_bridge]: STM32 accepted scan #28: 6906841121017
+10月 03 22:16:02.627947 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036962.627512355] [stm32_bridge]: Started NUC TTS request=2 bed=3
+10月 03 22:16:04.208006 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036964.207618585] [stm32_bridge]: Completed NUC TTS request=2 bed=3: /home/fzurobot/Downloads/3_.mp3 via pulse
+10月 03 22:16:04.230348 fzurobot bash[38037]: [stm32_bridge-6] [INFO] [1791036964.229375016] [stm32_bridge]: STM32 goal request #4 -> home
+10月 03 22:16:04.232668 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036964.232201642] [medical_navigator]: Dispatching home -> map(0.00, -0.00) request=4 route=bed3->home controller=FollowPathHeadingHold
+10月 03 22:16:04.233776 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036964.233286429] [bt_navigator]: Begin navigating from current location (5.39, -2.19) to (0.00, -0.00)
+10月 03 22:16:04.334410 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036964.334026363] [smoother_server]: Received a path to smooth.
+10月 03 22:16:04.354924 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036964.354387265] [controller_server]: Received a goal, begin computing control effort.
+10月 03 22:16:04.357504 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036964.356967972] [controller_server]: Optimizer reset
+10月 03 22:16:05.454491 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036965.454054080] [smoother_server]: Received a path to smooth.
+10月 03 22:16:05.454902 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036965.454552428] [controller_server]: Passing new path to controller.
+10月 03 22:16:05.505128 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036965.504569057] [controller_server]: Passing new path to controller.
+10月 03 22:16:06.518965 fzurobot bash[38037]: [planner_server-19] [INFO] [1791036966.518570626] [planner_server]: GridBased switched final route: risk improvement 66.0%, time improvement 0.06 s
+10月 03 22:16:06.534494 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036966.534124518] [smoother_server]: Received a path to smooth.
+10月 03 22:16:06.554165 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036966.553895239] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:16:06.554766 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036966.554588968] [controller_server]: Passing new path to controller.
+10月 03 22:16:06.577892 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036966.577346688] [collision_monitor]: Robot to approach for 1.000000 seconds away from collision
+10月 03 22:16:06.599420 fzurobot bash[38037]: [collision_monitor-14] [INFO] [1791036966.599051328] [collision_monitor]: Robot to continue normal operation
+10月 03 22:16:07.614397 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036967.614037728] [smoother_server]: Received a path to smooth.
+10月 03 22:16:07.634186 fzurobot bash[38037]: [controller_server-17] [WARN] [1791036967.633912961] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+10月 03 22:16:07.656483 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036967.654553338] [controller_server]: Passing new path to controller.
+10月 03 22:16:08.704749 fzurobot bash[38037]: [smoother_server-18] [INFO] [1791036968.704116414] [smoother_server]: Received a path to smooth.
+10月 03 22:16:08.705512 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036968.704567553] [controller_server]: Passing new path to controller.
+10月 03 22:16:09.207909 fzurobot bash[38037]: [controller_server-17] [INFO] [1791036969.207486799] [controller_server]: Reached the goal!
+10月 03 22:16:09.243969 fzurobot bash[38037]: [bt_navigator-21] [INFO] [1791036969.243556907] [bt_navigator]: Goal succeeded
+10月 03 22:16:09.245046 fzurobot bash[38037]: [medical_navigator-16] [INFO] [1791036969.244779431] [medical_navigator]: Navigation succeeded (state=3)

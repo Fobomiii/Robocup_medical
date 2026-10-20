@@ -1,0 +1,42 @@
+stdin is not a terminal device. Keyboard handling disabled.[INFO] [1791078263.065106119] [rosbag2_recorder]: Press SPACE for pausing/resuming
+[INFO] [1791078263.068879383] [rosbag2_storage]: Opened database '/home/fzurobot/bed13_full_20261004_094422/rosbag/rosbag_0.db3' for READ_WRITE.
+[INFO] [1791078263.073043233] [rosbag2_recorder]: Listening for topics...
+[INFO] [1791078263.073049561] [rosbag2_recorder]: Event publisher thread: Starting
+[INFO] [1791078263.075815255] [rosbag2_recorder]: Subscribed to topic '/speed_limit'
+[INFO] [1791078263.076466344] [rosbag2_recorder]: Subscribed to topic '/medical_nav/home_approach_status'
+[INFO] [1791078263.076803302] [rosbag2_recorder]: Subscribed to topic '/medical_nav/field_boundary_status'
+[INFO] [1791078263.077109531] [rosbag2_recorder]: Subscribed to topic '/medical_nav/corner_speed_status'
+[INFO] [1791078263.077395291] [rosbag2_recorder]: Subscribed to topic '/medical_nav/bed_approach_status'
+[INFO] [1791078263.077864436] [rosbag2_recorder]: Subscribed to topic '/cmd_vel_home_limited'
+[INFO] [1791078263.077938468] [rosbag2_recorder]: Recording...
+[WARN] [1791078263.280098054] [ROSBAG2_TRANSPORT]: Hidden topics are not recorded. Enable them with --include-hidden-topics
+[INFO] [1791078263.283850926] [rosbag2_recorder]: Subscribed to topic '/cmd_vel'
+[INFO] [1791078263.286289423] [rosbag2_recorder]: Subscribed to topic '/plan'
+[INFO] [1791078263.287044953] [rosbag2_recorder]: Subscribed to topic '/cmd_vel_nav'
+[INFO] [1791078263.287643367] [rosbag2_recorder]: Subscribed to topic '/plan_smoothed'
+[INFO] [1791078263.288344995] [rosbag2_recorder]: Subscribed to topic '/transformed_global_plan'
+[INFO] [1791078263.390675472] [rosbag2_recorder]: Subscribed to topic '/medical_nav/safety_self_filter_polygon'
+[INFO] [1791078263.391321718] [rosbag2_recorder]: Subscribed to topic '/medical_nav/lidar_filter_status'
+[INFO] [1791078263.391867553] [rosbag2_recorder]: Subscribed to topic '/medical_nav/lidar_safety_filter_status'
+[INFO] [1791078263.392366071] [rosbag2_recorder]: Subscribed to topic '/medical_nav/cone_compensation_status'
+[INFO] [1791078263.392911372] [rosbag2_recorder]: Subscribed to topic '/medical_nav/self_filter_polygon'
+[INFO] [1791078263.393464175] [rosbag2_recorder]: Subscribed to topic '/medical_nav/blind_zone_status'
+[INFO] [1791078263.496144615] [rosbag2_recorder]: Subscribed to topic '/medical_nav/bridge_cmd_debug'
+[INFO] [1791078263.497120084] [rosbag2_recorder]: Subscribed to topic '/medical_nav/bridge_status'
+[INFO] [1791078263.498007471] [rosbag2_recorder]: Subscribed to topic '/medical_nav/robot_pose'
+[INFO] [1791078263.498788820] [rosbag2_recorder]: Subscribed to topic '/medical_nav/navigator_status'
+[INFO] [1791078263.499411167] [rosbag2_recorder]: Subscribed to topic '/medical_nav/wheel_diagnostics'
+[INFO] [1791078263.500333923] [rosbag2_recorder]: Subscribed to topic '/controller_selector'
+[INFO] [1791078263.501497950] [rosbag2_recorder]: Subscribed to topic '/medical_nav/task_state'
+[INFO] [1791078263.502784766] [rosbag2_recorder]: Subscribed to topic '/medical_nav/wheel_odom'
+[INFO] [1791078263.504120013] [rosbag2_recorder]: Subscribed to topic '/odom'
+[INFO] [1791078263.505375672] [rosbag2_recorder]: Subscribed to topic '/medical_nav/stm32_ready'
+[INFO] [1791078263.506865314] [rosbag2_recorder]: Subscribed to topic '/tf'
+[INFO] [1791078263.507628987] [rosbag2_recorder]: Subscribed to topic '/tf_static'
+[INFO] [1791078264.231749066] [rosbag2_recorder]: Subscribed to topic '/cmd_vel_safe'
+[INFO] [1791078264.233474704] [rosbag2_recorder]: Subscribed to topic '/collision_monitor/transition_event'
+[INFO] [1791078264.235259484] [rosbag2_recorder]: Subscribed to topic '/StopPolygon'
+[INFO] [1791078264.237238140] [rosbag2_recorder]: Subscribed to topic '/ApproachPolygon'
+[INFO] [1791078425.136229822] [rosbag2_cpp]: Writing remaining messages from cache to the bag. It may take a while
+[INFO] [1791078425.138354293] [rosbag2_recorder]: Event publisher thread: Exiting
+[INFO] [1791078425.138439004] [rosbag2_recorder]: Recording stopped

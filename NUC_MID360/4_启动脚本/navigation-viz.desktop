@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=导航 RViz
+Comment=查看完整场地、机器人、点云和规划路径
+Exec=/bin/bash -c "exec ~/start_rviz.sh"
+Icon=applications-engineering
+Terminal=false
+X-GNOME-Autostart-enabled=false
+StartupNotify=true
+Categories=Development;Robotics;

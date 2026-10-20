@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>obstacle_detector</name>
+  <version>0.1.0</version>
+  <description>OPS9/HWT101CT localisation, Livox Mid360 obstacles and Nav2 STM32 bridge.</description>
+  <maintainer email="user@fzu.edu.cn">FZU Robocup Team</maintainer>
+  <license>MIT</license>
+
+  <depend>rclpy</depend>
+  <depend>ament_index_python</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>geometry_msgs</depend>
+  <depend>lifecycle_msgs</depend>
+  <depend>nav2_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>sensor_msgs_py</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2_ros</depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_collision_monitor</exec_depend>
+  <exec_depend>nav2_common</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>medical_clearance_planner</exec_depend>
+  <exec_depend>nav2_dwb_controller</exec_depend>
+  <exec_depend>dwb_core</exec_depend>
+  <exec_depend>dwb_critics</exec_depend>
+  <exec_depend>nav2_navfn_planner</exec_depend>
+  <exec_depend>nav2_smac_planner</exec_depend>
+  <exec_depend>nav2_smoother</exec_depend>
+  <exec_depend>nav2_constrained_smoother</exec_depend>
+  <exec_depend>nav2_velocity_smoother</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-pyqt5</exec_depend>
+  <exec_depend>python3-pyzbar</exec_depend>
+  <exec_depend>python3-serial</exec_depend>
+  <exec_depend>python3-bleak</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>bluez</exec_depend>
+  <exec_depend>rfkill</exec_depend>
+  <exec_depend>v4l-utils</exec_depend>
+  <exec_depend>alsa-utils</exec_depend>
+  <exec_depend>ffmpeg</exec_depend>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

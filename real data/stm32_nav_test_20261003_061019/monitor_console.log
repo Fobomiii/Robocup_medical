@@ -1,0 +1,27 @@
+========== STM32 NAV TEST ==========
+开始时间: 2026年 10月 03日 星期六 06:10:19 CST
+输出目录: /home/fzurobot/stm32_nav_test_20261003_061019
+启动 rosbag...
+stdin is not a terminal device. Keyboard handling disabled.[INFO] [1790979021.190755870] [rosbag2_recorder]: Press SPACE for pausing/resuming
+[INFO] [1790979021.193949945] [rosbag2_storage]: Opened database '/home/fzurobot/stm32_nav_test_20261003_061019/rosbag/rosbag_0.db3' for READ_WRITE.
+[INFO] [1790979021.196297152] [rosbag2_recorder]: Listening for topics...
+[INFO] [1790979021.196306435] [rosbag2_recorder]: Event publisher thread: Starting
+[INFO] [1790979021.196503001] [rosbag2_recorder]: Recording...
+
+监测已经启动。
+重点观察：
+  online_mask
+  target_rpm / measured_rpm
+  current_saturation_mask
+  bridge_cmd_debug 的 sent_cmd
+  xdrive 的 planar_scale / wheel_scale
+  stm32_ready / wheel_telemetry
+
+现在可以进行架空测试或正式 Home-Bed-Home 测试。
+结束时按 Ctrl+C，脚本会自动停止记录并打包。
+
+==> /home/fzurobot/stm32_nav_test_20261003_061019/bridge_status.log <==
+
+==> /home/fzurobot/stm32_nav_test_20261003_061019/wheel_diagnostics.log <==
+
+==> /home/fzurobot/stm32_nav_test_20261003_061019/bridge_cmd_debug.log <==

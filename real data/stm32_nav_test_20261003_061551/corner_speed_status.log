@@ -1,0 +1,738 @@
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"raw","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_m_s2"...'
+---
+data: '{"source":"raw_fallback","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_ac...'
+---
+data: '{"source":"raw_fallback","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_ac...'
+---
+data: '{"source":"raw_fallback","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_ac...'
+---
+data: '{"source":"raw_fallback","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_ac...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_pose","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"raw","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"limit...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathNurse","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"raw","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"raw","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"raw","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2":1.4,...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_m_s2"...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathLateralHold","profile":"default","min_corner_speed_m_s":1.0,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"raw","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_m_s2"...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"smoothed","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_accel_...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---
+data: '{"source":"no_fresh_path","controller_id":"FollowPathHeadingHold","profile":"heading_hold","min_corner_speed_m_s":1.1,"lateral_a...'
+---

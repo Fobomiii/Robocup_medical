@@ -1,0 +1,8 @@
+{"recv_unix_ns":1790975176176314375,"recv_time":"2026-10-03T05:06:16.176","topic":"/medical_nav/goal_request","data":{"request_id":1,"goal_id":2,"point":"nurse"}}
+{"recv_unix_ns":1790975176415703693,"recv_time":"2026-10-03T05:06:16.415","topic":"/medical_nav/goal_request","data":{"request_id":1,"goal_id":2,"point":"nurse"}}
+{"recv_unix_ns":1790975176675110297,"recv_time":"2026-10-03T05:06:16.675","topic":"/medical_nav/goal_request","data":{"request_id":1,"goal_id":2,"point":"nurse"}}
+{"recv_unix_ns":1790975176937934412,"recv_time":"2026-10-03T05:06:16.937","topic":"/medical_nav/goal_request","data":{"request_id":1,"goal_id":2,"point":"nurse"}}
+{"recv_unix_ns":1790975178836268761,"recv_time":"2026-10-03T05:06:18.836","topic":"/medical_nav/goal_request","data":{"request_id":2,"goal_id":3,"point":"bed1"}}
+{"recv_unix_ns":1790975179076444570,"recv_time":"2026-10-03T05:06:19.076","topic":"/medical_nav/goal_request","data":{"request_id":2,"goal_id":3,"point":"bed1"}}
+{"recv_unix_ns":1790975189117750316,"recv_time":"2026-10-03T05:06:29.117","topic":"/medical_nav/goal_request","data":{"request_id":3,"goal_id":4,"point":"bed3"}}
+{"recv_unix_ns":1790975200696066782,"recv_time":"2026-10-03T05:06:40.696","topic":"/medical_nav/goal_request","data":{"request_id":4,"goal_id":1,"point":"home"}}

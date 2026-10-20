@@ -1,0 +1,4 @@
+usage: ros2 bag info [-h]
+                     [-s {my_test_plugin,sqlite3,my_read_only_test_plugin}]
+                     bag_path
+ros2 bag info: error: argument bag_path: Bag path '/home/fzurobot/bed13_one_20261003_050607/rosbag' does not exist!

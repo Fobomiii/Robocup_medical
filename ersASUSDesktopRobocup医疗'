@@ -1,0 +1,12 @@
+[33m6faa9e6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32msnapshot-current-20261004-before-78ff6bb[m[33m, [m[1;31morigin/snapshot-current-20261004-before-78ff6bb[m[33m)[m HEAD@{Sun Oct 4 07:25:23 2026}: reset: moving to HEAD~1
+[33m3284edd[m HEAD@{Sun Oct 4 07:24:24 2026}: reset: moving to HEAD~1
+[33m2098e72[m HEAD@{Sun Oct 4 07:20:49 2026}: commit: 明确 Collision Monitor 停止的最高权限
+[33m3284edd[m HEAD@{Sun Oct 4 07:11:32 2026}: commit: 明确 Collision Monitor 停止的最高权限
+[33m6faa9e6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32msnapshot-current-20261004-before-78ff6bb[m[33m, [m[1;31morigin/snapshot-current-20261004-before-78ff6bb[m[33m)[m HEAD@{Sun Oct 4 06:30:05 2026}: commit: 78ff6bb 基线 + 本轮 STM32 到床对准修复
+[33me0dcee0[m HEAD@{Sun Oct 4 05:30:34 2026}: checkout: moving from 78ff6bbddef3f8ae5399ef7963b494d3a3121f1e to snapshot-current-20261004-before-78ff6bb
+[33m78ff6bb[m[33m ([m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m HEAD@{Sun Oct 4 04:22:45 2026}: checkout: moving from snapshot-current-20261004-before-78ff6bb to 78ff6bbddef3f8ae5399ef7963b494d3a3121f1e
+[33me0dcee0[m HEAD@{Sun Oct 4 04:22:44 2026}: commit: 保存20261004当前实车调试版本
+[33m78ff6bb[m[33m ([m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m HEAD@{Sun Oct 4 04:22:44 2026}: checkout: moving from main to snapshot-current-20261004-before-78ff6bb
+[33m78ff6bb[m[33m ([m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m HEAD@{Sun Oct 4 00:04:06 2026}: commit: 加入 X Y 单独提前限速 和 yaw强锁定
+[33ma187cec[m HEAD@{Fri Oct 2 20:27:23 2026}: commit: 修正了底盘运动学严重错误 运动稳定性提高 但较慢
+[33mcdd7a81[m HEAD@{Fri Oct 2 02:51:38 2026}: commit: 25s版 加入蓝牙生命体征检测

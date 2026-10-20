@@ -1,0 +1,926 @@
+/**
+ * @file DJIMotorCtrlSTM32.cpp
+ * @brief DJI motor control — ESP-style PID (ARMCC5 / C++03 compatible).
+ */
+#include "DJIMotorCtrlSTM32.h"
+#include "cmsis_os.h"
+#include <math.h>
+#include <string.h>
+
+/* -------------------------------------------------------------------------- */
+/* PID                                                                        */
+/* -------------------------------------------------------------------------- */
+struct PidParam {
+  float kp;
+  float ki;
+  float kd;
+  float dead_zone;
+  float max_out;
+};
+
+class PidControl {
+public:
+  PidControl()
+    : kp_(0.f), ki_(0.f), kd_(0.f), dead_(0.f), max_(10000.f),
+      integral_(0.f), prev_err_(0.f), last_us_(0)
+  {
+  }
+
+  void setParam(const PidParam& p)
+  {
+    kp_ = p.kp;
+    ki_ = p.ki;
+    kd_ = p.kd;
+    dead_ = p.dead_zone;
+    max_ = p.max_out;
+    reset();
+  }
+
+  void reset()
+  {
+    integral_ = 0.f;
+    prev_err_ = 0.f;
+    last_us_ = 0;
+  }
+
+  float control(float error, uint32_t now_us)
+  {
+    if (fabsf(error) < dead_) {
+      error = 0.f;
+    }
+
+    float dt = 1e-6f * (float)(now_us - last_us_);
+    if (last_us_ == 0 || dt <= 0.f || dt > 0.05f) {
+      dt = 0.001f;
+    }
+
+    float p_out = kp_ * error;
+    integral_ += dt * ki_ * error;
+    if (integral_ > max_) {
+      integral_ = max_;
+    } else if (integral_ < -max_) {
+      integral_ = -max_;
+    }
+    if (fabsf(p_out) > max_) {
+      integral_ = 0.f;
+    }
+
+    float d_out = kd_ * (error - prev_err_) / dt;
+    prev_err_ = error;
+    last_us_ = now_us;
+
+    float out = p_out + integral_ + d_out;
+    if (out > max_) {
+      return max_;
+    }
+    if (out < -max_) {
+      return -max_;
+    }
+    return out;
+  }
+
+private:
+  float kp_;
+  float ki_;
+  float kd_;
+  float dead_;
+  float max_;
+  float integral_;
+  float prev_err_;
+  uint32_t last_us_;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Time / DWT                                                                 */
+/* -------------------------------------------------------------------------- */
+static void dwt_init_once(void)
+{
+  static uint8_t inited = 0;
+  if (inited) {
+    return;
+  }
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CYCCNT = 0;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+  inited = 1;
+}
+
+static uint32_t micros_u32(void)
+{
+  return DWT->CYCCNT / (SystemCoreClock / 1000000U);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Per-motor feedback                                                         */
+/* -------------------------------------------------------------------------- */
+struct MotorFb {
+  int16_t angle;
+  int16_t speed;
+  int16_t current;
+  int16_t last_angle;
+  int64_t location;
+  uint32_t last_rx_us;
+  uint8_t angle_inited;
+
+  float target_speed;
+  float speed_loc_target;
+  float last_cmd_speed;
+  int16_t set_current;
+  PidControl speed_pid;
+  uint8_t enable;
+
+  MotorFb()
+    : angle(0), speed(0), current(0), last_angle(0), location(0), last_rx_us(0),
+      angle_inited(0), target_speed(0.f), speed_loc_target(0.f), last_cmd_speed(0.f),
+      set_current(0), enable(0)
+  {
+  }
+
+  bool online() const
+  {
+    if (last_rx_us == 0) {
+      return false;
+    }
+    return (micros_u32() - last_rx_us) < 100000U;
+  }
+
+  void pushRx(const uint8_t data[8])
+  {
+    angle = (int16_t)((data[0] << 8) | data[1]);
+    speed = (int16_t)((data[2] << 8) | data[3]);
+    current = (int16_t)((data[4] << 8) | data[5]);
+
+    if (!angle_inited) {
+      last_angle = angle;
+      location = angle;
+      speed_loc_target = (float)location;
+      angle_inited = 1;
+      last_rx_us = micros_u32();
+      return;
+    }
+
+    int diff = (int)angle - (int)last_angle;
+    int delta;
+    if (diff > 4096) {
+      delta = diff - 8192;
+    } else if (diff < -4096) {
+      delta = diff + 8192;
+    } else {
+      delta = diff;
+    }
+    location += delta;
+    last_angle = angle;
+    last_rx_us = micros_u32();
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/* Shared FDCAN bus                                                           */
+/* -------------------------------------------------------------------------- */
+class DjiCanBus {
+public:
+  DjiCanBus() : h_(NULL), ready_(false), tx_error_count_(0U) {}
+
+  void attach(FDCAN_HandleTypeDef* h, float speed_max_out)
+  {
+    if (h_ != NULL) {
+      return;
+    }
+    h_ = h;
+    dwt_init_once();
+
+    PidParam speed_default;
+    // First controlled speed-loop increase: improve wheel-speed tracking
+    // during lateral braking without jumping directly to an aggressive gain.
+    speed_default.kp = 8.0f;
+    speed_default.ki = 1.f;
+    speed_default.kd = 0.01f;
+    speed_default.dead_zone = 1.f;
+    speed_default.max_out = speed_max_out;
+    for (int i = 0; i < 8; ++i) {
+      motors_[i].speed_pid.setParam(speed_default);
+    }
+
+    FDCAN_FilterTypeDef flt;
+    memset(&flt, 0, sizeof(flt));
+    flt.IdType = FDCAN_STANDARD_ID;
+    flt.FilterIndex = 0;
+    flt.FilterType = FDCAN_FILTER_MASK;
+    flt.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+    flt.FilterID1 = 0x200;
+    flt.FilterID2 = 0x7F8;
+    (void)HAL_FDCAN_ConfigFilter(h_, &flt);
+    (void)HAL_FDCAN_ConfigGlobalFilter(h_, FDCAN_REJECT, FDCAN_REJECT,
+                                       FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE);
+    (void)HAL_FDCAN_Start(h_);
+    (void)HAL_FDCAN_ActivateNotification(h_, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+    ready_ = true;
+  }
+
+  bool ready() const { return ready_; }
+  uint32_t txErrorCount() const { return tx_error_count_; }
+
+  MotorFb& motor(uint8_t id)
+  {
+    if (id < 1) {
+      id = 1;
+    }
+    if (id > 8) {
+      id = 8;
+    }
+    return motors_[id - 1];
+  }
+
+  void onRxFifo0(FDCAN_HandleTypeDef* h)
+  {
+    if (h != h_) {
+      return;
+    }
+    FDCAN_RxHeaderTypeDef hdr;
+    uint8_t data[8];
+    while (HAL_FDCAN_GetRxMessage(h_, FDCAN_RX_FIFO0, &hdr, data) == HAL_OK) {
+      if (hdr.IdType != FDCAN_STANDARD_ID) {
+        continue;
+      }
+      if (hdr.Identifier >= 0x201 && hdr.Identifier <= 0x208) {
+        motor((uint8_t)(hdr.Identifier - 0x200)).pushRx(data);
+      }
+    }
+  }
+
+  void sendGroup200(int16_t i1, int16_t i2, int16_t i3, int16_t i4)
+  {
+    sendRaw(0x200, i1, i2, i3, i4);
+  }
+
+  void sendGroup1FF(int16_t i5, int16_t i6, int16_t i7, int16_t i8)
+  {
+    sendRaw(0x1FF, i5, i6, i7, i8);
+  }
+
+  int16_t speedLoopStep(MotorFb& m, float target_rpm, float loc_k, uint32_t now_us, float dt)
+  {
+    if (!m.enable) {
+      m.set_current = 0;
+      return 0;
+    }
+
+    if (m.online() && fabsf(loc_k) > 1e-6f) {
+      m.speed_loc_target += 8192.f * target_rpm * dt / 60.f;
+    } else if (fabsf(loc_k) <= 1e-6f) {
+      m.speed_loc_target = (float)m.location;
+    }
+
+    float err = (target_rpm - (float)m.speed)
+                + loc_k * (m.speed_loc_target - (float)m.location) / 8192.f;
+
+    float cru = m.speed_pid.control(m.online() ? err : 0.f, now_us);
+    if (cru > 16384.f) {
+      cru = 16384.f;
+    }
+    if (cru < -16384.f) {
+      cru = -16384.f;
+    }
+    m.set_current = (int16_t)cru;
+    m.target_speed = target_rpm;
+    return m.set_current;
+  }
+
+private:
+  void sendRaw(uint16_t std_id, int16_t a, int16_t b, int16_t c, int16_t d)
+  {
+    if (h_ == NULL) {
+      return;
+    }
+    FDCAN_TxHeaderTypeDef hdr;
+    memset(&hdr, 0, sizeof(hdr));
+    hdr.Identifier = std_id;
+    hdr.IdType = FDCAN_STANDARD_ID;
+    hdr.TxFrameType = FDCAN_DATA_FRAME;
+    hdr.DataLength = FDCAN_DLC_BYTES_8;
+    hdr.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+    hdr.BitRateSwitch = FDCAN_BRS_OFF;
+    hdr.FDFormat = FDCAN_CLASSIC_CAN;
+    hdr.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+    hdr.MessageMarker = 0;
+
+    uint8_t data[8];
+    data[0] = (uint8_t)(a >> 8);
+    data[1] = (uint8_t)(a & 0xFF);
+    data[2] = (uint8_t)(b >> 8);
+    data[3] = (uint8_t)(b & 0xFF);
+    data[4] = (uint8_t)(c >> 8);
+    data[5] = (uint8_t)(c & 0xFF);
+    data[6] = (uint8_t)(d >> 8);
+    data[7] = (uint8_t)(d & 0xFF);
+    if (HAL_FDCAN_AddMessageToTxFifoQ(h_, &hdr, data) != HAL_OK) {
+      tx_error_count_++;
+    }
+  }
+
+  FDCAN_HandleTypeDef* h_;
+  MotorFb motors_[8];
+  bool ready_;
+  volatile uint32_t tx_error_count_;
+};
+
+static DjiCanBus g_chassis_bus;
+static DjiCanBus g_arm_bus;
+
+extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs)
+{
+  (void)RxFifo0ITs;
+  g_chassis_bus.onRxFifo0(hfdcan);
+  g_arm_bus.onRxFifo0(hfdcan);
+}
+
+/* -------------------------------------------------------------------------- */
+/* CHASSIS                                                                    */
+/* -------------------------------------------------------------------------- */
+static const float kGear3508 = 19.f;
+static volatile float s_chassis_speed_loc_k = 0.f;
+static const float kPi = 3.14159265358979323846f;
+static const float kWheelDiameterMm = 152.0f;
+static const float kTurnRadiusMm = 250.0f;
+static const float kMaxAxisSpeedMmS = 3000.0f;
+static const float kMaxWheelSurfaceSpeedMmS = 3000.0f;
+/* The chassis speed-loop output is allowed up to +/-13000.  Keep the
+ * diagnostic threshold below that limit so only genuine near-limit commands
+ * are reported as saturated. */
+static const int16_t kCurrentSaturationThreshold = 12900;
+
+CHASSIS::CHASSIS(FDCAN_HandleTypeDef* hfdcan)
+  : can_(hfdcan), frq_(1000), started_(false)
+{
+}
+
+void CHASSIS::begin(uint16_t frq_hz)
+{
+  if (frq_hz < 50) {
+    frq_hz = 50;
+  }
+  if (frq_hz > 1000) {
+    frq_hz = 1000;
+  }
+  frq_ = frq_hz;
+  g_chassis_bus.attach(can_, 13000.f);
+  for (uint8_t id = 1; id <= 4; ++id) {
+    MotorFb& m = g_chassis_bus.motor(id);
+    m.enable = 1;
+    m.speed_loc_target = (float)m.location;
+    m.speed_pid.reset();
+  }
+  started_ = true;
+}
+
+void CHASSIS::Update(float Vx, float Vy, float W, bool immediate_stop)
+{
+  if (!started_) {
+    return;
+  }
+
+  float out_rpm[4];
+  float max_abs_rpm;
+  float wheel_scale;
+  const float max_wheel_rpm =
+      kMaxWheelSurfaceSpeedMmS * 60.0f / (kPi * kWheelDiameterMm);
+  static uint32_t last_us = 0;
+  uint32_t now = micros_u32();
+  float dt = 1e-6f * (float)(now - last_us);
+  if (last_us == 0 || dt <= 0.f || dt > 0.05f) {
+    dt = 1.f / (float)frq_;
+  }
+  last_us = now;
+
+  /* Apply each command directly; Nav2 owns navigation acceleration limits.
+   * Local docking PID outputs also bypass any chassis-side velocity ramp. */
+  if (immediate_stop) {
+    Vx = 0.f;
+    Vy = 0.f;
+    W = 0.f;
+  }
+
+  /* Physical cross layout by CAN ID: 4=front, 1=left, 2=rear, 3=right. */
+  out_rpm[0] = Vy + W;
+  out_rpm[1] = -Vx + W;
+  out_rpm[2] = -Vy + W;
+  out_rpm[3] = Vx + W;
+
+  /* Scale all four wheels together so saturation preserves the requested
+   * translation/yaw ratio instead of clipping wheels independently. Pure
+   * translation is already limited independently on the two cross-drive
+   * axes, so diagonal motion is not normalized. */
+  max_abs_rpm = 0.f;
+  for (int i = 0; i < 4; ++i) {
+    float abs_rpm = fabsf(out_rpm[i]);
+    if (abs_rpm > max_abs_rpm) {
+      max_abs_rpm = abs_rpm;
+    }
+  }
+  if (max_abs_rpm > max_wheel_rpm) {
+    wheel_scale = max_wheel_rpm / max_abs_rpm;
+    for (int i = 0; i < 4; ++i) {
+      out_rpm[i] *= wheel_scale;
+    }
+  }
+
+  int16_t cur[4];
+  for (int i = 0; i < 4; ++i) {
+    float rotor = out_rpm[i] * kGear3508;
+    cur[i] = g_chassis_bus.speedLoopStep(
+      g_chassis_bus.motor((uint8_t)(i + 1)), rotor,
+      s_chassis_speed_loc_k, now, dt);
+  }
+  g_chassis_bus.sendGroup200(cur[0], cur[1], cur[2], cur[3]);
+}
+
+/* -------------------------------------------------------------------------- */
+/* M2006Motor                                                                 */
+/* -------------------------------------------------------------------------- */
+static PidControl s_arm_pos_pid;
+static uint32_t s_arm_last_us = 0;
+
+M2006Motor::M2006Motor(FDCAN_HandleTypeDef* hfdcan, uint8_t id, float gear_ratio)
+  : can_(hfdcan),
+    id_(id),
+    gear_(gear_ratio),
+    frq_(1000),
+    started_(false),
+    target_deg_(0.f),
+    cmd_deg_(0.f),
+    traj_active_(false),
+    traj_t0_tick_(0),
+    traj_T_(0.f),
+    traj_start_(0.f),
+    traj_final_(0.f),
+    traj_Ta_(0.f),
+    traj_Tc_(0.f),
+    traj_a_(0.f),
+    traj_v_(0.f),
+    traj_dir_(1.f)
+{
+  if (id_ < 1) {
+    id_ = 1;
+  }
+  if (id_ > 8) {
+    id_ = 8;
+  }
+  if (gear_ < 1.f) {
+    gear_ = 1.f;
+  }
+}
+
+float M2006Motor::encPerOutDeg() const
+{
+  return (8192.f * gear_) / 360.f;
+}
+
+float M2006Motor::getAngleDeg()
+{
+  MotorFb& m = g_arm_bus.motor(id_);
+  return (float)m.location / encPerOutDeg();
+}
+
+bool M2006Motor::online()
+{
+  return g_arm_bus.motor(id_).online();
+}
+
+void M2006Motor::sendCurrent(int16_t current)
+{
+  if (id_ >= 1 && id_ <= 4) {
+    int16_t c1 = 0, c2 = 0, c3 = 0, c4 = 0;
+    if (id_ == 1) {
+      c1 = current;
+    } else if (id_ == 2) {
+      c2 = current;
+    } else if (id_ == 3) {
+      c3 = current;
+    } else {
+      c4 = current;
+    }
+    g_arm_bus.sendGroup200(c1, c2, c3, c4);
+  } else {
+    int16_t c5 = 0, c6 = 0, c7 = 0, c8 = 0;
+    if (id_ == 5) {
+      c5 = current;
+    } else if (id_ == 6) {
+      c6 = current;
+    } else if (id_ == 7) {
+      c7 = current;
+    } else {
+      c8 = current;
+    }
+    g_arm_bus.sendGroup1FF(c5, c6, c7, c8);
+  }
+}
+
+void M2006Motor::begin(uint16_t frq_hz)
+{
+  if (frq_hz < 50) {
+    frq_hz = 50;
+  }
+  if (frq_hz > 1000) {
+    frq_hz = 1000;
+  }
+  frq_ = frq_hz;
+  /* Arm motors retain the original +/-10000 speed-loop current limit. */
+  g_arm_bus.attach(can_, 10000.f);
+
+  PidParam pos_default;
+  pos_default.kp = 0.1f;
+  pos_default.ki = 0.f;
+  pos_default.kd = 0.f;
+  pos_default.dead_zone = 2000.f;
+  /* The 1.5 s arm trajectory peaks at 4500 rotor rpm with P36. */
+  pos_default.max_out = 6000.f;
+  s_arm_pos_pid.setParam(pos_default);
+
+  MotorFb& m = g_arm_bus.motor(id_);
+  m.enable = 1;
+  m.speed_loc_target = (float)m.location;
+  m.speed_pid.reset();
+  s_arm_last_us = 0;
+
+  cmd_deg_ = getAngleDeg();
+  target_deg_ = cmd_deg_;
+  traj_active_ = false;
+  started_ = true;
+}
+
+void M2006Motor::ctrlAngle(float deg)
+{
+  traj_active_ = false;
+  target_deg_ = deg;
+  cmd_deg_ = deg;
+}
+
+void M2006Motor::planTrapezoid(float start_deg, float final_deg, float time_s)
+{
+  float S = final_deg - start_deg;
+  float Sabs = fabsf(S);
+
+  traj_start_ = start_deg;
+  traj_final_ = final_deg;
+  traj_dir_ = (S >= 0.f) ? 1.f : -1.f;
+  traj_T_ = time_s;
+  traj_t0_tick_ = osKernelGetTickCount();
+
+  if (Sabs < 1e-3f || time_s < 1e-3f) {
+    traj_active_ = false;
+    cmd_deg_ = final_deg;
+    target_deg_ = final_deg;
+    return;
+  }
+
+  float Ta = time_s / 3.f;
+  float Tc = time_s / 3.f;
+  float v = Sabs / (time_s - Ta);
+  float a = v / Ta;
+
+  if (Tc < 1e-4f) {
+    Ta = time_s * 0.5f;
+    Tc = 0.f;
+    v = 2.f * Sabs / time_s;
+    a = v / Ta;
+  }
+
+  traj_Ta_ = Ta;
+  traj_Tc_ = Tc;
+  traj_a_ = a;
+  traj_v_ = v;
+  traj_active_ = true;
+  target_deg_ = final_deg;
+  cmd_deg_ = start_deg;
+}
+
+float M2006Motor::trajEval(float t) const
+{
+  if (t <= 0.f) {
+    return traj_start_;
+  }
+  if (t >= traj_T_) {
+    return traj_final_;
+  }
+
+  float Ta = traj_Ta_;
+  float Tc = traj_Tc_;
+  float a = traj_a_;
+  float v = traj_v_;
+  float dir = traj_dir_;
+  float s_abs;
+
+  if (t <= Ta) {
+    s_abs = 0.5f * a * t * t;
+  } else if (t <= Ta + Tc) {
+    float s_acc = 0.5f * a * Ta * Ta;
+    s_abs = s_acc + v * (t - Ta);
+  } else {
+    float te = traj_T_ - t;
+    float Sabs = fabsf(traj_final_ - traj_start_);
+    s_abs = Sabs - 0.5f * a * te * te;
+  }
+
+  return traj_start_ + dir * s_abs;
+}
+
+void M2006Motor::ctrlAngle(float deg, float time_s)
+{
+  if (time_s <= 0.f) {
+    ctrlAngle(deg);
+    return;
+  }
+  float start = traj_active_ ? cmd_deg_ : getAngleDeg();
+  planTrapezoid(start, deg, time_s);
+}
+
+void M2006Motor::update()
+{
+  if (!started_) {
+    return;
+  }
+
+  if (traj_active_) {
+    uint32_t elapsed_ticks = osKernelGetTickCount() - traj_t0_tick_;
+    float t = (float)elapsed_ticks / (float)osKernelGetTickFreq();
+    cmd_deg_ = trajEval(t);
+    if (t >= traj_T_) {
+      cmd_deg_ = traj_final_;
+      traj_active_ = false;
+    }
+  } else {
+    cmd_deg_ = target_deg_;
+  }
+
+  MotorFb& m = g_arm_bus.motor(id_);
+  uint32_t now = micros_u32();
+  float dt = 1e-6f * (float)(now - s_arm_last_us);
+  if (s_arm_last_us == 0 || dt <= 0.f || dt > 0.05f) {
+    dt = 1.f / (float)frq_;
+  }
+  s_arm_last_us = now;
+
+  float target_loc = cmd_deg_ * encPerOutDeg();
+  float pos_err = target_loc - (float)m.location;
+  float rotor_rpm = s_arm_pos_pid.control(pos_err, now);
+
+  int16_t cur = g_arm_bus.speedLoopStep(m, rotor_rpm, 0.f, now, dt);
+  sendCurrent(cur);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Globals + C API                                                            */
+/* -------------------------------------------------------------------------- */
+extern FDCAN_HandleTypeDef hfdcan1;
+extern FDCAN_HandleTypeDef hfdcan2;
+
+CHASSIS chassis(&hfdcan1);
+/* M2006 + C610 + P36 on FDCAN2, CAN ID 1 */
+M2006Motor arm(&hfdcan2, 1, 36.f);
+
+static volatile float s_cmd_vx = 0.f;
+static volatile float s_cmd_vy = 0.f;
+static volatile float s_cmd_w = 0.f;
+static volatile uint8_t s_cmd_immediate_stop = 0U;
+
+extern "C" void DJI_Chassis_SetCommand(float vx, float vy, float w)
+{
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  s_cmd_vx = vx;
+  s_cmd_vy = vy;
+  s_cmd_w = w;
+  s_cmd_immediate_stop = 0U;
+  if (primask == 0U) {
+    __enable_irq();
+  }
+}
+
+extern "C" void DJI_Chassis_SetCommandImmediate(float vx, float vy, float w)
+{
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  s_cmd_vx = vx;
+  s_cmd_vy = vy;
+  s_cmd_w = w;
+  s_cmd_immediate_stop = 1U;
+  if (primask == 0U) {
+    __enable_irq();
+  }
+}
+
+extern "C" void DJI_Chassis_SetSpeedLocationGain(float gain)
+{
+  uint32_t primask;
+
+  if (gain < 0.f) {
+    gain = 0.f;
+  }
+  if (fabsf(gain - s_chassis_speed_loc_k) <= 1e-6f) {
+    return;
+  }
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  for (uint8_t id = 1U; id <= 4U; ++id) {
+    MotorFb& motor = g_chassis_bus.motor(id);
+    motor.speed_loc_target = (float)motor.location;
+    motor.speed_pid.reset();
+  }
+  s_chassis_speed_loc_k = gain;
+  if (primask == 0U) {
+    __enable_irq();
+  }
+}
+
+extern "C" void DJI_Chassis_SetVelocityCommand(float forward_mm_s,
+                                                float left_mm_s,
+                                                float yaw_ccw_cdeg_s)
+{
+  const float mm_s_to_wheel_rpm = 60.0f / (kPi * kWheelDiameterMm);
+  if (forward_mm_s > kMaxAxisSpeedMmS) {
+    forward_mm_s = kMaxAxisSpeedMmS;
+  } else if (forward_mm_s < -kMaxAxisSpeedMmS) {
+    forward_mm_s = -kMaxAxisSpeedMmS;
+  }
+  if (left_mm_s > kMaxAxisSpeedMmS) {
+    left_mm_s = kMaxAxisSpeedMmS;
+  } else if (left_mm_s < -kMaxAxisSpeedMmS) {
+    left_mm_s = -kMaxAxisSpeedMmS;
+  }
+
+  /* CHASSIS uses +Vx right, +Vy forward and +W clockwise. */
+  const float right_rpm = -left_mm_s * mm_s_to_wheel_rpm;
+  const float forward_rpm = forward_mm_s * mm_s_to_wheel_rpm;
+  const float yaw_ccw_rad_s = yaw_ccw_cdeg_s * kPi / 18000.0f;
+  const float clockwise_turn_rpm =
+      (-yaw_ccw_rad_s * kTurnRadiusMm) * mm_s_to_wheel_rpm;
+
+  DJI_Chassis_SetCommand(right_rpm, forward_rpm, clockwise_turn_rpm);
+}
+
+extern "C" uint8_t DJI_Chassis_GetMeasuredVelocity(float *forward_mm_s,
+                                                     float *left_mm_s,
+                                                     float *yaw_ccw_cdeg_s)
+{
+  int16_t rotor_rpm[4];
+  uint32_t last_rx_us[4];
+  uint32_t now_us;
+  uint32_t primask;
+  uint8_t online_mask = 0U;
+  float wheel_rpm[4];
+  float right_rpm;
+  float forward_rpm;
+  float clockwise_turn_rpm;
+  float rpm_to_mm_s = kPi * kWheelDiameterMm / 60.0f;
+
+  if (forward_mm_s == NULL || left_mm_s == NULL || yaw_ccw_cdeg_s == NULL)
+  {
+    return 0U;
+  }
+
+  primask = __get_PRIMASK();
+  __disable_irq();
+  now_us = micros_u32();
+  for (uint8_t index = 0U; index < 4U; index++)
+  {
+    MotorFb& motor = g_chassis_bus.motor((uint8_t)(index + 1U));
+    rotor_rpm[index] = motor.speed;
+    last_rx_us[index] = motor.last_rx_us;
+  }
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+
+  for (uint8_t index = 0U; index < 4U; index++)
+  {
+    if (last_rx_us[index] != 0U &&
+        (now_us - last_rx_us[index]) < 100000U)
+    {
+      online_mask |= (uint8_t)(1U << index);
+    }
+    wheel_rpm[index] = (float)rotor_rpm[index] / kGear3508;
+  }
+
+  right_rpm = (wheel_rpm[3] - wheel_rpm[1]) * 0.5f;
+  forward_rpm = (wheel_rpm[0] - wheel_rpm[2]) * 0.5f;
+  clockwise_turn_rpm = (wheel_rpm[0] + wheel_rpm[1] +
+                        wheel_rpm[2] + wheel_rpm[3]) * 0.25f;
+
+  *forward_mm_s = forward_rpm * rpm_to_mm_s;
+  *left_mm_s = -right_rpm * rpm_to_mm_s;
+  *yaw_ccw_cdeg_s = -(clockwise_turn_rpm * rpm_to_mm_s /
+                       kTurnRadiusMm) * 18000.0f / kPi;
+  return online_mask;
+}
+
+extern "C" uint32_t DJI_Chassis_GetCanTxErrorCount(void)
+{
+  return g_chassis_bus.txErrorCount();
+}
+
+extern "C" uint8_t DJI_Chassis_GetWheelDiagnostics(
+    DJI_ChassisWheelDiagnostics *diagnostics)
+{
+  uint32_t now_us;
+  uint32_t primask;
+  uint32_t last_rx_us[4];
+
+  if (diagnostics == NULL)
+  {
+    return 0U;
+  }
+
+  diagnostics->online_mask = 0U;
+  diagnostics->current_saturation_mask = 0U;
+  primask = __get_PRIMASK();
+  __disable_irq();
+  now_us = micros_u32();
+  for (uint8_t index = 0U; index < 4U; index++)
+  {
+    MotorFb& motor = g_chassis_bus.motor((uint8_t)(index + 1U));
+    diagnostics->target_rpm[index] = (int16_t)motor.target_speed;
+    diagnostics->measured_rpm[index] = motor.speed;
+    diagnostics->command_current[index] = motor.set_current;
+    diagnostics->feedback_current[index] = motor.current;
+    last_rx_us[index] = motor.last_rx_us;
+  }
+  if (primask == 0U)
+  {
+    __enable_irq();
+  }
+
+  for (uint8_t index = 0U; index < 4U; index++)
+  {
+    int32_t command_current = diagnostics->command_current[index];
+    if (last_rx_us[index] != 0U &&
+        (now_us - last_rx_us[index]) < 100000U)
+    {
+      diagnostics->online_mask |= (uint8_t)(1U << index);
+    }
+    if (command_current >= kCurrentSaturationThreshold ||
+        command_current <= -kCurrentSaturationThreshold)
+    {
+      diagnostics->current_saturation_mask |= (uint8_t)(1U << index);
+    }
+  }
+  return diagnostics->online_mask;
+}
+
+extern "C" void DJI_Arm_CtrlAngle(float deg)
+{
+  arm.ctrlAngle(deg);
+}
+
+extern "C" void DJI_Arm_CtrlAngleTimed(float deg, float time_s)
+{
+  arm.ctrlAngle(deg, time_s);
+}
+
+extern "C" float DJI_Arm_GetAngleDeg(void)
+{
+  return arm.getAngleDeg();
+}
+
+extern "C" uint8_t DJI_Arm_IsOnline(void)
+{
+  return arm.online() ? 1U : 0U;
+}
+
+extern "C" void DJI_Motor_ChassisTask(void)
+{
+  chassis.begin(1000);
+  uint32_t tick = osKernelGetTickCount();
+  uint32_t period = 1000U / chassis.freq();
+  for (;;) {
+    float vx;
+    float vy;
+    float w;
+    uint8_t immediate_stop;
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    vx = s_cmd_vx;
+    vy = s_cmd_vy;
+    w = s_cmd_w;
+    immediate_stop = s_cmd_immediate_stop;
+    if (primask == 0U) {
+      __enable_irq();
+    }
+    chassis.Update(vx, vy, w, immediate_stop != 0U);
+    tick += (period == 0) ? 1U : period;
+    osDelayUntil(tick);
+  }
+}
+
+extern "C" void DJI_Motor_ArmStart(void)
+{
+  arm.begin(1000);
+  uint32_t tick = osKernelGetTickCount();
+  uint32_t period = 1000U / arm.freq();
+  for (;;) {
+    arm.update();
+    tick += (period == 0) ? 1U : period;
+    osDelayUntil(tick);
+  }
+}

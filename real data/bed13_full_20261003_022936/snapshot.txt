@@ -1,0 +1,452 @@
+========== SNAPSHOT TIME ==========
+2026-10-03T02:34:00,420133898+08:00
+
+========== NODES ==========
+WARNING: Be aware that are nodes in the graph that share an exact name, this can have unintended side effects.
+/behavior_server
+/bt_navigator
+/bt_navigator_navigate_through_poses_rclcpp_node
+/bt_navigator_navigate_to_pose_rclcpp_node
+/code_scanner
+/collision_monitor
+/cone_footprint_compensator
+/controller_server
+/corner_speed_limiter
+/global_costmap/global_costmap
+/health_ble_bridge
+/home_approach_limiter
+/lidar_odometry_guard
+/lidar_self_filter
+/lifecycle_manager_map
+/lifecycle_manager_navigation
+/lifecycle_manager_safety_pipeline
+/livox_lidar_publisher
+/local_costmap/local_costmap
+/map_server
+/medical_navigator
+/planner_server
+/robot_state_publisher
+/rviz
+/rviz_navigation_dialog_action_client
+/scan_dashboard
+/scan_dashboard
+/scan_dashboard
+/smoother_server
+/transform_listener_impl_5860720a23a0
+/transform_listener_impl_5a65debfe5d0
+/transform_listener_impl_5ad5a743b9e0
+/transform_listener_impl_5bbe37e74330
+/transform_listener_impl_5c29f030de60
+/transform_listener_impl_5c4ea1e62740
+/velocity_smoother
+/waypoint_follower
+
+========== TOPICS ==========
+/ApproachPolygon [geometry_msgs/msg/PolygonStamped]
+/StopPolygon [geometry_msgs/msg/PolygonStamped]
+/behavior_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/behavior_tree_log [nav2_msgs/msg/BehaviorTreeLog]
+/bond [bond/msg/Status]
+/bt_navigator/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/cmd_vel [geometry_msgs/msg/Twist]
+/cmd_vel_home_limited [geometry_msgs/msg/Twist]
+/cmd_vel_nav [geometry_msgs/msg/Twist]
+/cmd_vel_safe [geometry_msgs/msg/Twist]
+/collision_monitor/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/controller_selector [std_msgs/msg/String]
+/controller_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/diagnostics [diagnostic_msgs/msg/DiagnosticArray]
+/global_costmap/costmap [nav_msgs/msg/OccupancyGrid]
+/global_costmap/costmap_raw [nav2_msgs/msg/Costmap]
+/global_costmap/costmap_updates [map_msgs/msg/OccupancyGridUpdate]
+/global_costmap/footprint [geometry_msgs/msg/Polygon]
+/global_costmap/global_costmap/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/global_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]
+/goal_pose [geometry_msgs/msg/PoseStamped]
+/joint_states [sensor_msgs/msg/JointState]
+/livox/imu [sensor_msgs/msg/Imu]
+/livox/lidar [sensor_msgs/msg/PointCloud2]
+/livox/lidar_filtered [sensor_msgs/msg/PointCloud2]
+/livox/lidar_nav [sensor_msgs/msg/PointCloud2]
+/local_costmap/costmap [nav_msgs/msg/OccupancyGrid]
+/local_costmap/costmap_raw [nav2_msgs/msg/Costmap]
+/local_costmap/costmap_updates [map_msgs/msg/OccupancyGridUpdate]
+/local_costmap/footprint [geometry_msgs/msg/Polygon]
+/local_costmap/local_costmap/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/local_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]
+/map [nav_msgs/msg/OccupancyGrid]
+/map_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/map_updates [map_msgs/msg/OccupancyGridUpdate]
+/medical_nav/bridge_cmd_debug [std_msgs/msg/String]
+/medical_nav/bridge_status [std_msgs/msg/String]
+/medical_nav/cone_compensation_status [std_msgs/msg/String]
+/medical_nav/corner_speed_status [std_msgs/msg/String]
+/medical_nav/goal_request [std_msgs/msg/String]
+/medical_nav/health_status [std_msgs/msg/String]
+/medical_nav/lidar_filter_status [std_msgs/msg/String]
+/medical_nav/lidar_odometry_status [std_msgs/msg/String]
+/medical_nav/navigator_status [std_msgs/msg/String]
+/medical_nav/ops_calibration [std_msgs/msg/String]
+/medical_nav/ops_raw_pose [geometry_msgs/msg/PoseStamped]
+/medical_nav/ops_slip_suspected [std_msgs/msg/Bool]
+/medical_nav/plan [nav_msgs/msg/Path]
+/medical_nav/robot_pose [geometry_msgs/msg/PoseStamped]
+/medical_nav/scan_result [std_msgs/msg/String]
+/medical_nav/scan_transport_status [std_msgs/msg/String]
+/medical_nav/scanner_preview/compressed [sensor_msgs/msg/CompressedImage]
+/medical_nav/scanner_status [std_msgs/msg/String]
+/medical_nav/stp23l [std_msgs/msg/String]
+/medical_nav/stp23l/front [sensor_msgs/msg/Range]
+/medical_nav/stp23l/left [sensor_msgs/msg/Range]
+/medical_nav/stp23l/right [sensor_msgs/msg/Range]
+/medical_nav/task_state [std_msgs/msg/UInt8]
+/medical_nav/tele_scanner_preview/compressed [sensor_msgs/msg/CompressedImage]
+/medical_nav/wheel_diagnostics [std_msgs/msg/String]
+/medical_nav/wheel_odom [nav_msgs/msg/Odometry]
+/odom [nav_msgs/msg/Odometry]
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/plan [nav_msgs/msg/Path]
+/plan_smoothed [nav_msgs/msg/Path]
+/planner_selector [std_msgs/msg/String]
+/planner_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/robot_description [std_msgs/msg/String]
+/rosout [rcl_interfaces/msg/Log]
+/smoother_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/speed_limit [nav2_msgs/msg/SpeedLimit]
+/tf [tf2_msgs/msg/TFMessage]
+/tf_static [tf2_msgs/msg/TFMessage]
+/trajectories [visualization_msgs/msg/MarkerArray]
+/transformed_global_plan [nav_msgs/msg/Path]
+/velocity_smoother/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/waypoint_follower/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/waypoints [visualization_msgs/msg/MarkerArray]
+
+========== CONE STATUS ==========
+data: '{"clouds":2921,"raw_clusters":13,"merged_cones":13,"held_tracks":19,"current_centers_base":[[2.286,-0.799],[-2.023,-1.416],[-1.5...'
+---
+
+========== COLLISION TOPICS ==========
+/ApproachPolygon
+/StopPolygon
+/collision_monitor/transition_event
+
+========== CONE PARAMETERS ==========
+/cone_footprint_compensator:
+  ros__parameters:
+    base_radius: 0.18
+    center_merge_distance: 0.28
+    cluster_cell: 0.08
+    cone_height: 0.65
+    disk_height: 0.12
+    disk_spacing: 0.04
+    input_topic: /livox/lidar_filtered
+    max_range: 6.0
+    max_span: 0.32
+    min_base_z: 0.35
+    min_points: 5
+    min_range: 0.3
+    min_vertical_span: 0.12
+    min_z: 0.08
+    output_topic: /livox/lidar_nav
+    persistence_frame: odom
+    persistence_match_distance: 0.4
+    persistence_s: 0.6
+    physical_base_radius: 0.155
+    use_sim_time: false
+
+
+========== COLLISION PARAMETERS ==========
+
+========== CONTROLLER PARAMETERS ==========
+/controller_server:
+  ros__parameters:
+    /bond_disable_heartbeat_timeout: true
+    FollowPathHeadingHold:
+      ConstraintCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+      CostCritic:
+        collision_cost: 1000000.0
+        consider_footprint: false
+        cost_power: 1
+        cost_weight: 12.0
+        critical_cost: 60.0
+        enabled: true
+        inflation_layer_name: ''
+        near_goal_distance: 0.5
+      GoalAngleCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        threshold_to_consider: 10.0
+      GoalCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+        threshold_to_consider: 1.4
+      PathAlignCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        max_path_occupancy_ratio: 0.05
+        offset_from_furthest: 10
+        threshold_to_consider: 0.35
+        trajectory_point_step: 3
+        use_path_orientations: false
+      PathAngleCritic:
+        cost_power: 1
+        cost_weight: 1.5
+        enabled: false
+        forward_preference: true
+        max_angle_to_furthest: 1.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+      PathFollowCritic:
+        cost_power: 1
+        cost_weight: 12.0
+        enabled: true
+        offset_from_furthest: 8
+        threshold_to_consider: 0.8
+      TrajectoryVisualizer:
+        time_step: 3
+        trajectory_step: 5
+      TwirlingCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+      batch_size: 1200
+      critics:
+      - ConstraintCritic
+      - CostCritic
+      - GoalCritic
+      - GoalAngleCritic
+      - PathAlignCritic
+      - PathFollowCritic
+      - PathAngleCritic
+      - TwirlingCritic
+      enforce_path_inversion: false
+      gamma: 0.015
+      iteration_count: 1
+      max_robot_pose_search_dist: 4.0
+      model_dt: 0.05
+      motion_model: Omni
+      plugin: nav2_mppi_controller::MPPIController
+      prune_distance: 3.5
+      regenerate_noises: false
+      reset_period: 1.0
+      retry_attempt_limit: 1
+      temperature: 0.25
+      time_steps: 40
+      transform_tolerance: 0.3
+      visualize: true
+      vx_max: 3.0
+      vx_min: -3.0
+      vx_std: 0.4
+      vy_max: 3.0
+      vy_std: 0.28
+      wz_max: 0.05
+      wz_std: 0.02
+    FollowPathLateralHold:
+      ConstraintCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+      CostCritic:
+        collision_cost: 1000000.0
+        consider_footprint: false
+        cost_power: 1
+        cost_weight: 12.0
+        critical_cost: 60.0
+        enabled: true
+        inflation_layer_name: ''
+        near_goal_distance: 0.5
+      GoalAngleCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        threshold_to_consider: 10.0
+      GoalCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+        threshold_to_consider: 1.4
+      PathAlignCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        max_path_occupancy_ratio: 0.05
+        offset_from_furthest: 10
+        threshold_to_consider: 0.35
+        trajectory_point_step: 3
+        use_path_orientations: false
+      PathAngleCritic:
+        cost_power: 1
+        cost_weight: 1.5
+        enabled: false
+        forward_preference: true
+        max_angle_to_furthest: 1.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+      PathFollowCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        offset_from_furthest: 8
+        threshold_to_consider: 0.8
+      TrajectoryVisualizer:
+        time_step: 3
+        trajectory_step: 5
+      TwirlingCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+      batch_size: 1200
+      critics:
+      - ConstraintCritic
+      - CostCritic
+      - GoalCritic
+      - GoalAngleCritic
+      - PathAlignCritic
+      - PathFollowCritic
+      - PathAngleCritic
+      - TwirlingCritic
+      enforce_path_inversion: false
+      gamma: 0.015
+      iteration_count: 1
+      max_robot_pose_search_dist: 4.0
+      model_dt: 0.05
+      motion_model: Omni
+      plugin: nav2_mppi_controller::MPPIController
+      prune_distance: 3.5
+      regenerate_noises: false
+      reset_period: 1.0
+      retry_attempt_limit: 1
+      temperature: 0.25
+      time_steps: 40
+      transform_tolerance: 0.3
+      visualize: true
+      vx_max: 3.0
+      vx_min: -3.0
+      vx_std: 0.3
+      vy_max: 3.0
+      vy_std: 0.4
+      wz_max: 0.05
+      wz_std: 0.02
+    FollowPathNurse:
+      ConstraintCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+      CostCritic:
+        collision_cost: 1000000.0
+        consider_footprint: false
+        cost_power: 1
+        cost_weight: 12.0
+        critical_cost: 60.0
+        enabled: true
+        inflation_layer_name: ''
+        near_goal_distance: 0.5
+      GoalAngleCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        threshold_to_consider: 10.0
+      GoalCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+        threshold_to_consider: 1.4
+      PathAlignCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        max_path_occupancy_ratio: 0.05
+        offset_from_furthest: 10
+        threshold_to_consider: 0.35
+        trajectory_point_step: 3
+        use_path_orientations: false
+      PathAngleCritic:
+        cost_power: 1
+        cost_weight: 1.5
+        enabled: false
+        forward_preference: true
+        max_angle_to_furthest: 1.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+      PathFollowCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        offset_from_furthest: 8
+        threshold_to_consider: 0.8
+      TrajectoryVisualizer:
+        time_step: 3
+        trajectory_step: 5
+      TwirlingCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+      batch_size: 1200
+      critics:
+      - ConstraintCritic
+      - CostCritic
+      - GoalCritic
+      - GoalAngleCritic
+      - PathAlignCritic
+      - PathFollowCritic
+      - PathAngleCritic
+      - TwirlingCritic
+      enforce_path_inversion: false
+      gamma: 0.015
+      iteration_count: 1
+      max_robot_pose_search_dist: 4.0
+      model_dt: 0.05
+      motion_model: Omni
+      plugin: nav2_mppi_controller::MPPIController
+      prune_distance: 3.5
+      regenerate_noises: false
+      reset_period: 1.0
+      retry_attempt_limit: 1
+      temperature: 0.25
+      time_steps: 40
+      transform_tolerance: 0.3
+      visualize: true
+      vx_max: 3.0
+      vx_min: -3.0
+      vx_std: 0.3
+      vy_max: 3.0
+      vy_std: 0.28
+      wz_max: 0.8
+      wz_std: 0.15
+    controller_frequency: 20.0
+    controller_plugins:
+    - FollowPathNurse
+    - FollowPathHeadingHold
+    - FollowPathLateralHold
+    controller_server:
+      verbose: false
+    failure_tolerance: 0.3
+    general_goal_checker:
+      plugin: nav2_controller::SimpleGoalChecker
+      stateful: true
+      xy_goal_tolerance: 0.1
+      yaw_goal_tolerance: 0.1
+    goal_checker_plugins:
+    - general_goal_checker
+    min_theta_velocity_threshold: 0.001
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.001
+    odom_topic: /odom
+    progress_checker:
+      movement_time_allowance: 15.0
+      plugin: nav2_controller::SimpleProgressChecker
+      required_movement_radius: 0.25
+    progress_checker_plugin: progress_checker
+    publish_zero_velocity: true
+    speed_limit_topic: speed_limit
+    use_sim_time: false
+
+
+========== STM32 BRIDGE PARAMETERS ==========
+Node not found

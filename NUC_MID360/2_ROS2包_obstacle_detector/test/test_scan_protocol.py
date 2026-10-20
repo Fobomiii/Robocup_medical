@@ -1,0 +1,174 @@
+"""Camera scan protocol, whitelist and temporal-confirmation tests."""
+
+import unittest
+
+from obstacle_detector.nav_protocol import (
+    ARM_DEBUG_ACCEPTED,
+    ArmDebugStatus,
+    FrameParser,
+    MSG_ARM_DEBUG_COMMAND,
+    MSG_SCAN_ACK,
+    MSG_SCAN_RESULT,
+    SCAN_ACK_ACCEPTED,
+    SCAN_CONTEXT_BED1,
+    SCAN_CONTEXT_BED3,
+    SCAN_CONTEXT_ORDER,
+    SCAN_FORMAT_CODE128,
+    SCAN_FORMAT_QR,
+    ScanAck,
+    ScanResult,
+    decode_scan_ack,
+    decode_arm_debug_status,
+    decode_scan_result,
+    encode_frame,
+    encode_arm_debug_command,
+    encode_scan_ack,
+    encode_scan_result,
+)
+from obstacle_detector.scanner_core import (
+    ScanConsensus,
+    expected_scan,
+    scan_matches_task,
+    scan_position_is_allowed,
+    tele_camera_assists,
+)
+
+
+class ScanProtocolTest(unittest.TestCase):
+    def test_arm_debug_command_and_status(self):
+        frame = FrameParser().feed(
+            encode_frame(
+                MSG_ARM_DEBUG_COMMAND,
+                9,
+                encode_arm_debug_command(513, True),
+            )
+        )[0]
+        self.assertEqual(frame.msg_type, MSG_ARM_DEBUG_COMMAND)
+        self.assertEqual(frame.payload, b"\x02\x01\x01")
+        self.assertEqual(
+            decode_arm_debug_status(b"\x02\x01\x01\x01"),
+            ArmDebugStatus(513, True, ARM_DEBUG_ACCEPTED),
+        )
+
+    def test_scan_result_frame_round_trip(self):
+        payload = encode_scan_result(
+            513, SCAN_CONTEXT_BED1, SCAN_FORMAT_CODE128, "6946522463487"
+        )
+        frame = FrameParser().feed(encode_frame(MSG_SCAN_RESULT, 7, payload))[0]
+        self.assertEqual(frame.msg_type, MSG_SCAN_RESULT)
+        self.assertEqual(
+            decode_scan_result(frame.payload),
+            ScanResult(513, SCAN_CONTEXT_BED1, SCAN_FORMAT_CODE128, "6946522463487"),
+        )
+
+    def test_scan_ack_round_trip(self):
+        payload = encode_scan_ack(65535, SCAN_ACK_ACCEPTED)
+        frame = FrameParser().feed(encode_frame(MSG_SCAN_ACK, 8, payload))[0]
+        self.assertEqual(decode_scan_ack(frame.payload), ScanAck(65535, SCAN_ACK_ACCEPTED))
+
+    def test_scan_result_rejects_bad_lengths_and_non_ascii(self):
+        with self.assertRaises(ValueError):
+            encode_scan_result(1, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "")
+        with self.assertRaises(UnicodeEncodeError):
+            encode_scan_result(1, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "病床")
+        with self.assertRaises(ValueError):
+            decode_scan_result(b"\x00\x01\x01\x01\x02A")
+        with self.assertRaises(UnicodeDecodeError):
+            decode_scan_result(b"\x00\x01\x01\x01\x01\xFF")
+        with self.assertRaises(ValueError):
+            decode_scan_result(b"\x00\x01\x01\x01\x01\x00")
+        with self.assertRaises(ValueError):
+            encode_scan_result(1, 9, SCAN_FORMAT_QR, "11")
+        with self.assertRaises(ValueError):
+            decode_scan_ack(b"\x00\x01\x09")
+
+    def test_state_format_and_whitelist_are_all_required(self):
+        self.assertEqual(
+            expected_scan(14), (SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR)
+        )
+        self.assertIsNone(expected_scan(15))
+        self.assertTrue(scan_matches_task(1, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
+        self.assertTrue(scan_matches_task(14, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
+        self.assertTrue(scan_matches_task(2, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
+        self.assertFalse(scan_matches_task(4, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "31"))
+        self.assertFalse(
+            scan_matches_task(2, SCAN_CONTEXT_ORDER, SCAN_FORMAT_CODE128, "31")
+        )
+        self.assertFalse(scan_matches_task(2, SCAN_CONTEXT_ORDER, SCAN_FORMAT_QR, "99"))
+        self.assertTrue(
+            scan_matches_task(
+                3, SCAN_CONTEXT_BED1, SCAN_FORMAT_CODE128, "6906841121017"
+            )
+        )
+        self.assertTrue(
+            scan_matches_task(
+                4, SCAN_CONTEXT_BED1, SCAN_FORMAT_CODE128, "6906841121017"
+            )
+        )
+        self.assertTrue(
+            scan_matches_task(
+                6, SCAN_CONTEXT_BED3, SCAN_FORMAT_CODE128, "6906841121017"
+            )
+        )
+
+    def test_consensus_requires_two_recent_hits_and_reset_rearms(self):
+        consensus = ScanConsensus(required_hits=2, window_s=0.8)
+        self.assertFalse(consensus.observe(SCAN_FORMAT_QR, "11", 1.0))
+        self.assertTrue(consensus.observe(SCAN_FORMAT_QR, "11", 1.5))
+        self.assertFalse(consensus.observe(SCAN_FORMAT_QR, "11", 1.6))
+        consensus.reset()
+        self.assertFalse(consensus.observe(SCAN_FORMAT_QR, "11", 2.0))
+        self.assertTrue(consensus.observe(SCAN_FORMAT_QR, "11", 2.1))
+
+    def test_consensus_drops_expired_hit(self):
+        consensus = ScanConsensus(required_hits=2, window_s=0.8)
+        self.assertFalse(consensus.observe(SCAN_FORMAT_CODE128, "6946522463487", 1.0))
+        self.assertFalse(consensus.observe(SCAN_FORMAT_CODE128, "6946522463487", 2.0))
+
+    def test_tele_camera_assists_every_active_scan(self):
+        self.assertTrue(tele_camera_assists(14, SCAN_FORMAT_QR))
+        self.assertTrue(tele_camera_assists(1, SCAN_FORMAT_QR))
+        self.assertTrue(tele_camera_assists(2, SCAN_FORMAT_QR))
+        self.assertTrue(tele_camera_assists(3, SCAN_FORMAT_CODE128))
+        self.assertTrue(tele_camera_assists(4, SCAN_FORMAT_CODE128))
+        self.assertTrue(tele_camera_assists(6, SCAN_FORMAT_CODE128))
+        self.assertTrue(tele_camera_assists(7, SCAN_FORMAT_CODE128))
+        self.assertFalse(tele_camera_assists(14, SCAN_FORMAT_CODE128))
+        self.assertFalse(tele_camera_assists(9, SCAN_FORMAT_CODE128))
+
+    def test_bed_scan_requires_proximity_to_its_current_target(self):
+        targets = {
+            SCAN_CONTEXT_BED1: (-2200.0, 5400.0),
+            SCAN_CONTEXT_BED3: (2200.0, 5400.0),
+        }
+        self.assertTrue(
+            scan_position_is_allowed(
+                SCAN_CONTEXT_BED1, -2200.0, 4500.0, targets, 1200.0
+            )
+        )
+        self.assertFalse(
+            scan_position_is_allowed(
+                SCAN_CONTEXT_BED3, -2200.0, 5400.0, targets, 1200.0
+            )
+        )
+        self.assertTrue(
+            scan_position_is_allowed(
+                SCAN_CONTEXT_ORDER, None, None, targets, 1200.0
+            )
+        )
+
+    def test_order_scan_is_allowed_at_prestart_origin(self):
+        self.assertTrue(
+            scan_position_is_allowed(
+                SCAN_CONTEXT_ORDER, 0.0, 0.0, {}, 1200.0
+            )
+        )
+        self.assertTrue(
+            scan_position_is_allowed(
+                SCAN_CONTEXT_ORDER, 0.0, 1700.0, {}, 1200.0
+            )
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

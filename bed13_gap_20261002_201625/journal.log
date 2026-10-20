@@ -1,0 +1,14 @@
+10月 02 20:16:40.910068 fzurobot bash[2237]: [planner_server-17] [INFO] [1790943400.909798099] [planner_server]: GridBased switched route: risk improvement 55.7%, time improvement 0.11 s
+10月 02 20:16:40.970153 fzurobot bash[2237]: [controller_server-15] [INFO] [1790943400.969839070] [controller_server]: Passing new path to controller.
+10月 02 20:16:42.020221 fzurobot bash[2237]: [controller_server-15] [INFO] [1790943402.019827314] [controller_server]: Passing new path to controller.
+10月 02 20:16:43.070299 fzurobot bash[2237]: [controller_server-15] [INFO] [1790943403.069797184] [controller_server]: Passing new path to controller.
+10月 02 20:16:44.120331 fzurobot bash[2237]: [controller_server-15] [INFO] [1790943404.119795981] [controller_server]: Passing new path to controller.
+10月 02 20:16:44.474645 fzurobot bash[2237]: [controller_server-15] [INFO] [1790943404.474212560] [controller_server]: Reached the goal!
+10月 02 20:16:44.509775 fzurobot bash[2237]: [bt_navigator-19] [INFO] [1790943404.509335561] [bt_navigator]: Goal succeeded
+10月 02 20:16:44.512062 fzurobot bash[2237]: [medical_navigator-14] [INFO] [1790943404.511673798] [medical_navigator]: Navigation succeeded (state=3)
+10月 02 20:16:45.355494 fzurobot bash[2237]: [collision_monitor-12] [ERROR] [1790943405.355137125] [getTransform]: Failed to get "base_link"->"base_link" frame transform: Lookup would require extrapolation into the future.  Requested time 1790943405.152723 but the latest data is at time 1790943405.136262, when looking up transform from frame [odom] to frame [base_link]
+10月 02 20:16:45.468117 fzurobot bash[2237]: [collision_monitor-12] [WARN] [1790943405.465559859] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.424347 seconds. Ignoring the source.
+10月 02 20:16:45.468117 fzurobot bash[2237]: [collision_monitor-12] [WARN] [1790943405.466387602] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.325285 seconds. Ignoring the source.
+10月 02 20:16:45.470807 fzurobot bash[2237]: [collision_monitor-12] [WARN] [1790943405.468862652] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.327761 seconds. Ignoring the source.
+10月 02 20:16:45.476622 fzurobot bash[2237]: [collision_monitor-12] [WARN] [1790943405.474162646] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.333061 seconds. Ignoring the source.
+10月 02 20:16:45.476814 fzurobot bash[2237]: [collision_monitor-12] [WARN] [1790943405.474274805] [collision_monitor]: [livox]: Latest source and current collision monitor node timestamps differ on 0.333175 seconds. Ignoring the source.

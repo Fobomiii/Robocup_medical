@@ -1,0 +1,355 @@
+========== CAPTURE START ==========
+2026-10-02T20:21:51,033090060+08:00
+
+========== NODES ==========
+/behavior_server
+/bt_navigator
+/bt_navigator_navigate_through_poses_rclcpp_node
+/bt_navigator_navigate_to_pose_rclcpp_node
+/code_scanner
+/collision_monitor
+/cone_footprint_compensator
+/controller_server
+/corner_speed_limiter
+/global_costmap/global_costmap
+/health_ble_bridge
+/home_approach_limiter
+/lidar_odometry_guard
+/lidar_self_filter
+/lifecycle_manager_map
+/lifecycle_manager_navigation
+/lifecycle_manager_safety_pipeline
+/livox_lidar_publisher
+/local_costmap/local_costmap
+/map_server
+/medical_navigator
+/planner_server
+/robot_state_publisher
+/scan_dashboard
+/smoother_server
+/stm32_bridge
+/transform_listener_impl_5590765496a0
+/transform_listener_impl_58eea69ca940
+/transform_listener_impl_5bf1f7bed4e0
+/transform_listener_impl_5ef2dfdd8450
+/transform_listener_impl_62fd799cc0d0
+/velocity_smoother
+/waypoint_follower
+
+========== TOPICS ==========
+/ApproachPolygon [geometry_msgs/msg/PolygonStamped]
+/StopPolygon [geometry_msgs/msg/PolygonStamped]
+/behavior_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/behavior_tree_log [nav2_msgs/msg/BehaviorTreeLog]
+/bond [bond/msg/Status]
+/bt_navigator/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/cmd_vel [geometry_msgs/msg/Twist]
+/cmd_vel_home_limited [geometry_msgs/msg/Twist]
+/cmd_vel_nav [geometry_msgs/msg/Twist]
+/cmd_vel_safe [geometry_msgs/msg/Twist]
+/collision_monitor/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/controller_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/diagnostics [diagnostic_msgs/msg/DiagnosticArray]
+/global_costmap/costmap [nav_msgs/msg/OccupancyGrid]
+/global_costmap/costmap_raw [nav2_msgs/msg/Costmap]
+/global_costmap/costmap_updates [map_msgs/msg/OccupancyGridUpdate]
+/global_costmap/footprint [geometry_msgs/msg/Polygon]
+/global_costmap/global_costmap/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/global_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]
+/goal_pose [geometry_msgs/msg/PoseStamped]
+/joint_states [sensor_msgs/msg/JointState]
+/livox/imu [sensor_msgs/msg/Imu]
+/livox/lidar [sensor_msgs/msg/PointCloud2]
+/livox/lidar_filtered [sensor_msgs/msg/PointCloud2]
+/livox/lidar_nav [sensor_msgs/msg/PointCloud2]
+/local_costmap/costmap [nav_msgs/msg/OccupancyGrid]
+/local_costmap/costmap_raw [nav2_msgs/msg/Costmap]
+/local_costmap/costmap_updates [map_msgs/msg/OccupancyGridUpdate]
+/local_costmap/footprint [geometry_msgs/msg/Polygon]
+/local_costmap/local_costmap/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/local_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]
+/map [nav_msgs/msg/OccupancyGrid]
+/map_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/medical_nav/bridge_cmd_debug [std_msgs/msg/String]
+/medical_nav/bridge_status [std_msgs/msg/String]
+/medical_nav/cone_compensation_status [std_msgs/msg/String]
+/medical_nav/corner_speed_status [std_msgs/msg/String]
+/medical_nav/goal_request [std_msgs/msg/String]
+/medical_nav/health_status [std_msgs/msg/String]
+/medical_nav/lidar_filter_status [std_msgs/msg/String]
+/medical_nav/lidar_odometry_status [std_msgs/msg/String]
+/medical_nav/navigator_status [std_msgs/msg/String]
+/medical_nav/ops_calibration [std_msgs/msg/String]
+/medical_nav/ops_raw_pose [geometry_msgs/msg/PoseStamped]
+/medical_nav/ops_slip_suspected [std_msgs/msg/Bool]
+/medical_nav/plan [nav_msgs/msg/Path]
+/medical_nav/robot_pose [geometry_msgs/msg/PoseStamped]
+/medical_nav/scan_result [std_msgs/msg/String]
+/medical_nav/scan_transport_status [std_msgs/msg/String]
+/medical_nav/scanner_preview/compressed [sensor_msgs/msg/CompressedImage]
+/medical_nav/scanner_status [std_msgs/msg/String]
+/medical_nav/stp23l [std_msgs/msg/String]
+/medical_nav/stp23l/front [sensor_msgs/msg/Range]
+/medical_nav/stp23l/left [sensor_msgs/msg/Range]
+/medical_nav/stp23l/right [sensor_msgs/msg/Range]
+/medical_nav/task_state [std_msgs/msg/UInt8]
+/medical_nav/tele_scanner_preview/compressed [sensor_msgs/msg/CompressedImage]
+/medical_nav/wheel_diagnostics [std_msgs/msg/String]
+/medical_nav/wheel_odom [nav_msgs/msg/Odometry]
+/odom [nav_msgs/msg/Odometry]
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/plan [nav_msgs/msg/Path]
+/plan_smoothed [nav_msgs/msg/Path]
+/planner_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/robot_description [std_msgs/msg/String]
+/rosout [rcl_interfaces/msg/Log]
+/smoother_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/speed_limit [nav2_msgs/msg/SpeedLimit]
+/tf [tf2_msgs/msg/TFMessage]
+/tf_static [tf2_msgs/msg/TFMessage]
+/trajectories [visualization_msgs/msg/MarkerArray]
+/transformed_global_plan [nav_msgs/msg/Path]
+/velocity_smoother/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/waypoint_follower/transition_event [lifecycle_msgs/msg/TransitionEvent]
+
+========== ACTION ==========
+Action: /navigate_to_pose
+Action clients: 3
+    /bt_navigator
+    /waypoint_follower
+    /medical_navigator
+Action servers: 1
+    /bt_navigator
+
+========== LIFECYCLE ==========
+--- /controller_server ---
+active [3]
+--- /planner_server ---
+active [3]
+--- /smoother_server ---
+active [3]
+--- /behavior_server ---
+active [3]
+--- /bt_navigator ---
+active [3]
+--- /velocity_smoother ---
+active [3]
+--- /collision_monitor ---
+active [3]
+
+========== IMPORTANT PARAMETERS ==========
+Boolean value is: True
+failed to check service availability: rcl node's context is invalid, at ./src/rcl/node.c:428
+failed to check service availability: rcl node's context is invalid, at ./src/rcl/node.c:428
+Double values are: array('d', [1.7, 1.7, 1.8])
+Double values are: array('d', [-1.3, -1.3, -2.0])
+String value is: /cmd_vel_home_limited
+String value is: /cmd_vel_safe
+
+========== VELOCITY TOPIC GRAPH ==========
+--- /cmd_vel_nav ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: controller_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.9d.09.35.0b.00.00.00.00.00.00.4d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: velocity_smoother
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.a9.09.36.84.00.00.00.00.00.00.1e.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+--- /cmd_vel ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 4
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.a3.09.7e.1f.00.00.00.00.00.00.2b.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.a3.09.7e.1f.00.00.00.00.00.00.34.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.a3.09.7e.1f.00.00.00.00.00.00.3d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: velocity_smoother
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.a9.09.36.84.00.00.00.00.00.00.1d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: home_approach_limiter
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.e1.08.78.31.00.00.00.00.00.00.12.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+--- /cmd_vel_home_limited ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: home_approach_limiter
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.e1.08.78.31.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: collision_monitor
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.e3.08.85.1d.00.00.00.00.00.00.25.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+--- /cmd_vel_safe ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: collision_monitor
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.e3.08.85.1d.00.00.00.00.00.00.26.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: stm32_bridge
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.d3.08.84.5b.00.00.00.00.00.00.22.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+--- /medical_nav/bridge_cmd_debug ---
+Type: std_msgs/msg/String
+
+Publisher count: 1
+
+Node name: stm32_bridge
+Node namespace: /
+Topic type: std_msgs/msg/String
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.d3.08.84.5b.00.00.00.00.00.00.18.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+========== CAPTURE END ==========
+2026-10-02T20:22:37,038654819+08:00

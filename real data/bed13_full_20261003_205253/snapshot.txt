@@ -1,0 +1,1059 @@
+========== SNAPSHOT TIME ==========
+2026-10-03T20:55:27,734158408+08:00
+
+========== NODES ==========
+WARNING: Be aware that are nodes in the graph that share an exact name, this can have unintended side effects.
+/behavior_server
+/blind_zone_visualizer
+/bt_navigator
+/bt_navigator_navigate_through_poses_rclcpp_node
+/bt_navigator_navigate_to_pose_rclcpp_node
+/code_scanner
+/collision_monitor
+/cone_footprint_compensator
+/controller_server
+/corner_speed_limiter
+/global_costmap/global_costmap
+/health_ble_bridge
+/home_approach_limiter
+/lidar_odometry_guard
+/lidar_safety_filter
+/lidar_self_filter
+/lifecycle_manager_map
+/lifecycle_manager_navigation
+/lifecycle_manager_safety_pipeline
+/livox_lidar_publisher
+/local_costmap/local_costmap
+/map_server
+/medical_navigator
+/planner_server
+/robot_state_publisher
+/scan_dashboard
+/scan_dashboard
+/smoother_server
+/stm32_bridge
+/transform_listener_impl_562115915fd0
+/transform_listener_impl_593bba540b00
+/transform_listener_impl_5c96bf375640
+/transform_listener_impl_5f17a8006de0
+/transform_listener_impl_61af25d17280
+/velocity_smoother
+/waypoint_follower
+
+========== TOPICS ==========
+/ApproachPolygon [geometry_msgs/msg/PolygonStamped]
+/StopPolygon [geometry_msgs/msg/PolygonStamped]
+/behavior_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/behavior_tree_log [nav2_msgs/msg/BehaviorTreeLog]
+/bond [bond/msg/Status]
+/bt_navigator/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/cmd_vel [geometry_msgs/msg/Twist]
+/cmd_vel_home_limited [geometry_msgs/msg/Twist]
+/cmd_vel_nav [geometry_msgs/msg/Twist]
+/cmd_vel_safe [geometry_msgs/msg/Twist]
+/collision_monitor/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/controller_selector [std_msgs/msg/String]
+/controller_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/diagnostics [diagnostic_msgs/msg/DiagnosticArray]
+/global_costmap/costmap [nav_msgs/msg/OccupancyGrid]
+/global_costmap/costmap_raw [nav2_msgs/msg/Costmap]
+/global_costmap/costmap_updates [map_msgs/msg/OccupancyGridUpdate]
+/global_costmap/footprint [geometry_msgs/msg/Polygon]
+/global_costmap/global_costmap/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/global_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]
+/goal_pose [geometry_msgs/msg/PoseStamped]
+/joint_states [sensor_msgs/msg/JointState]
+/livox/imu [sensor_msgs/msg/Imu]
+/livox/lidar [sensor_msgs/msg/PointCloud2]
+/livox/lidar_filtered [sensor_msgs/msg/PointCloud2]
+/livox/lidar_nav [sensor_msgs/msg/PointCloud2]
+/livox/lidar_safety [sensor_msgs/msg/PointCloud2]
+/local_costmap/costmap [nav_msgs/msg/OccupancyGrid]
+/local_costmap/costmap_raw [nav2_msgs/msg/Costmap]
+/local_costmap/costmap_updates [map_msgs/msg/OccupancyGridUpdate]
+/local_costmap/footprint [geometry_msgs/msg/Polygon]
+/local_costmap/local_costmap/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/local_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]
+/map [nav_msgs/msg/OccupancyGrid]
+/map_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/medical_nav/blind_zone_status [std_msgs/msg/String]
+/medical_nav/blind_zones [visualization_msgs/msg/MarkerArray]
+/medical_nav/bridge_cmd_debug [std_msgs/msg/String]
+/medical_nav/bridge_status [std_msgs/msg/String]
+/medical_nav/cone_compensation_status [std_msgs/msg/String]
+/medical_nav/corner_speed_status [std_msgs/msg/String]
+/medical_nav/goal_request [std_msgs/msg/String]
+/medical_nav/health_status [std_msgs/msg/String]
+/medical_nav/lidar_filter_status [std_msgs/msg/String]
+/medical_nav/lidar_odometry_status [std_msgs/msg/String]
+/medical_nav/lidar_safety_filter_status [std_msgs/msg/String]
+/medical_nav/navigator_status [std_msgs/msg/String]
+/medical_nav/ops_calibration [std_msgs/msg/String]
+/medical_nav/ops_raw_pose [geometry_msgs/msg/PoseStamped]
+/medical_nav/ops_slip_suspected [std_msgs/msg/Bool]
+/medical_nav/plan [nav_msgs/msg/Path]
+/medical_nav/robot_pose [geometry_msgs/msg/PoseStamped]
+/medical_nav/scan_result [std_msgs/msg/String]
+/medical_nav/scan_transport_status [std_msgs/msg/String]
+/medical_nav/scanner_preview/compressed [sensor_msgs/msg/CompressedImage]
+/medical_nav/scanner_status [std_msgs/msg/String]
+/medical_nav/stm32_ready [std_msgs/msg/Bool]
+/medical_nav/stp23l [std_msgs/msg/String]
+/medical_nav/stp23l/front [sensor_msgs/msg/Range]
+/medical_nav/stp23l/left [sensor_msgs/msg/Range]
+/medical_nav/stp23l/right [sensor_msgs/msg/Range]
+/medical_nav/task_state [std_msgs/msg/UInt8]
+/medical_nav/tele_scanner_preview/compressed [sensor_msgs/msg/CompressedImage]
+/medical_nav/wheel_diagnostics [std_msgs/msg/String]
+/medical_nav/wheel_odom [nav_msgs/msg/Odometry]
+/odom [nav_msgs/msg/Odometry]
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/plan [nav_msgs/msg/Path]
+/plan_smoothed [nav_msgs/msg/Path]
+/planner_selector [std_msgs/msg/String]
+/planner_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/robot_description [std_msgs/msg/String]
+/rosout [rcl_interfaces/msg/Log]
+/smoother_server/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/speed_limit [nav2_msgs/msg/SpeedLimit]
+/tf [tf2_msgs/msg/TFMessage]
+/tf_static [tf2_msgs/msg/TFMessage]
+/trajectories [visualization_msgs/msg/MarkerArray]
+/transformed_global_plan [nav_msgs/msg/Path]
+/velocity_smoother/transition_event [lifecycle_msgs/msg/TransitionEvent]
+/waypoint_follower/transition_event [lifecycle_msgs/msg/TransitionEvent]
+
+========== VELOCITY / DIAGNOSTIC GRAPH ==========
+
+--- /cmd_vel_nav ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: controller_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.2d.0d.87.4e.00.00.00.00.00.00.51.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: velocity_smoother
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.39.0d.69.64.00.00.00.00.00.00.1e.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+--- /cmd_vel ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 4
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.33.0d.d5.83.00.00.00.00.00.00.2b.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.33.0d.d5.83.00.00.00.00.00.00.34.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: behavior_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.33.0d.d5.83.00.00.00.00.00.00.3d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: velocity_smoother
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.39.0d.69.64.00.00.00.00.00.00.1d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 2
+
+Node name: blind_zone_visualizer
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.52.0c.90.98.00.00.00.00.00.00.13.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: home_approach_limiter
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.62.0c.1f.77.00.00.00.00.00.00.12.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+--- /cmd_vel_home_limited ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: home_approach_limiter
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.62.0c.1f.77.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: collision_monitor
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.64.0c.16.6b.00.00.00.00.00.00.25.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+--- /cmd_vel_safe ---
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: collision_monitor
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.64.0c.16.6b.00.00.00.00.00.00.26.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: stm32_bridge
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.54.0c.6d.5f.00.00.00.00.00.00.23.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+--- /medical_nav/cone_compensation_status ---
+Type: std_msgs/msg/String
+
+Publisher count: 1
+
+Node name: cone_footprint_compensator
+Node namespace: /
+Topic type: std_msgs/msg/String
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.50.0c.f3.fb.00.00.00.00.00.00.14.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+--- /medical_nav/bridge_cmd_debug ---
+Type: std_msgs/msg/String
+
+Publisher count: 1
+
+Node name: stm32_bridge
+Node namespace: /
+Topic type: std_msgs/msg/String
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.54.0c.6d.5f.00.00.00.00.00.00.18.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+--- /medical_nav/wheel_odom ---
+Type: nav_msgs/msg/Odometry
+
+Publisher count: 1
+
+Node name: stm32_bridge
+Node namespace: /
+Topic type: nav_msgs/msg/Odometry
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.54.0c.6d.5f.00.00.00.00.00.00.16.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+--- /medical_nav/wheel_diagnostics ---
+Type: std_msgs/msg/String
+
+Publisher count: 1
+
+Node name: stm32_bridge
+Node namespace: /
+Topic type: std_msgs/msg/String
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.54.0c.6d.5f.00.00.00.00.00.00.17.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+--- /livox/lidar_nav ---
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 1
+
+Node name: cone_footprint_compensator
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.f2.73.50.0c.f3.fb.00.00.00.00.00.00.13.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: BEST_EFFORT
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 2
+
+Node name: local_costmap
+Node namespace: /local_costmap
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.2d.0d.87.4e.00.00.00.00.00.00.5b.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: BEST_EFFORT
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: global_costmap
+Node namespace: /global_costmap
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.f2.73.31.0d.c3.a9.00.00.00.00.00.00.5b.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: BEST_EFFORT
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+========== LIFECYCLE ==========
+
+--- /controller_server ---
+active [3]
+
+--- /planner_server ---
+active [3]
+
+--- /smoother_server ---
+active [3]
+
+--- /behavior_server ---
+active [3]
+
+--- /bt_navigator ---
+active [3]
+
+--- /velocity_smoother ---
+active [3]
+
+--- /collision_monitor ---
+active [3]
+
+========== PARAMETERS ==========
+
+--- /controller_server ---
+/controller_server:
+  ros__parameters:
+    /bond_disable_heartbeat_timeout: true
+    FollowPathHeadingHold:
+      ConstraintCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+      CostCritic:
+        collision_cost: 1000000.0
+        consider_footprint: false
+        cost_power: 1
+        cost_weight: 12.0
+        critical_cost: 60.0
+        enabled: true
+        inflation_layer_name: ''
+        near_goal_distance: 0.5
+      GoalAngleCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        threshold_to_consider: 10.0
+      GoalCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+        threshold_to_consider: 1.4
+      PathAlignCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        max_path_occupancy_ratio: 0.05
+        offset_from_furthest: 10
+        threshold_to_consider: 0.35
+        trajectory_point_step: 3
+        use_path_orientations: false
+      PathAngleCritic:
+        cost_power: 1
+        cost_weight: 1.5
+        enabled: false
+        forward_preference: true
+        max_angle_to_furthest: 1.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+      PathFollowCritic:
+        cost_power: 1
+        cost_weight: 14.0
+        enabled: true
+        offset_from_furthest: 8
+        threshold_to_consider: 0.5
+      TrajectoryVisualizer:
+        time_step: 3
+        trajectory_step: 5
+      TwirlingCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+      batch_size: 1200
+      critics:
+      - ConstraintCritic
+      - CostCritic
+      - GoalCritic
+      - GoalAngleCritic
+      - PathAlignCritic
+      - PathFollowCritic
+      - PathAngleCritic
+      - TwirlingCritic
+      enforce_path_inversion: false
+      gamma: 0.015
+      iteration_count: 1
+      max_robot_pose_search_dist: 7.0
+      model_dt: 0.05
+      motion_model: Omni
+      plugin: nav2_mppi_controller::MPPIController
+      prune_distance: 3.5
+      regenerate_noises: false
+      reset_period: 1.0
+      retry_attempt_limit: 1
+      temperature: 0.25
+      time_steps: 30
+      transform_tolerance: 0.3
+      visualize: true
+      vx_max: 3.0
+      vx_min: -3.0
+      vx_std: 0.65
+      vy_max: 3.0
+      vy_std: 0.28
+      wz_max: 0.05
+      wz_std: 0.02
+    FollowPathLateralHold:
+      ConstraintCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+      CostCritic:
+        collision_cost: 1000000.0
+        consider_footprint: false
+        cost_power: 1
+        cost_weight: 12.0
+        critical_cost: 60.0
+        enabled: true
+        inflation_layer_name: ''
+        near_goal_distance: 0.5
+      GoalAngleCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        threshold_to_consider: 10.0
+      GoalCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+        threshold_to_consider: 1.4
+      PathAlignCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        max_path_occupancy_ratio: 0.05
+        offset_from_furthest: 10
+        threshold_to_consider: 0.35
+        trajectory_point_step: 3
+        use_path_orientations: false
+      PathAngleCritic:
+        cost_power: 1
+        cost_weight: 1.5
+        enabled: false
+        forward_preference: true
+        max_angle_to_furthest: 1.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+      PathFollowCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        offset_from_furthest: 8
+        threshold_to_consider: 0.8
+      TrajectoryVisualizer:
+        time_step: 3
+        trajectory_step: 5
+      TwirlingCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+      batch_size: 1200
+      critics:
+      - ConstraintCritic
+      - CostCritic
+      - GoalCritic
+      - GoalAngleCritic
+      - PathAlignCritic
+      - PathFollowCritic
+      - PathAngleCritic
+      - TwirlingCritic
+      enforce_path_inversion: false
+      gamma: 0.015
+      iteration_count: 1
+      max_robot_pose_search_dist: 7.0
+      model_dt: 0.05
+      motion_model: Omni
+      plugin: nav2_mppi_controller::MPPIController
+      prune_distance: 3.5
+      regenerate_noises: false
+      reset_period: 1.0
+      retry_attempt_limit: 1
+      temperature: 0.25
+      time_steps: 40
+      transform_tolerance: 0.3
+      visualize: true
+      vx_max: 3.0
+      vx_min: -3.0
+      vx_std: 0.3
+      vy_max: 3.0
+      vy_std: 0.4
+      wz_max: 0.05
+      wz_std: 0.02
+    FollowPathNurse:
+      ConstraintCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+      CostCritic:
+        collision_cost: 1000000.0
+        consider_footprint: false
+        cost_power: 1
+        cost_weight: 12.0
+        critical_cost: 60.0
+        enabled: true
+        inflation_layer_name: ''
+        near_goal_distance: 0.5
+      GoalAngleCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        threshold_to_consider: 10.0
+      GoalCritic:
+        cost_power: 1
+        cost_weight: 4.0
+        enabled: true
+        threshold_to_consider: 1.4
+      PathAlignCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        max_path_occupancy_ratio: 0.05
+        offset_from_furthest: 10
+        threshold_to_consider: 0.35
+        trajectory_point_step: 3
+        use_path_orientations: false
+      PathAngleCritic:
+        cost_power: 1
+        cost_weight: 1.5
+        enabled: false
+        forward_preference: true
+        max_angle_to_furthest: 1.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+      PathFollowCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+        offset_from_furthest: 8
+        threshold_to_consider: 0.8
+      TrajectoryVisualizer:
+        time_step: 3
+        trajectory_step: 5
+      TwirlingCritic:
+        cost_power: 1
+        cost_weight: 10.0
+        enabled: true
+      batch_size: 1200
+      critics:
+      - ConstraintCritic
+      - CostCritic
+      - GoalCritic
+      - GoalAngleCritic
+      - PathAlignCritic
+      - PathFollowCritic
+      - PathAngleCritic
+      - TwirlingCritic
+      enforce_path_inversion: false
+      gamma: 0.015
+      iteration_count: 1
+      max_robot_pose_search_dist: 7.0
+      model_dt: 0.05
+      motion_model: Omni
+      plugin: nav2_mppi_controller::MPPIController
+      prune_distance: 3.5
+      regenerate_noises: false
+      reset_period: 1.0
+      retry_attempt_limit: 1
+      temperature: 0.25
+      time_steps: 40
+      transform_tolerance: 0.3
+      visualize: true
+      vx_max: 3.0
+      vx_min: -3.0
+      vx_std: 0.3
+      vy_max: 3.0
+      vy_std: 0.28
+      wz_max: 0.8
+      wz_std: 0.15
+    controller_frequency: 20.0
+    controller_plugins:
+    - FollowPathNurse
+    - FollowPathHeadingHold
+    - FollowPathLateralHold
+    controller_server:
+      verbose: false
+    failure_tolerance: 0.3
+    general_goal_checker:
+      plugin: nav2_controller::SimpleGoalChecker
+      stateful: true
+      xy_goal_tolerance: 0.1
+      yaw_goal_tolerance: 0.1
+    goal_checker_plugins:
+    - general_goal_checker
+    min_theta_velocity_threshold: 0.001
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.001
+    odom_topic: /odom
+    progress_checker:
+      movement_time_allowance: 15.0
+      plugin: nav2_controller::SimpleProgressChecker
+      required_movement_radius: 0.25
+    progress_checker_plugin: progress_checker
+    publish_zero_velocity: true
+    speed_limit_topic: speed_limit
+    use_sim_time: false
+
+
+--- /planner_server ---
+/planner_server:
+  ros__parameters:
+    /bond_disable_heartbeat_timeout: true
+    GridBased:
+      allow_unknown: false
+      blind_zone_angles_deg:
+      - 45.0
+      - 135.0
+      - -135.0
+      - -45.0
+      blind_zone_enabled: true
+      blind_zone_half_width_deg: 7.0
+      blind_zone_lateral_offset: 0.32
+      blind_zone_margin_deg: 3.0
+      blind_zone_max_detour_time_ratio: 1.25
+      blind_zone_min_lateral_offset: 0.18
+      blind_zone_min_segment_length: 1.0
+      clearance_power: 2.0
+      clearance_weight: 12.0
+      costmap_weight: 3.0
+      density_normalization: 0.18
+      density_radius: 0.6
+      density_weight: 5.0
+      forward_speed: 3.0
+      goal_exemption_radius: 0.75
+      lateral_speed: 3.0
+      max_planar_speed: 3.0
+      max_planning_time: 1.5
+      max_time_ratio: 1.1
+      max_wheel_speed: 3.0
+      min_time_slack: 0.25
+      plugin: medical_clearance_planner/ClearancePlanner
+      preferred_clearance: 0.65
+      reverse_speed: 3.0
+      route_reuse_max_distance: 0.5
+      route_switch_max_slowdown: 0.05
+      route_switch_risk_improvement: 0.3
+      route_switch_time_improvement: 0.3
+      simplification_cost_tolerance: 1.06
+      simplification_time_tolerance: 1.01
+      start_exemption_radius: 0.45
+      tolerance: 0.1
+    expected_planner_frequency: 2.0
+    planner_plugins:
+    - GridBased
+    use_sim_time: false
+
+
+--- /velocity_smoother ---
+/velocity_smoother:
+  ros__parameters:
+    /bond_disable_heartbeat_timeout: true
+    deadband_velocity:
+    - 0.0
+    - 0.0
+    - 0.0
+    feedback: OPEN_LOOP
+    max_accel:
+    - 2.2
+    - 2.2
+    - 1.8
+    max_decel:
+    - -2.0
+    - -2.2
+    - -2.0
+    max_velocity:
+    - 3.0
+    - 3.0
+    - 0.8
+    min_velocity:
+    - -3.0
+    - -3.0
+    - -0.8
+    odom_duration: 0.1
+    odom_topic: /odom
+    scale_velocities: false
+    smoothing_frequency: 20.0
+    use_sim_time: false
+    velocity_timeout: 1.0
+
+
+--- /collision_monitor ---
+/collision_monitor:
+  ros__parameters:
+    /bond_disable_heartbeat_timeout: true
+    ApproachPolygon:
+      action_type: approach
+      enabled: true
+      footprint_topic: local_costmap/published_footprint
+      max_points: 5
+      polygon_pub_topic: ApproachPolygon
+      simulation_time_step: 0.1
+      time_before_collision: 1.0
+      type: polygon
+      visualize: true
+    StopPolygon:
+      action_type: stop
+      enabled: true
+      max_points: 3
+      points:
+      - 0.265
+      - 0.0
+      - 0.187
+      - -0.187
+      - 0.0
+      - -0.265
+      - -0.187
+      - -0.187
+      - -0.265
+      - 0.0
+      - -0.187
+      - 0.187
+      - 0.0
+      - 0.265
+      - 0.187
+      - 0.187
+      polygon_pub_topic: StopPolygon
+      type: polygon
+      visualize: true
+    base_frame_id: base_link
+    base_shift_correction: true
+    cmd_vel_in_topic: /cmd_vel_home_limited
+    cmd_vel_out_topic: /cmd_vel_safe
+    livox:
+      enabled: true
+      max_height: 0.6
+      min_height: 0.12
+      topic: /livox/lidar_safety
+      type: pointcloud
+    observation_sources:
+    - livox
+    odom_frame_id: odom
+    polygons:
+    - ApproachPolygon
+    - StopPolygon
+    source_timeout: 0.3
+    stop_pub_timeout: 0.5
+    transform_tolerance: 0.2
+    use_sim_time: false
+
+
+--- /home_approach_limiter ---
+/home_approach_limiter:
+  ros__parameters:
+    bed1_task_state: 3
+    bed3_task_state: 6
+    bed_max_speed_m_s: 3.0
+    bed_soft_decel_m_s2: 2.0
+    bed_terminal_distance_m: 0.2
+    bed_terminal_speed_m_s: 0.45
+    decel_start_distance_m: 1.0
+    field_config: /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/field_map.yaml
+    home_task_state: 9
+    input_topic: /cmd_vel
+    max_speed_m_s: 3.0
+    output_topic: /cmd_vel_home_limited
+    pose_timeout_s: 0.5
+    pose_topic: /medical_nav/robot_pose
+    soft_decel_m_s2: 4.9875
+    task_state_topic: /medical_nav/task_state
+    terminal_distance_m: 0.1
+    terminal_speed_m_s: 0.1
+    use_sim_time: false
+
+
+--- /corner_speed_limiter ---
+/corner_speed_limiter:
+  ros__parameters:
+    blind_zone_angles_deg:
+    - 45.0
+    - 135.0
+    - -135.0
+    - -45.0
+    blind_zone_enabled: true
+    blind_zone_half_width_deg: 7.0
+    blind_zone_lookahead_m: 2.0
+    blind_zone_min_overlap_m: 0.6
+    blind_zone_speed_m_s: 0.7
+    braking_decel_m_s2: 1.8
+    braking_margin_m: 0.05
+    controller_selector_topic: /controller_selector
+    heading_hold_controller_id: FollowPathHeadingHold
+    heading_hold_lateral_accel_m_s2: 1.6
+    heading_hold_min_corner_speed_m_s: 1.1
+    lateral_accel_m_s2: 1.4
+    lookahead_distance_m: 3.5
+    max_speed_m_s: 3.0
+    min_corner_speed_m_s: 1.0
+    min_turn_angle_deg: 35.0
+    output_topic: /speed_limit
+    path_timeout_s: 1.5
+    pose_timeout_s: 0.5
+    pose_topic: /medical_nav/robot_pose
+    raw_path_topic: /plan
+    sample_step_m: 0.1
+    smoothed_path_topic: /transformed_global_plan
+    smoothing_wait_s: 0.25
+    status_topic: /medical_nav/corner_speed_status
+    tangent_span_m: 0.75
+    update_rate_hz: 10.0
+    use_sim_time: false
+
+
+--- /stm32_bridge ---
+/stm32_bridge:
+  ros__parameters:
+    active_rotation_linear_threshold_m_s: 0.05
+    active_rotation_max_wz_rad_s: 0.8
+    base_frame: base_link
+    baud_rate: 115200
+    bed_scan_activation_distance_m: 1.5
+    cmd_timeout_s: 0.4
+    cmd_vel_topic: /cmd_vel_safe
+    dry_run: false
+    ekf_linear_accel_std_m_s2: 1.5
+    ekf_ops_position_std_m: 0.02
+    ekf_wheel_forward_std_m_s: 0.08
+    ekf_wheel_lateral_std_m_s: 0.16
+    ekf_wheel_yaw_std_rad_s: 0.12
+    enforce_task_gate: true
+    field_config: /home/fzurobot/livox_ws/install/obstacle_detector/share/obstacle_detector/config/field_map.yaml
+    gate_release_rearm_drop_m_s: 0.25
+    gate_release_wheel_accel_m_s2: 2.8
+    gate_release_yaw_radius_m: 0.25
+    goal_handoff_hold_s: 0.5
+    heading_correction_max_wz_rad_s: 0.3
+    heading_hold_deadband_deg: 1.0
+    heading_hold_enabled: true
+    heading_hold_integral_limit_rad_s: 0.05
+    heading_hold_kd: 0.0
+    heading_hold_ki: 0.0
+    heading_hold_kp: 1.5
+    heading_hold_max_wz_rad_s: 0.3
+    heading_hold_reverse_full_speed_m_s: 2.5
+    heading_hold_reverse_kd: 0.18
+    heading_hold_reverse_kp: 2.2
+    heading_hold_reverse_max_wz_rad_s: 0.4
+    heading_hold_reverse_min_speed_m_s: 1.0
+    heading_hold_target_deg: 0.0
+    heading_hold_task_states:
+    - 3
+    - 6
+    - 9
+    heading_hold_yaw_rate_deadband_rad_s: 0.02
+    heartbeat_rate_hz: 10.0
+    map_frame: map
+    max_planar_speed_m_s: 3.0
+    max_speed_mm_s: 3000.0
+    max_wheel_speed_m_s: 3.0
+    max_yaw_cdeg_s: 9000.0
+    navigator_following_hold_s: 0.3
+    navigator_status_timeout_s: 1.2
+    nurse_scan_stop_angular_rad_s: 0.05
+    nurse_scan_stop_linear_m_s: 0.03
+    nurse_scan_stop_settle_s: 0.15
+    odom_frame: odom
+    pose_timeout_s: 0.5
+    publish_rate_hz: 50.0
+    scan_retry_s: 0.15
+    serial_port: /dev/ttyUSB0
+    stm32_recovery_hold_s: 0.75
+    stm32_recovery_max_angular_rad_s: 0.05
+    stm32_recovery_max_linear_m_s: 0.03
+    stm32_telemetry_timeout_s: 0.25
+    tts_audio_device: pulse
+    tts_bed1_audio_file: /home/fzurobot/Downloads/1_.mp3
+    tts_bed3_audio_file: /home/fzurobot/Downloads/3_.mp3
+    tts_keepalive_enabled: true
+    tts_lead_silence_s: 0.0
+    tts_tail_silence_s: 0.0
+    tts_timeout_s: 8.0
+    tts_volume_percent: 100
+    twist_filter_alpha: 0.35
+    use_sim_time: false
+    wheel_odom_timeout_s: 0.15
+    yaw_sign: -1.0
+

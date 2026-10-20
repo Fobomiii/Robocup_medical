@@ -1,0 +1,681 @@
+#!/usr/bin/env python3
+"""Deploy navigation, scanning and the fullscreen NUC dashboard."""
+
+# IMPORTANT: Read deploy_rule.md before changing this deployment script.
+
+import os
+import posixpath
+import shlex
+import stat
+import sys
+import time
+import traceback
+
+import paramiko
+
+
+HOST = os.environ.get("MEDICAL_NUC_HOST", "192.168.50.22")
+USER = os.environ.get("MEDICAL_NUC_USER", "fzurobot")
+PASSWORD = os.environ.get("MEDICAL_NUC_PASSWORD")
+ROS_DOMAIN_ID = os.environ.get("MEDICAL_ROS_DOMAIN_ID", "77")
+DRY_RUN = os.environ.get("MEDICAL_NAV_DRY_RUN", "false").lower()
+SCANNER_ENABLED = os.environ.get("MEDICAL_SCANNER_ENABLED", "true").lower()
+DEFAULT_SCAN_CAMERA = (
+    "/dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0"
+)
+DEFAULT_TELE_SCAN_CAMERA = (
+    "/dev/v4l/by-id/usb-BLC-240823--A_SDYH-8P0P-video-index0"
+)
+SCAN_CAMERA_OVERRIDE = os.environ.get("MEDICAL_SCAN_CAMERA")
+TELE_SCAN_CAMERA_OVERRIDE = os.environ.get("MEDICAL_TELE_SCAN_CAMERA")
+DASHBOARD_SCALE_OVERRIDE = os.environ.get("MEDICAL_DASHBOARD_SCALE")
+HEALTH_BLE_DEVICE_NAME = os.environ.get(
+    "MEDICAL_HEALTH_BLE_DEVICE_NAME", "MedicalVitals-S3"
+)
+HEALTH_BLE_DEVICE_ADDRESS = os.environ.get(
+    "MEDICAL_HEALTH_BLE_DEVICE_ADDRESS", ""
+)
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.normpath(os.path.join(HERE, ".."))
+PKG = os.path.join(ROOT, "2_ROS2包_obstacle_detector")
+PLANNER_PKG = os.path.join(ROOT, "2_ROS2包_clearance_planner")
+VIZ = os.path.join(ROOT, "3_可视化工具")
+
+def iter_package_files(remote_pkg: str, remote_planner_pkg: str):
+    packages = (
+        (PKG, remote_pkg),
+        (PLANNER_PKG, remote_planner_pkg),
+    )
+    for local_root, remote_root in packages:
+        for directory, names, files in os.walk(local_root):
+            names[:] = [
+                name for name in names
+                if name not in {"__pycache__", ".pytest_cache", "build", "install", "log"}
+            ]
+            for filename in files:
+                if filename.endswith((".pyc", ".pyo")):
+                    continue
+                local = os.path.join(directory, filename)
+                relative = os.path.relpath(local, local_root).replace(os.sep, "/")
+                yield local, posixpath.join(remote_root, relative)
+
+
+def parse_environment_file(contents: str):
+    values = {}
+    for raw_line in contents.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        values[name.strip()] = value.strip()
+    return values
+
+
+def valid_device_path(path: str) -> bool:
+    return path.startswith("/dev/") and not any(char.isspace() for char in path)
+
+
+def valid_dashboard_scale(value: str) -> bool:
+    try:
+        scale = float(value)
+    except ValueError:
+        return False
+    return 0.5 <= scale <= 2.0
+
+
+def main() -> int:
+    scan_camera = SCAN_CAMERA_OVERRIDE or DEFAULT_SCAN_CAMERA
+    tele_scan_camera = TELE_SCAN_CAMERA_OVERRIDE or DEFAULT_TELE_SCAN_CAMERA
+    dashboard_scale = DASHBOARD_SCALE_OVERRIDE or "1"
+    if not PASSWORD:
+        print("Set MEDICAL_NUC_PASSWORD before running deployment.")
+        return 2
+    if not ROS_DOMAIN_ID.isdigit() or not 0 <= int(ROS_DOMAIN_ID) <= 101:
+        print("MEDICAL_ROS_DOMAIN_ID must be an integer from 0 to 101.")
+        return 2
+    if DRY_RUN not in {"true", "false"}:
+        print("MEDICAL_NAV_DRY_RUN must be true or false.")
+        return 2
+    if SCANNER_ENABLED not in {"true", "false"}:
+        print("MEDICAL_SCANNER_ENABLED must be true or false.")
+        return 2
+    if not valid_device_path(scan_camera):
+        print("MEDICAL_SCAN_CAMERA must be an absolute /dev path.")
+        return 2
+    if not valid_device_path(tele_scan_camera):
+        print("MEDICAL_TELE_SCAN_CAMERA must be an absolute /dev path.")
+        return 2
+    if not valid_dashboard_scale(dashboard_scale):
+        print("MEDICAL_DASHBOARD_SCALE must be between 0.5 and 2.0.")
+        return 2
+    for package_root in (PKG, PLANNER_PKG):
+        manifest = os.path.join(package_root, "package.xml")
+        if not os.path.isfile(manifest):
+            print(f"missing ROS package manifest: {manifest}")
+            return 1
+
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.connect(
+        HOST,
+        username=USER,
+        password=PASSWORD,
+        timeout=20,
+        allow_agent=False,
+        look_for_keys=False,
+    )
+
+    def run(
+        command: str,
+        timeout: int = 300,
+        live_output: bool = False,
+        progress_label: str = "",
+    ):
+        """Run one remote command without allowing Paramiko to wait forever.
+
+        Paramiko's ``exec_command(timeout=...)`` does not put a total deadline
+        on ``recv_exit_status()``. Also, waiting for the exit status before
+        draining stdout/stderr can deadlock if a verbose command fills the SSH
+        channel buffers. Drain both streams while polling and enforce our own
+        wall-clock deadline.
+        """
+        command = (
+            "export SYSTEMD_PAGER=cat PAGER=cat GIT_PAGER=cat "
+            "SYSTEMD_COLORS=0; " + command
+        )
+        _, stdout, stderr = client.exec_command(command, timeout=timeout)
+        channel = stdout.channel
+        stdout_chunks = []
+        stderr_chunks = []
+        started = time.monotonic()
+        deadline = started + timeout
+        next_progress = started + 10.0
+
+        while True:
+            while channel.recv_ready():
+                chunk = channel.recv(32768)
+                if not chunk:
+                    break
+                stdout_chunks.append(chunk)
+                if live_output:
+                    print(chunk.decode(errors="replace"), end="", flush=True)
+
+            while channel.recv_stderr_ready():
+                chunk = channel.recv_stderr(32768)
+                if not chunk:
+                    break
+                stderr_chunks.append(chunk)
+                if live_output:
+                    print(
+                        chunk.decode(errors="replace"),
+                        end="",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+
+            if channel.exit_status_ready():
+                exit_status = channel.recv_exit_status()
+                # The exit-status packet can arrive just before the last data
+                # packet. Give Paramiko one final chance to expose it.
+                while channel.recv_ready():
+                    chunk = channel.recv(32768)
+                    if not chunk:
+                        break
+                    stdout_chunks.append(chunk)
+                    if live_output:
+                        print(chunk.decode(errors="replace"), end="", flush=True)
+                while channel.recv_stderr_ready():
+                    chunk = channel.recv_stderr(32768)
+                    if not chunk:
+                        break
+                    stderr_chunks.append(chunk)
+                    if live_output:
+                        print(
+                            chunk.decode(errors="replace"),
+                            end="",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                break
+
+            now = time.monotonic()
+            if progress_label and now >= next_progress:
+                elapsed = int(now - started)
+                print(
+                    f"[deploy] {progress_label}: still running "
+                    f"({elapsed}s/{timeout}s timeout)",
+                    flush=True,
+                )
+                next_progress = now + 10.0
+
+            if now >= deadline:
+                channel.close()
+                message = (
+                    f"Remote command exceeded the {timeout}s deployment timeout."
+                )
+                stderr_chunks.append(("\n" + message + "\n").encode())
+                return (
+                    124,
+                    b"".join(stdout_chunks).decode(errors="replace"),
+                    b"".join(stderr_chunks).decode(errors="replace"),
+                )
+
+            time.sleep(0.05)
+
+        return (
+            exit_status,
+            b"".join(stdout_chunks).decode(errors="replace"),
+            b"".join(stderr_chunks).decode(errors="replace"),
+        )
+
+    sudo = f"printf '%s\\n' {shlex.quote(PASSWORD)} | sudo -S -p ''"
+
+    sftp = client.open_sftp()
+    remote_home = sftp.normalize(".")
+    remote_ws = f"{remote_home}/livox_ws"
+    remote_pkg = f"{remote_ws}/src/obstacle_detector"
+    remote_planner_pkg = f"{remote_ws}/src/medical_clearance_planner"
+
+    remote_environment_path = f"{remote_home}/.config/medical-navigation.env"
+    existing_environment = {}
+    try:
+        with sftp.open(remote_environment_path, "r") as stream:
+            contents = stream.read()
+            if isinstance(contents, bytes):
+                contents = contents.decode("utf-8", errors="replace")
+            existing_environment = parse_environment_file(contents)
+    except OSError:
+        pass
+    if SCAN_CAMERA_OVERRIDE is None:
+        scan_camera = existing_environment.get(
+            "MEDICAL_SCAN_CAMERA", DEFAULT_SCAN_CAMERA
+        )
+    if TELE_SCAN_CAMERA_OVERRIDE is None:
+        tele_scan_camera = existing_environment.get(
+            "MEDICAL_TELE_SCAN_CAMERA", DEFAULT_TELE_SCAN_CAMERA
+        )
+    if DASHBOARD_SCALE_OVERRIDE is None:
+        dashboard_scale = existing_environment.get("MEDICAL_DASHBOARD_SCALE", "1")
+    if not valid_device_path(scan_camera) or not valid_device_path(tele_scan_camera):
+        print("The retained NUC camera configuration contains an invalid /dev path.")
+        sftp.close()
+        client.close()
+        return 2
+    if not valid_dashboard_scale(dashboard_scale):
+        print("The retained NUC dashboard scale is outside 0.5 to 2.0.")
+        sftp.close()
+        client.close()
+        return 2
+    print(
+        "Camera configuration: "
+        f"primary={scan_camera} tele={tele_scan_camera} "
+        "(remote values retained unless explicitly overridden)"
+    )
+
+    def ensure_remote_dir(path: str) -> None:
+        current = "/"
+        for part in path.strip("/").split("/"):
+            current = posixpath.join(current, part)
+            try:
+                mode = sftp.stat(current).st_mode
+                if not stat.S_ISDIR(mode):
+                    raise RuntimeError(f"remote path is not a directory: {current}")
+            except FileNotFoundError:
+                sftp.mkdir(current)
+
+    uploads = list(iter_package_files(remote_pkg, remote_planner_pkg))
+    uploads.extend(
+        [
+            (os.path.join(VIZ, "medical_nav.rviz"), f"{remote_home}/medical_nav.rviz"),
+            (os.path.join(HERE, "start_obstacle.sh"), f"{remote_home}/start_obstacle.sh"),
+            (os.path.join(HERE, "start_mid360.sh"), f"{remote_home}/start_mid360.sh"),
+            (os.path.join(HERE, "start_rviz.sh"), f"{remote_home}/start_rviz.sh"),
+            (os.path.join(HERE, "prepare_rviz_config.py"),
+             f"{remote_home}/prepare_rviz_config.py"),
+            (os.path.join(HERE, "install_rviz_desktop.sh"),
+             f"{remote_home}/install_rviz_desktop.sh"),
+            (os.path.join(HERE, "navigation-viz.desktop"),
+             f"{remote_home}/navigation-viz.desktop"),
+            (os.path.join(HERE, "start_viz.sh"), f"{remote_home}/start_viz.sh"),
+            (os.path.join(HERE, "start_scan_dashboard.sh"),
+             f"{remote_home}/start_scan_dashboard.sh"),
+            (os.path.join(HERE, "monitor_velocity_layers.sh"),
+             f"{remote_home}/monitor_velocity_layers.sh"),
+            (os.path.join(HERE, "record_bed13_3runs.sh"),
+             f"{remote_home}/record_bed13_3runs.sh"),
+            (os.path.join(HERE, "medical-scan-dashboard.desktop"),
+             f"{remote_home}/medical-scan-dashboard.desktop"),
+            (os.path.join(HERE, "mid360.service"), f"{remote_home}/mid360.service"),
+            (os.path.join(HERE, "obstacle-detector.service"),
+             f"{remote_home}/obstacle-detector.service"),
+            (os.path.join(ROOT, "..", "check_nuc.sh"),
+             f"{remote_home}/check_nuc.sh"),
+        ]
+    )
+
+    for local, remote in uploads:
+        if not os.path.isfile(local):
+            print(f"missing local file: {local}")
+            sftp.close()
+            client.close()
+            return 1
+        ensure_remote_dir(posixpath.dirname(remote))
+        sftp.put(local, remote)
+        print(f"pushed {os.path.relpath(local, ROOT)} -> {remote}")
+    sftp.close()
+
+    run(
+        f"chmod +x {remote_home}/start_*.sh "
+        f"{remote_home}/monitor_velocity_layers.sh "
+        f"{remote_home}/record_bed13_3runs.sh {remote_home}/check_nuc.sh"
+    )
+
+    print("Checking scanner, BLE health and NUC TTS runtime dependencies...")
+    rc, out, err = run(
+        "dpkg -s python3-opencv python3-numpy python3-pyqt5 python3-pyzbar "
+        "libzbar0 v4l-utils python3-pip ffmpeg alsa-utils bluez rfkill "
+        ">/dev/null 2>&1 || "
+        f"{sudo} env DEBIAN_FRONTEND=noninteractive apt-get install -y "
+        "python3-opencv python3-numpy python3-pyqt5 python3-pyzbar "
+        "libzbar0 v4l-utils python3-pip ffmpeg alsa-utils bluez rfkill",
+        timeout=600,
+    )
+    print(out.strip() or err.strip())
+    if rc != 0:
+        client.close()
+        return rc
+
+    rc, out, err = run(
+        "/usr/bin/python3 -c 'import bleak' 2>/dev/null || "
+        f"({sudo} env DEBIAN_FRONTEND=noninteractive apt-get install -y "
+        "python3-bleak) || "
+        "/usr/bin/python3 -m pip install --user bleak==0.20.2",
+        timeout=300,
+    )
+    print(out.strip() or err.strip())
+    if rc != 0:
+        client.close()
+        return rc
+
+    rc, out, err = run(
+        f"{sudo} systemctl enable --now bluetooth.service && "
+        f"{sudo} rfkill unblock bluetooth && "
+        "timeout 10s bluetoothctl power on"
+    )
+    if rc != 0:
+        print(err or out)
+        client.close()
+        return rc
+
+    rc, out, err = run(
+        "/usr/bin/python3 -c 'import zxingcpp' 2>/dev/null || "
+        "/usr/bin/python3 -m pip install --user --no-deps zxing-cpp==3.1.1",
+        timeout=300,
+    )
+    print(out.strip() or err.strip())
+    if rc != 0:
+        client.close()
+        return rc
+
+    rc, out, err = run(
+        f"{sudo} usermod -aG video,audio,dialout {shlex.quote(USER)}"
+    )
+    if rc != 0:
+        print(err or out)
+        client.close()
+        return rc
+    dashboard_desktop = f"{remote_home}/medical-scan-dashboard.desktop"
+    rc, out, err = run(
+        f"desktop_dir=$(xdg-user-dir DESKTOP 2>/dev/null || true); "
+        f"[ -n \"$desktop_dir\" ] || desktop_dir={shlex.quote(remote_home + '/Desktop')}; "
+        f"mkdir -p \"$desktop_dir\" {shlex.quote(remote_home + '/.config/autostart')} "
+        f"{shlex.quote(remote_home + '/.local/share/applications')} && "
+        f"install -m 0755 {shlex.quote(dashboard_desktop)} "
+        f"\"$desktop_dir/medical-scan-dashboard.desktop\" && "
+        f"install -m 0644 {shlex.quote(dashboard_desktop)} "
+        f"{shlex.quote(remote_home + '/.config/autostart/medical-scan-dashboard.desktop')} && "
+        f"install -m 0644 {shlex.quote(dashboard_desktop)} "
+        f"{shlex.quote(remote_home + '/.local/share/applications/medical-scan-dashboard.desktop')}"
+    )
+    if rc != 0:
+        print(err or out)
+        client.close()
+        return rc
+    run(
+        f"desktop_dir=$(xdg-user-dir DESKTOP 2>/dev/null || true); "
+        f"[ -n \"$desktop_dir\" ] || desktop_dir={shlex.quote(remote_home + '/Desktop')}; "
+        "user_bus=/run/user/$(id -u)/bus; "
+        "if command -v gio >/dev/null 2>&1; then "
+        "if [ -S \"$user_bus\" ]; then "
+        "DBUS_SESSION_BUS_ADDRESS=unix:path=$user_bus DISPLAY=${DISPLAY:-:0} "
+        "gio set \"$desktop_dir/medical-scan-dashboard.desktop\" "
+        "metadata::trusted true 2>/dev/null || true; "
+        "else gio set \"$desktop_dir/medical-scan-dashboard.desktop\" "
+        "metadata::trusted true 2>/dev/null || true; fi; fi"
+    )
+    # RViz is a diagnostics tool and must not consume resources on every
+    # desktop login. Remove the legacy autostart entry; start_rviz.sh remains
+    # available for explicit remote or local launch.
+    rc, out, err = run(
+        f"rm -f {remote_home}/.config/autostart/navigation-viz.desktop"
+    )
+    if rc != 0:
+        print(err or out)
+        client.close()
+        return rc
+    rc, out, err = run(
+        f"bash {shlex.quote(remote_home + '/install_rviz_desktop.sh')}", timeout=20
+    )
+    if out.strip():
+        print(out.strip())
+    if rc != 0:
+        print(err or out)
+        client.close()
+        return rc
+    rc, out, err = run(
+        f"cd {remote_pkg} && /usr/bin/python3 -m py_compile "
+        "obstacle_detector/nav_protocol.py obstacle_detector/serial_transport.py "
+        "obstacle_detector/nuc_tts.py "
+        "obstacle_detector/bridge_safety.py "
+        "obstacle_detector/qos_profiles.py "
+        "obstacle_detector/field_goals.py obstacle_detector/stm32_bridge.py "
+        "obstacle_detector/medical_navigator.py obstacle_detector/lidar_transform.py "
+        "obstacle_detector/blind_zone_visualizer.py "
+        "obstacle_detector/nurse_scan_core.py "
+        "obstacle_detector/lidar_odometry_core.py "
+        "obstacle_detector/lidar_odometry_guard.py "
+        "obstacle_detector/stp23l_calibration.py "
+        "obstacle_detector/scanner_core.py obstacle_detector/code_scanner.py "
+        "obstacle_detector/health_ble_core.py obstacle_detector/health_ble_bridge.py "
+        "obstacle_detector/scan_dashboard_core.py obstacle_detector/scan_dashboard.py "
+        "obstacle_detector/omni_escape_core.py obstacle_detector/omni_escape.py "
+        "obstacle_detector/startup_probe.py "
+        "launch/obstacle.launch.py "
+        "scripts/make_static_map.py"
+    )
+    if rc != 0:
+        print(err or out)
+        client.close()
+        return rc
+
+    rc, out, err = run(
+        # The NUC login shell may auto-activate Miniconda.  If CMake sees that
+        # interpreter first, ament fails because the Conda environment does
+        # not contain ROS' catkin_pkg.  Build ROS packages with Ubuntu's
+        # system Python regardless of the interactive shell state.
+        "unset CONDA_PREFIX CONDA_DEFAULT_ENV CONDA_PROMPT_MODIFIER "
+        "PYTHONHOME PYTHONPATH && "
+        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && "
+        "source /opt/ros/humble/setup.bash && "
+        f"cd {remote_ws} && colcon build --symlink-install "
+        "--packages-select medical_clearance_planner obstacle_detector "
+        "--cmake-args -DPython3_EXECUTABLE=/usr/bin/python3"
+    )
+    # colcon writes its short summary to stdout and compiler diagnostics to
+    # stderr.  Always print both; using `out or err` hides the actual C++
+    # failure whenever the summary is non-empty.
+    if out.strip():
+        print(out.strip())
+    if err.strip():
+        print(err.strip(), file=sys.stderr)
+    if rc != 0:
+        client.close()
+        return rc
+
+    # Configure unattended automatic navigation with real chassis output.
+    # This value persists across service restarts and NUC reboots.
+    environment = (
+        f"MEDICAL_NAV_DRY_RUN={DRY_RUN}\n"
+        f"ROS_DOMAIN_ID={ROS_DOMAIN_ID}\n"
+        "ROS_LOCALHOST_ONLY=1\n"
+        f"MEDICAL_SCANNER_ENABLED={SCANNER_ENABLED}\n"
+        f"MEDICAL_SCAN_CAMERA={scan_camera}\n"
+        f"MEDICAL_TELE_SCAN_CAMERA={tele_scan_camera}\n"
+        f"MEDICAL_DASHBOARD_SCALE={dashboard_scale}\n"
+        "MEDICAL_HEALTH_BLE_ENABLED=true\n"
+        f"MEDICAL_HEALTH_BLE_DEVICE_NAME={HEALTH_BLE_DEVICE_NAME}\n"
+        f"MEDICAL_HEALTH_BLE_DEVICE_ADDRESS={HEALTH_BLE_DEVICE_ADDRESS}\n"
+    )
+    rc, out, err = run(
+        f"mkdir -p {shlex.quote(remote_home + '/.config')} && "
+        f"printf %s {shlex.quote(environment)} > "
+        f"{shlex.quote(remote_home + '/.config/medical-navigation.env')}"
+    )
+    if rc != 0:
+        print(err or out)
+        client.close()
+        return rc
+
+    systemd_steps = (
+        (
+            "Confirming the robot is stationary",
+            "if systemctl is-active --quiet obstacle-detector.service; then "
+            "source /opt/ros/humble/setup.bash || exit 1; "
+            f"source {shlex.quote(remote_ws + '/install/setup.bash')} || exit 1; "
+            f"export ROS_DOMAIN_ID={ROS_DOMAIN_ID} ROS_LOCALHOST_ONLY=1; "
+            "bridge_status=$(timeout 5s ros2 topic echo "
+            "/medical_nav/bridge_status std_msgs/msg/String "
+            "--once --full-length 2>/dev/null) || "
+            "{ echo 'Refusing deploy: running navigation has no bridge status.'; "
+            "exit 75; }; "
+            "printf '%s' \"$bridge_status\" | grep -Fq '\"stopped\": true' && "
+            "printf '%s' \"$bridge_status\" | "
+            "grep -Fq '\"motion_authorized\": false' || "
+            "{ echo 'Refusing deploy: robot may be moving or armed.'; exit 75; }; "
+            "fi",
+            15,
+        ),
+        (
+            "Checking Mid360 without restarting it",
+            "systemctl is-active --quiet mid360.service || "
+            "{ echo 'Mid360 is not active; deployment will not restart it.'; exit 76; }",
+            10,
+        ),
+        (
+            "Installing obstacle-detector.service",
+            f"{sudo} install -m 0644 {remote_home}/obstacle-detector.service "
+            "/etc/systemd/system/obstacle-detector.service",
+            20,
+        ),
+        ("Reloading systemd units", f"{sudo} systemctl daemon-reload", 20),
+        (
+            "Enabling navigation service",
+            f"{sudo} systemctl enable obstacle-detector.service",
+            20,
+        ),
+        (
+            "Resetting previous startup failures",
+            f"{sudo} systemctl reset-failed obstacle-detector.service",
+            20,
+        ),
+        (
+            "Restarting and verifying navigation",
+            f"{sudo} systemctl restart --no-block obstacle-detector.service && "
+            "deadline=$((SECONDS + 150)); last_state=; "
+            "while [ $SECONDS -lt $deadline ]; do "
+            "state=$(systemctl show obstacle-detector.service "
+            "--property=ActiveState --value 2>/dev/null || true); "
+            "restarts=$(systemctl show obstacle-detector.service "
+            "--property=NRestarts --value 2>/dev/null || true); "
+            "if [ \"$state\" = active ]; then "
+            "echo \"[deploy] navigation ready after ${restarts:-0} restart(s)\"; "
+            "exit 0; fi; "
+            "if [ \"$state\" != \"$last_state\" ]; then "
+            "echo \"[deploy] navigation state=${state:-unknown} "
+            "restarts=${restarts:-0}\"; last_state=$state; fi; "
+            "sleep 2; "
+            "done; "
+            "echo '[deploy] navigation did not become active within 150s'; "
+            "exit 1",
+            165,
+        ),
+    )
+    rc = 0
+    for step_name, command, step_timeout in systemd_steps:
+        print(f"[deploy] {step_name}...", flush=True)
+        rc, out, err = run(
+            command,
+            timeout=step_timeout,
+            live_output=True,
+            progress_label=step_name,
+        )
+        if rc != 0:
+            print(
+                f"[deploy] {step_name} failed with exit code {rc}.",
+                file=sys.stderr,
+            )
+            if err.strip():
+                print(err.strip(), file=sys.stderr)
+            elif out.strip():
+                print(out.strip(), file=sys.stderr)
+            break
+
+    if rc != 0:
+        print("[deploy] Collecting systemd diagnostics...", flush=True)
+        status_rc, status_out, status_err = run(
+            "systemctl --no-pager -l status mid360.service "
+            "obstacle-detector.service; "
+            "journalctl --no-pager -n 100 -u mid360.service "
+            "-u obstacle-detector.service",
+            timeout=30,
+        )
+        del status_rc
+        print(status_out.strip() or status_err.strip())
+
+    if rc == 0:
+        dashboard_log = f"{remote_home}/.cache/medical-scan-dashboard.log"
+        dashboard_pid = f"{remote_home}/.cache/medical-scan-dashboard.pid"
+        dashboard_rc, dashboard_out, dashboard_err = run(
+            f"pid_file={shlex.quote(dashboard_pid)}; "
+            "pkill -TERM -f 'obstacle_detector[/]scan_dashboard' "
+            "2>/dev/null || true; "
+            "pkill -TERM -f 'ros2 run obstacle_detector [s]can_dashboard' "
+            "2>/dev/null || true; "
+            "sleep 0.5; "
+            "pkill -KILL -f 'obstacle_detector[/]scan_dashboard' "
+            "2>/dev/null || true; "
+            "pkill -KILL -f 'ros2 run obstacle_detector [s]can_dashboard' "
+            "2>/dev/null || true; "
+            "rm -f \"$pid_file\"; "
+            f"mkdir -p {shlex.quote(remote_home + '/.cache')}; "
+            "user_bus=/run/user/$(id -u)/bus; "
+            f"nohup env DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=$user_bus "
+            f"{shlex.quote(remote_home + '/start_scan_dashboard.sh')} "
+            f"</dev/null >{shlex.quote(dashboard_log)} 2>&1 & "
+            "dashboard_wait=0; new_pid=; "
+            "while [ $dashboard_wait -lt 20 ]; do "
+            "new_pid=$(cat \"$pid_file\" 2>/dev/null || true); "
+            "case \"$new_pid\" in (*[!0-9]*|'') ;; "
+            "(*) kill -0 \"$new_pid\" 2>/dev/null && break ;; esac; "
+            "dashboard_wait=$((dashboard_wait + 1)); sleep 0.25; done; "
+            "case \"$new_pid\" in (*[!0-9]*|'') exit 1 ;; "
+            "(*) kill -0 \"$new_pid\" 2>/dev/null || exit 1 ;; esac; "
+            "dashboard_pids=$(pgrep -f "
+            "'obstacle_detector[/]scan_dashboard' || true); "
+            "set -- $dashboard_pids; "
+            "[ \"$#\" -eq 1 ] && [ \"$1\" = \"$new_pid\" ]",
+            timeout=20,
+        )
+        if dashboard_rc != 0:
+            print("Scan dashboard failed to restart after deployment.")
+            print(dashboard_err or dashboard_out)
+            rc = dashboard_rc
+    client.close()
+    if rc == 0:
+        print("Deployment complete in AUTORUN mode (DRY-RUN=false).")
+        print(
+            f"Scanner: enabled={SCANNER_ENABLED} camera={scan_camera} "
+            f"tele_camera={tele_scan_camera}"
+        )
+        print("Scan dashboard: desktop launcher installed and login autostart enabled.")
+        print("WARNING: powering or rebooting the robot may start chassis motion automatically.")
+        print("RViz desktop shortcut installed; login autostart remains disabled.")
+    return rc
+
+
+def _run_cli(deploy=main) -> int:
+    try:
+        exit_code = deploy()
+    except KeyboardInterrupt:
+        print("\nDeployment interrupted.", file=sys.stderr)
+        exit_code = 130
+    except Exception:
+        traceback.print_exc()
+        exit_code = 1
+
+    sys.stdout.flush()
+    sys.stderr.flush()
+    if exit_code == 0:
+        print("\033[1;32m[deploy] SUCCEEDED\033[0m", flush=True)
+    else:
+        print(
+            "\033[1;31m[deploy] FAILED\033[0m",
+            file=sys.stderr,
+            flush=True,
+        )
+    return exit_code
+
+
+if __name__ == "__main__":
+    sys.exit(_run_cli())

@@ -1,0 +1,234 @@
+/**
+ * @file NUC_Obstacle.h
+ * @brief NUC navigation UART communication @ UART8 PE1=TX PE0=RX 115200 8N1
+ *
+ * Frame format (8 bytes):
+ * AA BB XH XL YH YL CHK 55
+ * - AA BB: frame header
+ * - XH XL: forward distance, int16 big-endian, unit mm (positive = forward)
+ * - YH YL: lateral offset, int16 big-endian, unit mm (positive = left, negative = right)
+ * - CHK: checksum, (XH+XL+YH+YL) & 0xFF
+ * - 55: frame tail
+ *
+ * Link probe:
+ *   STM32 -> NUC: A5 5A 01 00
+ *   NUC   -> STM32: A5 5A 01 01
+ *
+ * Usage:
+ *   main: MX_UART8_Init(); NUC_Obstacle_Init();
+ *         while (!NUC_IsOnline()) {
+ *           NUC_Obstacle_SendPing();
+ *           HAL_Delay(100);
+ *         }
+ *   other: int16_t x = NUC_GetObstacleX(); int16_t y = NUC_GetObstacleY();
+ *          uint8_t valid = NUC_IsObstacleValid();
+ */
+#ifndef NUC_OBSTACLE_H
+#define NUC_OBSTACLE_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "main.h"
+#include <stdint.h>
+
+#define NUC_NAV_MAX_WAYPOINTS 16U
+#define NUC_NAV_SCAN_CODE_MAX 32U
+
+typedef enum {
+  NUC_NAV_GOAL_NONE  = 0,
+  NUC_NAV_GOAL_HOME  = 1,
+  NUC_NAV_GOAL_NURSE = 2,
+  NUC_NAV_GOAL_BED1  = 3,
+  NUC_NAV_GOAL_BED3  = 4
+} NUC_NavGoal;
+
+typedef enum {
+  NUC_NAV_IDLE = 0,
+  NUC_NAV_WAIT_PATH = 1,
+  NUC_NAV_FOLLOWING = 2,
+  NUC_NAV_REACHED = 3,
+  NUC_NAV_ERROR = 4
+} NUC_NavStatus;
+
+typedef enum {
+  NUC_SCAN_CONTEXT_ORDER = 1,
+  NUC_SCAN_CONTEXT_BED1 = 2,
+  NUC_SCAN_CONTEXT_BED3 = 3
+} NUC_ScanContext;
+
+typedef enum {
+  NUC_SCAN_FORMAT_QR = 1,
+  NUC_SCAN_FORMAT_CODE128 = 2
+} NUC_ScanFormat;
+
+typedef enum {
+  NUC_SCAN_ACK_ACCEPTED = 1,
+  NUC_SCAN_ACK_WRONG_STATE = 2,
+  NUC_SCAN_ACK_INVALID_CODE = 3
+} NUC_ScanAckStatus;
+
+typedef enum {
+  NUC_TTS_IDLE = 0,
+  NUC_TTS_COMPLETED = 1,
+  NUC_TTS_ERROR = 2,
+  NUC_TTS_PENDING = 3
+} NUC_TtsStatus;
+
+typedef enum {
+  NUC_ARM_DEBUG_ACCEPTED = 1,
+  NUC_ARM_DEBUG_WRONG_STATE = 2,
+  NUC_ARM_DEBUG_INVALID_COMMAND = 3
+} NUC_ArmDebugStatus;
+
+typedef struct {
+  int32_t x_mm;
+  int32_t y_mm;
+  int16_t yaw_cdeg;
+  uint16_t speed_mm_s;
+} NUC_NavWaypoint;
+
+typedef struct {
+  uint16_t scan_id;
+  uint8_t context;
+  uint8_t format;
+  uint8_t length;
+  char value[NUC_NAV_SCAN_CODE_MAX];
+} NUC_NavScanResult;
+
+typedef struct {
+  uint16_t request_id;
+  uint8_t deployed;
+} NUC_ArmDebugCommand;
+
+extern UART_HandleTypeDef huart8;
+
+/* Debug variables */
+extern volatile uint8_t g_nuc_debug_buf[8];
+extern volatile uint8_t g_nuc_parse_fail_reason;
+extern volatile uint32_t g_nuc_rx_count;
+extern volatile uint8_t g_nuc_last_byte;
+extern volatile uint8_t g_nuc_rx_history[16];
+extern volatile uint8_t g_nuc_history_idx;
+extern volatile uint32_t g_nuc_uart_error_count;
+extern volatile uint32_t g_nuc_last_uart_error;
+extern volatile uint8_t g_nuc_online;
+
+void NUC_Obstacle_Init(void);
+
+/** Send the link probe to NUC (A5 5A 01 00). */
+HAL_StatusTypeDef NUC_Obstacle_SendPing(void);
+
+/** Return 1 after NUC has replied to a link probe. */
+uint8_t NUC_IsOnline(void);
+
+/** Send probes until NUC replies or timeout_ms expires. */
+uint8_t NUC_Obstacle_WaitForOnline(uint32_t timeout_ms);
+
+/** Get obstacle forward distance in mm (0 if no valid data) */
+int16_t NUC_GetObstacleX(void);
+
+/** Get obstacle lateral offset in mm (0 if no valid data) */
+int16_t NUC_GetObstacleY(void);
+
+/** Check if obstacle data is valid (received within last 200ms) */
+uint8_t NUC_IsObstacleValid(void);
+
+/** Start or maintain a navigation request. A new goal increments request_id. */
+void NUC_Nav_RequestGoal(NUC_NavGoal goal);
+
+/** Start a new execution generation, even when the destination is unchanged. */
+void NUC_Nav_RestartGoal(NUC_NavGoal goal);
+
+/** Ask the NUC to play the bed announcement; valid beds are 1 and 3. */
+HAL_StatusTypeDef NUC_Nav_RequestTTS(uint8_t bed);
+
+/** Current result of the active NUC speech request. */
+NUC_TtsStatus NUC_Nav_GetTTSStatus(void);
+
+/** Cancel retransmission and discard the current speech result. */
+void NUC_Nav_ClearTTS(void);
+
+/** Periodic bidirectional telemetry service; call from the 100 Hz nav task. */
+void NUC_Nav_Service(int32_t x_mm, int32_t y_mm, int16_t yaw_cdeg,
+                     uint32_t ops_sample_ms, uint32_t hwt_yaw_sample_ms,
+                     uint8_t task_state, NUC_NavStatus nav_status,
+                     uint16_t path_id, uint8_t waypoint_index);
+
+/** Send the three STP23L ranges at 10 Hz on the navigation UART. */
+void NUC_Nav_ServiceSTP23L(void);
+
+/** Send encoder-derived body velocity and wheel online mask at 50 Hz. */
+void NUC_Nav_ServiceWheelOdom(float forward_mm_s,
+                              float left_mm_s,
+                              float yaw_ccw_cdeg_s,
+                              uint8_t online_mask);
+
+/** Send per-wheel target, feedback and current diagnostics at 20 Hz. */
+void NUC_Nav_ServiceWheelDiagnostics(const int16_t target_rpm[4],
+                                     const int16_t measured_rpm[4],
+                                     const int16_t command_current[4],
+                                     const int16_t feedback_current[4],
+                                     uint8_t online_mask,
+                                     uint8_t current_saturation_mask);
+
+/** Access the most recently committed path for the active request. */
+uint8_t NUC_Nav_HasRequestedPath(void);
+uint16_t NUC_Nav_GetPathGeneration(void);
+uint16_t NUC_Nav_GetPathId(void);
+uint8_t NUC_Nav_GetPathCount(void);
+uint8_t NUC_Nav_GetWaypoint(uint8_t index, NUC_NavWaypoint *waypoint);
+
+/**
+ * Read the latest fresh Nav2 body velocity command.
+ * Units/signs follow ROS: forward mm/s, left mm/s, counter-clockwise cdeg/s.
+ * Returns 0 and writes zeros when no valid command arrived in the last 600 ms.
+ * The caller applies that zero directly to the chassis speed target; pose,
+ * yaw and wheel-health failures use the forced-stop path separately.
+ */
+uint8_t NUC_Nav_GetVelocityCommand(int16_t *forward_mm_s,
+                                   int16_t *left_mm_s,
+                                   int16_t *yaw_ccw_cdeg_s);
+
+/** Fresh explicit collision-stop frame; overrides docking and navigation. */
+uint8_t NUC_Nav_EmergencyStopActive(void);
+
+/** Invalidate the current Nav2 velocity command immediately. */
+void NUC_Nav_ClearVelocity(void);
+
+/** Atomically consume the latest camera scan received from the NUC. */
+uint8_t NUC_Nav_TakeScanResult(NUC_NavScanResult *result);
+
+/** Drop a scan captured before the current task state was entered. */
+void NUC_Nav_ClearScanResult(void);
+
+/** Acknowledge a camera scan after the medical task validates it. */
+HAL_StatusTypeDef NUC_Nav_SendScanAck(uint16_t scan_id,
+                                      NUC_ScanAckStatus status);
+
+/** Atomically consume a dashboard arm command received from the NUC. */
+uint8_t NUC_Nav_TakeArmDebugCommand(NUC_ArmDebugCommand *command);
+
+/** Report whether the pre-start arm command was accepted by MedicalTask. */
+HAL_StatusTypeDef NUC_Nav_SendArmDebugStatus(uint16_t request_id,
+                                             uint8_t deployed,
+                                             NUC_ArmDebugStatus status);
+
+/** Last navigation action status reported by the NUC. */
+NUC_NavStatus NUC_Nav_GetStatus(void);
+
+/** New-protocol activity within the last 500 ms. */
+uint8_t NUC_Nav_IsOnline(void);
+
+/** Internal: UART8 RX interrupt complete, called by HAL_UART_RxCpltCallback */
+void NUC_Obstacle_OnUartRxCplt(void);
+
+/** Internal: UART8 error callback, used to recover blocking receive errors */
+void NUC_Obstacle_OnUartError(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* NUC_OBSTACLE_H */

@@ -1,0 +1,27 @@
+stdin is not a terminal device. Keyboard handling disabled.[INFO] [1790950179.820678779] [rosbag2_recorder]: Press SPACE for pausing/resuming
+[INFO] [1790950179.821932034] [rosbag2_storage]: Opened database '/home/fzurobot/bed13_full_20261002_220939/rosbag/rosbag_0.db3' for READ_WRITE.
+[INFO] [1790950179.824149713] [rosbag2_recorder]: Listening for topics...
+[INFO] [1790950179.824931510] [rosbag2_recorder]: Event publisher thread: Starting
+[INFO] [1790950179.829521144] [rosbag2_recorder]: Subscribed to topic '/tf_static'
+[INFO] [1790950179.831474116] [rosbag2_recorder]: Subscribed to topic '/tf'
+[INFO] [1790950179.836247085] [rosbag2_recorder]: Subscribed to topic '/cmd_vel'
+[INFO] [1790950179.836431860] [rosbag2_recorder]: Recording...
+[INFO] [1790950179.838705781] [rosbag2_recorder]: Subscribed to topic '/cmd_vel_safe'
+[INFO] [1790950179.942522774] [rosbag2_recorder]: Subscribed to topic '/medical_nav/wheel_odom'
+[INFO] [1790950179.943381871] [rosbag2_recorder]: Subscribed to topic '/medical_nav/task_state'
+[INFO] [1790950179.943956280] [rosbag2_recorder]: Subscribed to topic '/odom'
+[INFO] [1790950179.944541698] [rosbag2_recorder]: Subscribed to topic '/medical_nav/corner_speed_status'
+[INFO] [1790950179.945224749] [rosbag2_recorder]: Subscribed to topic '/medical_nav/bridge_cmd_debug'
+[INFO] [1790950179.946659503] [rosbag2_recorder]: Subscribed to topic '/medical_nav/bridge_status'
+[INFO] [1790950179.947657303] [rosbag2_recorder]: Subscribed to topic '/cmd_vel_nav'
+[INFO] [1790950179.948471649] [rosbag2_recorder]: Subscribed to topic '/cmd_vel_home_limited'
+[INFO] [1790950179.949419197] [rosbag2_recorder]: Subscribed to topic '/medical_nav/navigator_status'
+[INFO] [1790950179.952212779] [rosbag2_recorder]: Subscribed to topic '/speed_limit'
+[INFO] [1790950179.954199084] [rosbag2_recorder]: Subscribed to topic '/medical_nav/wheel_diagnostics'
+[INFO] [1790950179.955400909] [rosbag2_recorder]: Subscribed to topic '/transformed_global_plan'
+[WARN] [1790950180.056977015] [ROSBAG2_TRANSPORT]: Hidden topics are not recorded. Enable them with --include-hidden-topics
+[INFO] [1790950180.058293440] [rosbag2_recorder]: Subscribed to topic '/plan'
+[INFO] [1790950180.058954515] [rosbag2_recorder]: Subscribed to topic '/plan_smoothed'
+[INFO] [1790950310.336841336] [rosbag2_cpp]: Writing remaining messages from cache to the bag. It may take a while
+[INFO] [1790950310.339453533] [rosbag2_recorder]: Event publisher thread: Exiting
+[INFO] [1790950310.339525811] [rosbag2_recorder]: Recording stopped
